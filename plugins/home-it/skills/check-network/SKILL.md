@@ -267,6 +267,30 @@ take; an agent that stops here loses nothing, because everything below is read-o
   **whether its backhaul is wireless or wired**. Wireless backhaul is the top suspect.
 - **MTU / NAT boost / hardware accel** — confirm MTU 1500 (unless PPPoE) and HW acceleration on.
 
+**Prefer the router's own API over clicking through the UI.** Many routers expose the
+data the UI draws as JSON. One example is Keenetic's RCI. Its `/auth` answers 401 with a realm and a
+challenge. The client logs in with `sha256(challenge + md5("login:realm:password"))` and keeps the
+cookie. After that, `POST /rci/` takes `[{"show":{"log":{"max-lines":3000}}}]`, and
+`show interface rrd` returns traffic history at several resolutions. A log you can grep beats any
+screenshot. Two things to watch: the log's first lines can carry a pre-NTP date, and a log only goes
+back to the last reboot.
+
+**A cellular (4G/LTE) WAN — the symptom "only a reboot helps" is usually radio, not the router.**
+Read the modem's signal fields from the interface status and grade them:
+
+| metric | good | marginal | bad |
+|---|---|---|---|
+| RSRP | > −90 dBm | −90…−105 | < −105 |
+| RSRQ | > −10 dB | −10…−15 | < −15 |
+| SINR/CINR | > 10 dB | 0…10 | < 0 (noise louder than signal) |
+
+Then count `connection lost` / `Internet access lost` lines in the log. Several reconnects an hour
+on bad SINR means the radio link itself is the cause. Two fixes apply, in this order. First,
+placement: higher up, at a window facing the tower, away from heaters (also check the modem
+temperature). Second, an **automatic recovery probe**: a ping-check on the mobile interface that
+restarts the modem after N failed probes. Without one, the router can sit "connected" with no
+traffic until a human power-cycles it.
+
 ## 4. Diagnose and recommend — the fix ladder
 
 Rank fixes by leverage, not by novelty:

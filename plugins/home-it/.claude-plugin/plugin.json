@@ -1,6 +1,6 @@
 {
   "name": "home-it",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Home IT skills. Ships check-network: a repeatable playbook for home-network speed and DNS failures (compare system / router / public resolvers, inspect caches / upstreams / filters, measure throughput / bufferbloat / packet loss / Wi-Fi signal, localize the failing layer, inspect the router UI, and verify one fix at a time). The same SKILL.md files back the Codex plugin.",
   "author": {
     "name": "Yaroslav Yermilov",
