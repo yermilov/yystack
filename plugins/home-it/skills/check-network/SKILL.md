@@ -291,6 +291,19 @@ temperature). Second, an **automatic recovery probe**: a ping-check on the mobil
 restarts the modem after N failed probes. Without one, the router can sit "connected" with no
 traffic until a human power-cycles it.
 
+Reading such a router's API, a few things hold across models. Find the mobile interface by its
+type, not by a guessed name, and read the ping-check (or "connection monitor") state from the
+router itself rather than inferring it. In the log, look for the mobile interface's connection-state
+transitions. A down→up pair while the modem device stays attached points to a reconnect. The
+modem's own device detaching and re-attaching points to a restart, or to a crash, a power dip or a
+loose connection. Treat each as a clue and correlate it: a detach that lines up with the probe's
+fail counter reaching its limit is probably the probe acting; one with no such change is not. When you configure the probe, read the config back: on some firmware, setting a probe
+host REPLACES the existing list rather than adding to it. After enabling a probe, watch the next few
+minutes of the log and the probe state: some firmware restarts the modem once before the probe
+settles. Call that a one-off only after the probe reports success and the connection holds. Finally, the modem's status payload usually
+carries the SIM's IMSI/ICCID, the IMEI and the subscriber number. Copy only the signal fields you
+need, and never forward or log the whole object.
+
 ## 4. Diagnose and recommend — the fix ladder
 
 Rank fixes by leverage, not by novelty:
