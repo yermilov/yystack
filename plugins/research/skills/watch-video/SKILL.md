@@ -7,8 +7,9 @@ description: >-
   "summarise this video", "transcript", "extract the steps", "chat with this video": Gemini's native
   ingestion, either QUICK one-shot or a saved KNOWLEDGE FILE (transcript + Gemini's timestamped visual
   overview) answered from with [MM:SS] citations. Do not use for a multi-model second opinion on a
-  high-stakes question (that's deep-research, where installed), or for hosted non-YouTube video (Loom, Vimeo, Wistia), which Gemini
-  can't ingest.
+  high-stakes question (that's deep-research, where installed), for a video posted on X (read-twitter
+  pulls the mp4, then uses the local-file mode here), or for hosted non-YouTube video (Loom, Vimeo,
+  Wistia), which Gemini can't ingest.
 ---
 
 # Watch Video

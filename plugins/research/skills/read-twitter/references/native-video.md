@@ -1,9 +1,7 @@
 # read-twitter — native video and CDN media (depth)
 
-The depth behind read-twitter's native-video ruling (SKILL.md, *When to use*) and the CDN-media recipe
-in `references/x-native.md`. «Above»/«below» refer to this file.
-
----
+The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN media.
+«Above»/«below» refer to this file. SKILLDIR below is the folder `SKILL.md` was loaded from.
 
 - **Media pixels straight off the CDN**, when the Step 6 lightbox walk is not available — a
   **native X video**, which has no `/photo/<N>` link at all, or a media node you can see in the
@@ -15,24 +13,28 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
   /pbs\.twimg\.com\/media\/([A-Za-z0-9_\-]+)/
   ```
 
-  then `curl "https://pbs.twimg.com/media/<ID>?format=png&name=4096x4096"` and open it with `Read`.
+  then `curl "https://pbs.twimg.com/media/<ID>?format=png&name=4096x4096"` and read the image.
 
   **Native X video — read it as SAMPLED FRAMES via `ffmpeg`, not just a poster.** The primary path
   is the same `tweet-result` endpoint this skill already uses for text (see «To check one tweet's
-  text against the DOM» below): its JSON carries a `video_info.variants[]` on each `mediaDetails[]`
+  text against the DOM» in `references/x-native.md` — the `token` parameter is required, or the body
+  is an empty `{}`): its JSON carries a `video_info.variants[]` on each `mediaDetails[]`
   entry that has one — mp4s at several bitrates plus an `application/x-mpegURL` playlist. **A
-  `tweet-result?id=<id>` call covers that status's own media AND, when it is a quote-tweet, the
+  `tweet-result?id=<id>&lang=en&token=a` call covers that status's own media AND, when it is a quote-tweet, the
   QUOTED post's media too:** `quoted_tweet.mediaDetails[]` carries its own `video_info.variants[]`
-  mp4 ladder, so a quoted post's video needs **no second call**. Measured 2026-09-17 on
-  `2096456060207001806` (quoting `2095612137582526615`), and re-checked the same day: one ~8 KB
+  mp4 ladder, so a quoted post's video needs **no second call**. Measured 2026-09-17 on one
+  quote-tweet of a video post, and re-checked the same day: one ~8 KB
   payload yielded 5 mp4 variants for the root's 64 s video and 4 for the quoted 78 s one, both
   downloaded and frame-sampled without ever fetching `tweet-result` for the quoted id. A **reply's**
   video (or a parent post's, up a thread) still needs its own call against
-  `tweet-result?id=<that post's own id>`. And X allows a single status to carry more than one video,
+  `tweet-result?id=<that post's own id>&lang=en&token=a`. And X allows a single status to carry more than one video,
   so walk **every** `mediaDetails[]` entry with a `video_info` — in the root's array **and** in
   `quoted_tweet`'s — not just index 0. For each video found, take the
-  highest-bitrate mp4 variant as-is — no need to reconstruct a CDN path by hand — and work in its
-  own scratch dir (`mktemp -d`) so downloads and frames never overwrite or mix across videos:
+  highest-bitrate mp4 variant as-is — no need to reconstruct a CDN path by hand
+  (`bun run "SKILLDIR/scripts/x-video-variants.ts" "<status id>"` picks the variants and prints one
+  JSON line per video — `owner`, `mp4`, `smaller[]` lowest bitrate last, `durationSeconds`,
+  `poster`, `sheet{fps,columns,rows}`; by hand, as below) — and work in its own
+  scratch dir (`mktemp -d`) so downloads and frames never overwrite or mix across videos:
 
   ```
   curl -s "https://cdn.syndication.twimg.com/tweet-result?id=<id>&lang=en&token=a"
@@ -43,7 +45,7 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
   workdir=$(mktemp -d)   # fresh dir per video
   curl -s -o "$workdir/vid.mp4" "<that variant's url>"
 
-  # (a) ONE CONTACT SHEET — the default. One image, one Read, the whole arc at once.
+  # (a) ONE CONTACT SHEET — the default. One image, one image read, the whole arc at once.
   ffmpeg -i "$workdir/vid.mp4" -vf "fps=<rate>,scale=<w>:-1,tile=<C>x<R>" \
          -frames:v 1 -q:v 2 "$workdir/sheet.jpg"
 
@@ -51,22 +53,22 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
   ffmpeg -i "$workdir/vid.mp4" -vf "fps=1/3,scale=1148:-1" -q:v 3 "$workdir/f_%02d.jpg"
   ```
 
-  **Size the grid from `duration_millis`; do not hardcode it.** ⚠️ Mind the unit — the field is
+  **Size the grid from `duration_millis`; do not hardcode it.** Mind the unit — the field is
   MILLIseconds and `fps` is per second, so the executable form is
   **`C×R ≥ ceil((duration_millis / 1000) × fps)`**; multiplying by the raw millisecond value asks
   for a grid a thousand times too large.
   Two measured points: a **27 s** clip → `fps=1, scale=360:-1, tile=6x5` (30 cells); a **92 s** clip
   → `fps=1/6, scale=640:-1, tile=4x4` (~96 s of coverage in one image). **Prefer (a):** one 4×4 sheet
-  replaced ~15 separate `Read` calls, and on the 92 s clip it alone established that a game demo used
+  replaced ~15 separate image reads, and on the 92 s clip it alone established that a game demo used
   the original Westwood/EA assets — the EA splash, the load screen, the version string, the briefing
   and the FMV — a fact the tweet text never mentions. Use (b) when the point turns on **reading text**
-  in the frame rather than on the sequence of scenes. `ffmpeg` is present in the Cowork sandbox at
-  `/usr/bin/ffmpeg` (checked 2026-09-02). Keep the `mktemp -d` — one run that wrote into a hand-made
+  in the frame rather than on the sequence of scenes. `ffmpeg` was present at `/usr/bin/ffmpeg` on one
+  cloud-sandbox host (checked 2026-09-02). Keep the `mktemp -d` — one run that wrote into a hand-made
   `/tmp/frames/...` path got `Could not open file / Input/output error` (single occurrence, no
   negative control, so treat it as a reason to keep using `mktemp -d`, not as a rule about `/tmp`).
 
   **Verified 2026-08-25** on a 47s screencast → 16 sampled frames (at `fps=1/3`, one every 3s),
-  read with `Read`: this surfaced the demo's entire content (`79 PIECES`, `122 OUTFITS`, tab
+  each read as an image: this surfaced the demo's entire content (`79 PIECES`, `122 OUTFITS`, tab
   labels, an item-card schema with a hex color and tags, a look card with its rationale) — none of
   which is visible in the poster frame alone, which showed only the opening tab. This is a
   **sample, not every frame** — say so, and drop to a higher `fps` (or a scene-change extraction)
@@ -75,12 +77,12 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
   **Burned-in subtitles: crop the SUBTITLE BAND and tile it, rather than reading full frames.** When
   the narration is captioned into the picture — the norm for agent-POV and lore videos — the whole
   spoken track is readable without any transcription service, and a narrow vertical tile of just the
-  caption strip is far cheaper and more accurate than full frames. Measured 2026-09-05 on
-  @artficialisabel `2095678312773554533` (62 characters of tweet text, one 1:52 native video that
+  caption strip is far cheaper and more accurate than full frames. Measured 2026-09-05 on one post
+  (62 characters of tweet text, one 1:52 native video that
   carried the entire substance): ~120 lines of narration recovered this way.
 
   ```
-  # (c) SUBTITLE BAND — one crop per ~28 s of video, read with `Read`.
+  # (c) SUBTITLE BAND — one crop per ~28 s of video, each read as an image.
   # ⚠️ -y AND a per-chunk filename: without both, the second chunk hits an existing subs.png,
   #    ffmpeg declines to overwrite it, and every later Read silently re-reads chunk 1's tile.
   ffmpeg -y -ss <t> -t 28 -i "$workdir/vid.mp4" \
@@ -107,7 +109,7 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
   **Honest limit: spoken narration with NO burned-in captions is still not covered** — say that
   rather than implying you heard it.
 
-  **A FRAME-SEQUENCE claim needs a MEASUREMENT, not a description — and it is ten lines of numpy.**
+  **A FRAME-SEQUENCE claim needs a MEASUREMENT, not a description — and it is ten lines of array code.**
   When the post's claim is about the video's *construction* rather than its content ("stop motion",
   "consistent frames", "no flicker"), sampled frames tell you the story and say nothing about the
   claim. Decode every frame to small grayscale and take the mean absolute difference between
@@ -117,34 +119,37 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
   claims report the `diff` curve itself — spikes are CANDIDATE cuts and periodic jitter CANDIDATE
   flicker (fast motion produces both), so pull those frame numbers and look before naming either.
 
+  ffmpeg alone computes that curve: `tblend=all_mode=difference` turns each consecutive pair into
+  one |a−b| frame, and `signalstats` reports its mean luma as `YAVG` — the same number as a numpy
+  `np.abs(v[1:]-v[:-1]).mean()` over the gray decode, on the raw 0–255 scale.
+
   ```bash
-  S=96   # decode size; use 256 when you also want the bounding box below at readable resolution
-  # -y AND a per-size filename: a rerun at S=256 must not read the 96px file (reshape then fails)
-  ffmpeg -y -v error -i "$workdir/vid.mp4" -vf "scale=$S:$S,format=gray" -f rawvideo "$workdir/f$S.gray"
-  workdir="$workdir" S=$S python3 - <<'EOF'
-  import os, numpy as np
-  S = int(os.environ["S"])
-  d = np.fromfile(f'{os.environ["workdir"]}/f{S}.gray', dtype=np.uint8); n = d.size // (S*S)
-  v = d.reshape(n, S, S).astype(np.int16)
-  diff = np.abs(v[1:] - v[:-1]).mean(axis=(1, 2))      # per consecutive pair, in /255
-  steps = np.where(diff > 0.5)[0]                       # transitions between held stills
-  starts = [0] + [int(s) + 1 for s in steps]            # first frame of each still
-  print(len(starts), starts)
-  EOF
+  S=96   # decode size
+  ffmpeg -v error -i "$workdir/vid.mp4" -vf "scale=$S:$S,format=gray,tblend=all_mode=difference,\
+  signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=$workdir/diff$S.txt" -f null -
+  awk -F= '/YAVG/{print $2}' "$workdir/diff$S.txt" > "$workdir/diff.csv"   # line k = step INTO frame k
+  awk -v th=0.5 'BEGIN{printf "0"} $1>th{printf " %d", NR} END{print ""}' "$workdir/diff.csv"  # starts
   ```
+
+  The last line prints `starts`, the first frame of each still (`0 5 10 … 45` on a 5 s test clip
+  holding 2 stills/s at 10 fps — 10 stills, verified 2026-11-14). For held-frame footage
+  `freezedetect=n=-60dB:d=<shortest hold>` is a cross-check: it logs one `freeze_start` per still
+  (10 on the same clip; the last hold runs to EOF and has no `freeze_end`).
 
   Then two controls, and neither is optional — without them the count is just a threshold you
   picked:
-  - **Sweep the threshold.** Re-count at 0.3 / 0.5 / 0.8 / 1.0. If the count barely moves, the
-    structure is the video's. ⚠️ A stable count of **1** is the opposite verdict — every transition
-    sat below the sweep (a small or low-contrast change is diluted by a whole-frame mean). Then
-    print `np.sort(diff)[-20:]` and re-sweep between ~3× the noise floor (next bullet) and 0.3. Measured 2026-09-13 on `2097399137142772071` (@charlierguo, «GPT-Image
-    2.5 … stop motion»): **57–58 stills across 0.3–0.8**. (Positive control on a synthetic clip
-    holding 2 stills/s for 5 s: exactly 10 at every threshold.)
+  - **Sweep the threshold.** Re-count at 0.3 / 0.5 / 0.8 / 1.0
+    (`awk -v th=$th 'BEGIN{n=1} $1>th{n++} END{print th, n}' diff.csv`). If the count barely moves,
+    the structure is the video's. ⚠️ A stable count of **1** is the opposite verdict — every
+    transition sat below the sweep (a small or low-contrast change is diluted by a whole-frame mean).
+    Then print the top values (`sort -g diff.csv | tail -20`) and re-sweep between ~3× the noise
+    floor (next bullet) and 0.3. Measured 2026-09-13 on one «stop motion» image-model clip: **57–58
+    stills across 0.3–0.8**. (Positive control on a synthetic clip holding 2 stills/s for 5 s:
+    exactly 10 at every threshold.)
   - **Establish the noise floor** as the diff between two consecutive frames *inside* one held
     still, on the SAME background patch you compare across stills. Measured on the same video:
     **0.083/255** inside a hold, against **1.3–1.5/255** for that background between distinct stills.
-    ⚠️ The intra-hold figure understates what re-encoding a new still adds, so a ~16× gap is
+    The intra-hold figure understates what re-encoding a new still adds, so a ~16× gap is
     suggestive of a plate regenerated per still, not proof — a pasted plate re-encoded at each
     transition also moves. What the control does rule out is reading 1.3/255 as "identical" or as
     "different" with no reference at all.
@@ -155,7 +160,9 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
   fits; 70 does not): `-frames:v 1` writes one sheet, so an undersized grid silently drops every
   still past the last cell — the same truncation as the subtitle tile above.
 
-  Two more measurements the same array gives you for free:
+  Two more measurements need the frames as an array (illustrative; needs Python + numpy, on the
+  raw decode `ffmpeg -y -v error -i vid.mp4 -vf "scale=$S:$S,format=gray" -f rawvideo f$S.gray`,
+  `v = np.fromfile(...).reshape(n, S, S).astype(np.int16)`):
   - **Cumulative drift?** Take a background patch in every still and compute its distance from the
     FIRST still, for all k — a curve, not two points, because loss can oscillate or saturate. A flat
     curve with no trend means no visible accumulation in that patch; say which patch. Measured (two
@@ -168,11 +175,11 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
     the rest is static: the 1.3–1.5/255 background variation above sits under that cut by design.
 
   ⚠️ `format=gray` measures LUMINANCE only — an equal-brightness hue shift reads as zero. Say
-  "no luminance flicker", or decode `format=rgb24` (3 bytes per pixel: `n = d.size // (S*S*3)`, reshape `(n, S, S, 3)`, and average over `axis=(1, 2, 3)` so each pair
-  still yields one number) when
-  colour consistency is the claim.
+  "no luminance flicker", or swap `format=gray` for `format=yuv444p` and read `UAVG`/`VAVG` (the
+  chroma differences) beside `YAVG` (drop the `key=` filter so all three print) when colour
+  consistency is the claim.
 
-  ⚠️ Report the numbers, not a verdict: this measures *what the file looks like*, never *how it was
+  Report the numbers, not a verdict: this measures *what the file looks like*, never *how it was
   made*. A background near the noise floor fits a composited plate AND a masked edit; say what you
   measured and leave the pipeline to the author's own words.
 
@@ -197,7 +204,7 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
     | grep -E "mean_volume|max_volume"
   ```
 
-  Measured 2026-09-17 on @iamBarronRoth `2096407730030530762` (16 s, stream `aac (LC) 48000 Hz
+  Measured 2026-09-17 on one screen-recording post (16 s, stream `aac (LC) 48000 Hz
   stereo 128 kb/s`): `mean_volume: -91.0 dB`, `max_volume: -91.0 dB`. **`max_volume` at the
   −91.0 dB floor (equal to `mean`) is the signature of a track silent for its whole length** —
   controls the same day on synthetic AAC: `anullsrc` → −91.0/−91.0, a 440 Hz sine → mean −21.1 /
@@ -207,53 +214,63 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
   (max_volume −91 dB) — nothing to transcribe»; anything above the floor has signal, so quote the
   two numbers and flag audio as unwatched only then.
 
-  ⚠️ For a LONG video whose point is speech, skip the «highest-bitrate mp4» download above — it can be a 4K file of
-  hundreds of MB; fetch the 640x360 variant instead, as below.
-
   **Signal that is SPEECH → transcribe it; «present, not transcribed» is not an ending for a talk or
-  tutorial.** Measured 2026-10-26 on a 30:37 native X talk (`@theo`, status `2114623574371963360`),
-  Mac Claude Code:
+  tutorial.** Transcription itself belongs to the sibling skill **`watch-video`, local-file mode** —
+  it owns the whisper setup and **asks for consent before the first-run model download (~1.6 GB)**;
+  do not run a transcriber inline from here. What is X-specific is getting it a file:
 
   ```
-  # 1. variants: fxtwitter lists them with bitrate (480x270 … 3840x2160); 640x360 is enough for audio
-  curl -s https://api.fxtwitter.com/i/status/<id> | jq '.tweet.media.all[] | {type, formats}'   # EVERY media entry, not [0]; a quoted post's is under .tweet.quote
-  #    download the 640x360 mp4 variant's url (not the 4K one) as vid.mp4 into $workdir:
-  #    curl -s -o "$workdir/vid.mp4" "<that variant's url>"
-  # 2. audio → whisper, exactly the watch-video «Local video file» recipe (name the language)
-  cd "$workdir"   # outputs land in the cwd — never run this from a repo checkout
-  ffmpeg -i vid.mp4 -vn -ac 1 -ar 16000 -c:a pcm_s16le audio.wav
-  whisper-cli -m ~/.cache/whisper.cpp/ggml-large-v3-turbo.bin -f audio.wav -l en --output-srt --output-txt
+  # 1. variants: one JSON line per video (root AND quoted); `smaller` is lowest bitrate LAST
+  bun run "SKILLDIR/scripts/x-video-variants.ts" "<status id>"
+  #    download the LAST entry of that video's `smaller` (or `mp4` when `smaller` is empty):
+  curl -s -o "$workdir/vid.mp4" "<smaller[-1].mp4>"
+  # 2. hand "$workdir/vid.mp4" to watch-video's local-file mode (name the language when you know it)
   # 3. frames at the moments the transcript names — remote seek, no full download
-  ffmpeg -ss <sec> -i "<1280x720 variant URL>" -frames:v 1 -q:v 3 "$workdir/f_<sec>.jpg"   # one name per moment
+  ffmpeg -ss <sec> -i "<a ~720p entry of smaller>" -frames:v 1 -q:v 3 "$workdir/f_<sec>.jpg"   # one name per moment
   ```
 
-  The 42 MB 640x360 file had an aac track (`volumedetect` max −1.8 dB, mean −22.7 dB); the transcript
-  was 6 835 words, readable as plain text. Remote seek over the mp4 URL returned a 720p frame
-  (~100 KB) without downloading the file; find the second with `grep -n '<phrase>'` on the `.srt`.
-  A frame showed a `fleet/skills/universal/` tree that the voice never named. **Whisper mangles
-  proper names** («sole loop» for «sol loop», a person → «Tebow», model names) — take every name
-  from the repo or a frame, not from the transcript. Not measured: how long `whisper-cli` takes on a
-  30-min file — do not quote a duration.
+  **For a LONG video whose point is speech, skip the «highest-bitrate mp4» download above** — it can
+  be a 4K file of hundreds of MB; the lowest entry in `smaller` is enough for audio.
+  **Fallback only when the script exits 2** (the syndication endpoint failed): fxtwitter lists the
+  same ladder — `curl -s https://api.fxtwitter.com/i/status/<id> | jq '.tweet.media.all[] | {type,
+  formats}'` (EVERY media entry, not `[0]`; a quoted post's is under `.tweet.quote`) — and take a
+  ~640x360 variant from there.
+
+  Measured 2026-10-26 on a 30:37 native X talk (local shell): the 42 MB 640x360 file had an aac
+  track (`volumedetect` max −1.8 dB, mean −22.7 dB); the
+  transcript was 6 835 words, readable as plain text. Remote seek over the mp4 URL returned a 720p
+  frame (~100 KB) without downloading the file; find the second with `grep -n '<phrase>'` on the
+  `.srt`. A frame showed a repo directory tree that the voice never named. **Whisper
+  mangles proper names** (a project name split into two common words, a person's name turned
+  into a celebrity's, model names) — take every
+  name from the repo or a frame, not from the transcript. Not measured: how long transcription takes
+  on a 30-min file — do not quote a duration.
 
   **A claim that the SOUND is synced to the picture («timed it perfectly with the animation») is
   measurable too — scene cuts against audio onsets, with a LOCAL-JITTER control.** A present,
   audible track still leaves you able to say nothing about speech, but a sync claim needs no
   listening.
-  - **Cuts.** Reuse the `diff` array from the frame-sequence recipe above (raw 0–255 scale, not
-    divided by 255). A hard cut is `diff > th`, merged with a REFRACTORY window anchored on the last KEPT cut:
-    `hits = np.where(diff > th)[0] + 1` (frame numbers — `diff[i]` is the step INTO frame `i+1`),
-    then `for x in hits: if not cuts or x - cuts[-1] > 3: cuts.append(x)`, time `x/fps`. Three
-    frames is 125 ms at 24 fps; at another rate use `round(0.125 * fps)` so the window keeps its
+  - **Cuts.** Reuse `diff.csv` from the frame-sequence recipe above (raw 0–255 scale). A hard cut
+    is `diff > th`, merged with a REFRACTORY window anchored on the last KEPT cut — it prints each
+    cut's frame number and time:
+    `awk -v th=65 -v fps=24 '$1>th && (!last || NR-last>3) {print NR, NR/fps; last=NR}' diff.csv`
+    (line `NR` is the step INTO frame `NR`). Three frames is 125 ms at 24 fps; at another rate use `round(0.125 * fps)` so the window keeps its
     duration. That is what was measured below; a transitive merge gives 15 cuts instead of 17 on
     the same clip, so say which rule you used.
     **Fix `th = 65` BEFORE you look at the result, and sweep other values only as a robustness
     check, never to pick the smallest p.** The cut count depends on it: 28 / 23 / 17 / 10 cuts at
     40 / 50 / 65 / 80 on the clip below. Check it against the picture BEFORE touching the audio:
     look for scene changes the threshold MISSED, not only at the ones it found — on a DENSE sheet
-    (`fps=6` or more), since the 1 fps contact sheet can skip a sub-second shot entirely. Dark or low-contrast cuts can sit well below 65. If it cannot recover the cuts you
-    can see, report the test as inconclusive.
+    (`fps=6` or more), since the 1 fps contact sheet can skip a sub-second shot entirely. Dark or
+    low-contrast cuts can sit well below 65. A second opinion from ffmpeg's own scene score:
+    `ffmpeg -i vid.mp4 -vf "select='gt(scene,0.3)',showinfo" -f null - 2>&1 | grep pts_time` prints
+    one line per frame over the score, with its `pts_time` (`n:` there counts OUTPUT frames, not the
+    input frame number); a held-still test clip scored only ~0.05 per change, so tune X per clip. If
+    neither recovers the cuts you can see, report the test as inconclusive.
   - **Onsets.** A log-magnitude spectral flux over 8 kHz mono, exactly as measured (94 onsets on
-    the clip below):
+    the clip below). Illustrative; needs Python + numpy — ffmpeg's `ebur128`/`astats` give
+    loudness per window, a different detector whose latency and onset count would not match the
+    numbers below:
 
     ```python
     import os, numpy as np                # run as: workdir="$workdir" python3 - <<'EOF'
@@ -277,10 +294,11 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
     (`ffprobe -v error -select_streams v -show_entries frame=pts_time -of csv=p=0 "$workdir/vid.mp4"`,
     which already include
     the offset — do not add it again), or re-decode with `-vf fps=<rate>` so the index is time by
-    construction. On the PTS path, decode the raw frames with `-fps_mode passthrough` too, or
-    ffmpeg's default CFR sync may drop or duplicate frames and `diff[i]` stops matching PTS `i+1`. `diff[i]` is the step INTO frame `i+1`, so the cut's time is `(i+1)/fps` on
-    CFR and `frame_pts[i+1]` on the PTS path — one
-    frame (42 ms at 24 fps) is nearly the whole ±50 ms window, so get this right.
+    construction. On the PTS path, run the `tblend` pass with `-fps_mode passthrough` too, or
+    ffmpeg's default CFR sync may drop or duplicate frames and line `NR` stops matching frame `NR`;
+    the `pts_time` that `diff$S.txt` prints beside each `YAVG` is already frame `NR`'s PTS. Line
+    `NR` is the step INTO frame `NR`, so the cut's time is `NR/fps` on CFR and that `pts_time` on
+    the PTS path — one frame (42 ms at 24 fps) is nearly the whole ±50 ms window, so get this right.
   - **Calibrate the detector's LATENCY first — on a synthetic click track, before any real
     number.** Build a few seconds of near-silence with 5 ms clicks at known times, run the same
     detector, and take the mean latency = (detected − true). Measured −20 ms for the snippet above:
@@ -300,7 +318,7 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
     whole-series circular shift is a valid null here.** Both move cuts into the quiet intro and
     outro, which lowers the baseline and makes sync look stronger than it is.
 
-  Measured 2026-09-25 on @kevin_t_ngo `2099858454043349342` (27 s, 24 fps CFR, both streams
+  Measured 2026-09-25 on one animation clip (27 s, 24 fps CFR, both streams
   `start_time` 0, «the music … timed it perfectly», `th = 65`, 17 cuts, 94 onsets):
 
   | statistic | real | null mean | P(null ≥ real) |
@@ -315,20 +333,20 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
   events.** The «significant» first reading came from 20 ms of detector latency plus a fixed-lag
   test. That is the lesson, and it is why both the calibration step and the max-over-lags null
   are there: with a ±50 ms window, one uncorrected constant decides the
-  answer. ⚠️ **Scope the verdict to cuts.** Sync within a shot (an
+  answer. **Scope the verdict to cuts.** Sync within a shot (an
   impact, a wing beat, a pose change) is invisible to this test, so it can neither confirm nor
   refute sync overall. It measures cut-to-onset alignment and nothing else. Report the numbers,
   not the author's adjective.
-  ⚠️ **Onset DENSITY sets the chance level.** 94 onsets in 27 s put a random time within 50 ms of
+  **Onset DENSITY sets the chance level.** 94 onsets in 27 s put a random time within 50 ms of
   one about a third of the time, so a bare «N/17 matched» means nothing without the control.
-  A spectrogram is worth one `Read` alongside it, because it shows WHAT the sound is:
+  A spectrogram is worth one image read alongside it, because it shows WHAT the sound is:
   `ffmpeg -y -v error -i "$workdir/vid.mp4" -lavfi showspectrumpic=s=1600x500:legend=1:scale=log "$workdir/spec.png"`.
   That clip's spectrogram shows clean harmonic stacks and flat-topped noise bursts, which fits
   the author's «Web Audio API» answer. Say *consistent with* it: a spectrogram cannot prove how a
   sound was made.
 
   **Fallback — only when the `variants` list isn't reachable** (`tweet-result` fails, or the post
-  isn't publicly embeddable): the poster frame's CDN path still works, but ⚠️ **do NOT rebuild it
+  isn't publicly embeddable): the poster frame's CDN path still works, but **do NOT rebuild it
   under `/media/`.** It lives on deeper, differently-shaped paths
   (`ext_tw_video_thumb/<video-id>/pu/img/<file>.jpg`, `amplify_video_thumb/<video-id>/img/<file>.jpg`),
   so reconstructing from a captured id alone yields a URL that does not exist. **Keep the whole
@@ -339,13 +357,13 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
   ```
 
   then `curl "https://<matched>?format=png&name=4096x4096"` (strip any existing `?name=`/`?format=`
-  query first), then `Read` it. Three posters came back this way in one run — 800×424, 1920×1080,
+  query first), then read the image. Three posters came back this way in one run — 800×424, 1920×1080,
   1280×794 — all valid PNGs. A single poster frame can be the whole substance of a post (measured
   case: it carried a full README diff and `Cargo.toml` — version, license, repo URL, dependencies),
   but it is still ONE frame — reach for the `ffmpeg` path above whenever the mp4 is reachable at
   all.
 
-  ⚠️ **Dedupe the matches and take the SHORTEST — a match can carry an escaped tail.** The
+  **Dedupe the matches and take the SHORTEST — a match can carry an escaped tail.** The
   exclusion class above stops at `\`, but `&`, `q`, `u`, `o`, `t` and `;` are all ordinary
   characters, so an `innerHTML` occurrence followed by `&quot;` is captured with that tail attached
   and shows up beside the clean match as a second "unique" URL. `.replace(/&quot;.*$/, '')` on each
@@ -353,17 +371,17 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
 
   **Read the poster frame FIRST when the post claims a demo but links nothing — the address bar is
   in the picture.** A screencast's poster usually shows the browser chrome, and the URL in it is the
-  cheapest evidence about what was recorded. Measured 2026-09-05 on @tomkrcha's «GPT-6 Astra +
-  three.js» post: `entities.urls` was empty and no reply carried a link, and the poster showed
+  cheapest evidence about what was recorded. Measured 2026-09-05 on one «model + three.js» demo
+  post: `entities.urls` was empty and no reply carried a link, and the poster showed
   **`127.0.0.1:4173`** — the default `vite preview` port. The same frame also gave the app's name,
   its whole UI and the numbers on screen.
-  ⚠️ **Say what that actually proves, which is less than it feels like.** It establishes that **the
+  **Say what that actually proves, which is less than it feels like.** It establishes that **the
   instance being demonstrated was local and the post supplied no public URL** — not that no public
   deployment exists, since an author can record locally and deploy elsewhere. If availability is
   what the task turns on, keep looking (the author's other posts, a repo, a pinned reply) and report
   the local address bar as evidence rather than as the answer.
 
-  ⚠️ **The count of unique video IDs among the poster-path matches is a cheap workload signal — but
+  **The count of unique video IDs among the poster-path matches is a cheap workload signal — but
   normalize first, and it is not an exact post count.** The regex captures the whole matched path
   including any query string, so the same video served with a different `?format=`/`?name=` shows
   up as two "unique" matches — strip the query string and dedupe on the id segment right after
@@ -372,8 +390,9 @@ in `references/x-native.md`. «Above»/«below» refer to this file.
   media), so **treat the id count as a rough sizing hint for the Step 5 read, not a post count** —
   it tells you native video is present and roughly how much, before you've read a word.
 
-  ⚠️ If the fetch 404s, the URL shape may have changed for that post — read the real `src` off the
+  If the fetch 404s, the URL shape may have changed for that post — read the real `src` off the
   `video`/`img` element and use it verbatim rather than pattern-building.
 
-  ⚠️ The chrome MCP redacts a bare media id or a `src` carrying a query string, so return it from
+  One browser driver redacts a bare media id or a `src` carrying a query string (see
+  `references/browser-traps.md`), so return it from
   the page defanged — `{kind, url: url.split('').join('.')}` — and strip the dots on your side.

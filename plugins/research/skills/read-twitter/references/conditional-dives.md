@@ -1,15 +1,22 @@
-# read-twitter — conditional-dive precedents (depth)
+# read-twitter — the three conditional dives (depth)
 
-Moved verbatim from SKILL.md «When the linked material is itself a RETELLING» and «When the tweet
-announces a SOLVED problem», which keep the rulings and point here.
+The full text behind SKILL.md's «Three conditional dives — when the linked material changes what
+"read" means». The body keeps the rulings; this file keeps the procedure, the precedents and the
+primary-text channels. Read the section for the dive you are in.
 
----
+## When the linked material is itself a RETELLING, not a primary source
+
+A tweet is often not the content — it is an announcement for somebody else's writeup, which itself
+condenses several primary documents (a journalist's recap of two technical reports, a thread that
+summarizes a paper). Reading that writeup and reporting its numbers, quotes and framing in one voice
+— attributed to "the company" or to whichever primary document the writeup was mostly about — is a
+repeatable failure, not a hypothetical one.
 
 **Measured 2026-08-31**, on a dive into a tweet announcing a journalist's retelling of an OpenAI/METR
-incident: the retelling itself condensed three primary documents (OpenAI's blog post, OpenAI's
-38-page technical report, and a 91-page METR/Redwood report), and the dive's report merged all three
-into one undifferentiated voice attributed to OpenAI. A later cross-check against the actual primary
-documents (requested separately, "check it against the original article") found four distinct errors from this
+incident: the retelling condensed three primary documents (OpenAI's blog post, OpenAI's 38-page
+technical report, and a 91-page METR/Redwood report), and the dive's report merged all three into one
+undifferentiated voice attributed to OpenAI. A later cross-check against the primary documents
+(requested separately, "check it against the original article") found four distinct errors from this
 one cause:
 - a narrative frame ("three secret AI civilizations", the third started by a specific model) that
   was the **journalist's own framing** — OpenAI's technical report explicitly describes that model
@@ -24,59 +31,6 @@ one cause:
   OpenAI's, none of which appear anywhere in OpenAI's own technical report — every one of them
   belonged to METR/Redwood.
 
----
-
-- The Vals AI post cited *The Works of Sir Thomas Urquhart* (Maitland Club, 1834), pp. 412–417.
-- The public refutation (Reticuli Labs, `github.com/reticuli-labs/panel-artifacts`, 2026-09-01)
-  tested **EEBO-TCP A64608** = the 1653 first edition, British Library film, and correctly found ten
-  positions *hard-infeasible* (e.g. Proquiritation 11 contains no word beginning with K, yet the
-  plaintext needs K there).
-- Both hold, because **the two witnesses carry different, reordered petitions.** 1653 §1 begins
-  "THat he, whose good name…" (signed A. S.); 1834 §1 begins "Seeing, from the creation of the
-  world…" (signed K. F.). 1653 §2 == 1834 §4, reworded. Every word index shifts.
-- The same run found that archive.org's **OCR** of the 1834 print reads **38** where every modern
-  transcription (Vals, Cipherbrain) reads **33** at line-2 position 24 — and 38 is the only index in
-  that petition that yields the required initial. That is an OCR observation, **not yet confirmed
-  against the page scans (pp. 414–415)**; either way, a transcription is a third witness, not a copy
-  of the second.
-
----
-
-Primary-text channels that work with plain `curl` (measured 2026-09-17, Cowork host):
-- **EEBO-TCP**: `raw.githubusercontent.com/textcreationpartnership/<ID>/master/<ID>.xml` — clean
-  TEI. Numbered sections are `<div n="N" type="part">`. ⚠️ `<g ref="char:EOLhyphen"/>` marks a word
-  split across a line break: **rejoin it before tokenising**, or every word index after it drifts.
-  (`raw.githubusercontent.com` itself varies between sandbox sessions — see the GitHub recipe below.)
-- **archive.org full text**: `https://archive.org/download/<item>/<item>_djvu.txt` — the whole book
-  in one request (1.3 MB here). ⚠️ Not every item serves it anonymously:
-  `worksofsirthomas00mait` → 200, while `worksofsirthomas0000urqu` (a 1971 reprint) → **401** — its
-  `_djvu.txt` exists, but `archive.org/metadata/<item>` shows `access-restricted-item: true`
-  (lending library). Check the metadata before concluding there is no text, and prefer a public
-  witness. ⚠️ OCR artefacts break word indexing: running heads ("414 PROQUIRITATIONS."),
-  section numbers split as "3 1 .", and hyphenation at line ends. Strip/rejoin all three; expect ±1
-  residual drift and say so.
-- **A Hacker News thread, no browser**: `https://hn.algolia.com/api/v1/items/<id>` returns the
-  entire comment tree as JSON (551 comments, 300 KB here). Flatten it to a file and grep it — never
-  read it into the main loop. (Finding the thread and walking it: `references/source-recipes.md` / `references/x-native.md` →
-  the LAUNCH-tweet bullet.)
-
----
-
-# The three conditional dives — full text
-
-## When the linked material is itself a RETELLING, not a primary source
-
-A tweet is often not the content — it is an announcement for somebody else's writeup, which itself
-condenses several primary documents (a journalist's recap of two technical reports, a thread that
-summarizes a paper). Reading that writeup and reporting its numbers, quotes and framing in one voice
-— attributed to "the company" or to whichever primary document the writeup was mostly about — is a
-repeatable failure, not a hypothetical one.
-
-**Measured 2026-08-31:** one dive merged a journalist's retelling of three primary documents (an
-OpenAI blog post, its technical report, a METR/Redwood report) into one voice attributed to OpenAI;
-a later cross-check against the primaries found four distinct errors from that one cause.
-📖 the four errors → `references/conditional-dives.md`.
-
 **So, when the material behind the link is itself a retelling of other primary documents:**
 1. Before writing the report, list the primary documents the retelling draws on.
 2. Tag every number, quote and framing with its real source — `[OpenAI blog]`, `[OpenAI tech
@@ -90,10 +44,10 @@ a later cross-check against the primaries found four distinct errors from that o
    document specifically, not just the numbers near it.
 5. When the retelling compares two figures ("even worse than", "softer than"), first confirm the two
    figures actually measure the same thing (same metric, same denominator, same population) — the
-   198/898 vs. 30–40% pair above did not, which is what made the comparison wrong in the first place.
-   Only once they're comparable, recompute the direction yourself from the primary sources rather
-   than trusting the retelling's stated direction; if they aren't comparable, say so instead of
-   picking a direction.
+   "softer than" pair in the precedent above did not: the two figures came from different reports
+   measuring different metrics, which is what made the comparison wrong in the first place. Only once
+   they're comparable, recompute the direction yourself from the primary sources rather than trusting
+   the retelling's stated direction; if they aren't comparable, say so instead of picking a direction.
 
 ## When the tweet makes a claim ABOUT A CORPUS — download the raw dump and grep it
 
@@ -122,7 +76,7 @@ measurement and a number that merely looks like one:
   a guessed path reads exactly like "there is no dump".
 
 **Keep the corpus out of the main loop.** Where subagents exist, delegate the download and the grep
-to one and take back only the verdict and the verbatim hits. **Where they do not** (Codex App has
+to one and take back only the verdict and the verbatim hits. **Where they do not** (some hosts have
 none), run the same thing inline in the shell and print only aggregates and matches — pipe to
 `grep -c` and a bounded `grep -m 20`, never `cat` the dump. The rule is about what reaches your
 context, not about which mechanism you used to keep it out.
@@ -136,36 +90,66 @@ it against the primary source and report hits, not vibes. And run a **negative c
 reader knows what chance looks like — for an indexed decode (a cipher, a book code) that is a
 **shuffled control**: the same indices against a randomised source map; for other claim types pick
 the domain's equivalent (a held-out split, a random baseline), and say which you used. Measured
-2026-09-17 on @bcherny's Cyphral Distich post: **line 1** of the claimed decode
-scored **32/32** on the right witness against a **2.77/32** shuffled baseline; line 2 scored
-**29/32** (30/32 with the `38` reading below), two positions still unexplained. Report partial
-replications as partial — neither number means anything alone, and a headline "solved" is not a
-per-line score.
+2026-09-17 on one «a model decoded this cipher» post: **line 1** of the claimed decode scored
+**32/32** on the right witness against a **2.77/32** shuffled baseline; line 2 scored **29/32**
+(30/32 with the `38` reading below), two positions still unexplained. Report partial replications as
+partial — neither number means anything alone, and a headline "solved" is not a per-line score.
 
-**Scope and feasibility gate.** This applies to a research dive (a "research this"
-brief) — not to a request that only asks for the post's text, which stays within Step 7's scope.
-And it applies only when the rule is actually executable from public material: the source text is
-fetchable, the mechanism is stated precisely enough to code, and a meaningful control exists. A
-proof, a closed-weights benchmark run or an unpublished method usually fails that test — then say
-**"not replicated"** and why, rather than inventing a baseline or quoting the announcement as
-verified.
-That run kept a small reproducible script (stdlib-only, fetching both witnesses and printing the
-score); write one of your own the same way — the decode is only as good as its reproduction.
+**Scope and feasibility gate.** This applies to a research dive (a "research this" brief) — not to a
+request that only asks for the post's text, which stays within Step 7's scope. And it applies only
+when the rule is actually executable from public material: the source text is fetchable, the
+mechanism is stated precisely enough to code, and a meaningful control exists. A proof, a
+closed-weights benchmark run or an unpublished method usually fails that test — then say **"not
+replicated"** and why, rather than inventing a baseline or quoting the announcement as verified.
+That run kept a small reproducible script (fetching both witnesses and printing the score); write
+one of your own the same way — the decode is only as good as its reproduction.
 
-⚠️ **When the primary source is an early-modern printed book, the EDITION is load-bearing — a decode
-that fails on one witness and succeeds on another is a fact about which book you loaded, not about
-the claim.** This is what made the public dispute around that post incoherent, and both sides were
-internally correct:
-📖 the measured dispute (1653 vs 1834 witnesses, reordered petitions, the OCR `38`/`33` reading) → `references/conditional-dives.md`.
+### The witness you re-run on must be the one the claim used
 
-**So: before concluding a claimed solve is wrong, confirm you loaded the edition the claim cites** —
-and name the witness (shelfmark / TCP id / archive.org id) beside every score you report.
+A decode that fails on one witness and succeeds on another is a fact about which text you loaded, not
+about the claim. ⚠️ **For an early-modern printed source, the edition is load-bearing** — a decode
+checked against the wrong edition proves nothing. This is what made the public dispute around that
+post incoherent, and both sides were internally correct:
 
-The primary-text channels (EEBO-TCP TEI, archive.org `_djvu.txt`, an HN thread via Algolia) are listed
-with their commands and traps near the top of this file.
+- The claim's own write-up cited *The Works of Sir Thomas Urquhart* (Maitland Club, 1834),
+  pp. 412–417.
+- A public refutation (a GitHub repo, 2026-09-01) tested **EEBO-TCP A64608** = the 1653 first
+  edition, British Library film, and correctly found ten positions *hard-infeasible* (e.g.
+  Proquiritation 11 contains no word beginning with K, yet the plaintext needs K there).
+- Both hold, because **the two witnesses carry different, reordered petitions.** 1653 §1 begins
+  "THat he, whose good name…" (signed A. S.); 1834 §1 begins "Seeing, from the creation of the
+  world…" (signed K. F.). 1653 §2 == 1834 §4, reworded. Every word index shifts.
+- The same run found that archive.org's **OCR** of the 1834 print reads **38** where every modern
+  transcription (the claim's and a cipher site's) reads **33** at line-2 position 24 — and 38 is the only index in
+  that petition that yields the required initial. That is an OCR observation, **not yet confirmed
+  against the page scans (pp. 414–415)**; either way, a transcription is a third witness, not a copy
+  of the second.
+
+**So: before concluding a claimed solve is wrong, confirm you loaded the witness the claim cites** —
+and name it (shelfmark / TCP id / archive.org id) beside every score you report.
+
+### Primary-text channels that work with plain `curl`
+
+Measured 2026-09-17 on a cloud-sandbox host:
+- **EEBO-TCP**: `raw.githubusercontent.com/textcreationpartnership/<ID>/master/<ID>.xml` — clean
+  TEI. Numbered sections are `<div n="N" type="part">`. ⚠️ `<g ref="char:EOLhyphen"/>` marks a word
+  split across a line break: **rejoin it before tokenising**, or every word index after it drifts.
+  (`raw.githubusercontent.com` itself varies between sandbox sessions — see `references/source-recipes.md`
+  § GitHub.)
+- **archive.org full text**: `https://archive.org/download/<item>/<item>_djvu.txt` — the whole book
+  in one request (1.3 MB here). **Not every item serves it anonymously:**
+  `worksofsirthomas00mait` → 200, while `worksofsirthomas0000urqu` (a 1971 reprint) → **401** — its
+  `_djvu.txt` exists, but `archive.org/metadata/<item>` shows `access-restricted-item: true`
+  (lending library). Check the metadata before concluding there is no text, and prefer a public
+  witness. **OCR artefacts break word indexing:** running heads ("414 PROQUIRITATIONS."), section
+  numbers split as "3 1 .", and hyphenation at line ends. Strip/rejoin all three; expect ±1 residual
+  drift and say so.
+- **A Hacker News thread, no browser**: `https://hn.algolia.com/api/v1/items/<id>` returns the
+  entire comment tree as JSON (551 comments, 300 KB here). Flatten it to a file and grep it — never
+  read it into the main loop. (Finding the thread for a post: `references/source-recipes.md`, the
+  LAUNCH-tweet bullet.)
 
 When the refutation lives in a GitHub repo, judging its provenance (created_at, stars, pushed_at)
-needs `api.github.com`, which a Cowork sandbox gates — the GitHub recipe (`references/source-recipes.md`)
-has the probe and the browser route. If neither reaches it, say the metadata was unreadable rather
-than calling the repo unverifiable.
-
+needs `api.github.com`, which a cloud sandbox may gate — `references/source-recipes.md` § GitHub has
+the probe and the browser route. If neither reaches it, say the metadata was unreadable rather than
+calling the repo unverifiable.

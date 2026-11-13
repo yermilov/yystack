@@ -4,15 +4,16 @@ description: >-
   Read ONE X/Twitter post through a logged-in browser and return it as Markdown — the body, the
   author's self-thread, notable replies, a quoted post, attached images read as pixels, native video,
   and the real content behind every t.co link. Use when an x.com / twitter.com URL appears and its
-  content matters: reading a post, thread, X Article or its replies, following a link in a tweet,
-  citing a tweet as prior art, or when a web fetch of x.com returned HTTP 402. Do not use for a batch
-  of posts or a bookmarks sweep (a batch skill should call this one per post), for a YouTube link
-  in a tweet (hand it to watch-video), or for a non-X page a fetch can't read (fetch-web-sources). Read-only: never posts, replies, likes or unbookmarks.
+  content matters: reading a post, a tweet thread, an X Article or its replies, following a link in a
+  tweet, citing a tweet as prior art, or when a web fetch of x.com returned HTTP 402 — «прочитай
+  твіт», «що там у треді». Do not use for a batch of posts or a bookmarks sweep (a batch skill should
+  call this one per post), for a YouTube link in a tweet (hand it to watch-video), or for a non-X
+  page a fetch can't read (fetch-web-sources). Read-only: never posts, replies, likes or unbookmarks.
 ---
 
 # read-twitter
 
-Read an X / Twitter post and return it as Markdown. A plain web fetch gets **HTTP 402** on `x.com`
+Read an X / Twitter post and return it as Markdown. A plain web fetch gets **HTTP 402** on `x.com` (as of 2026-09)
 because X gates anonymous reads, so this goes through a **browser-automation tool driving a profile
 that is signed in to X**.
 
@@ -21,13 +22,11 @@ quote-tweet, a screenshot with the real content in its pixels, or a bare link to
 Steps 1–8 get the post; the link recipes get the material it points at, which is usually where the
 content actually lives.
 
-Length verdict (§2): 2026-11-13, re-tested for the public port — 1 324 → 336 lines. Moved out, each
-leaving its ruling inline: the X-native mechanics (Article extraction, reply counter, self-thread
-search, syndication endpoint, CDN media) → `references/x-native.md`; every browser-instrument trap →
-`references/browser-traps.md`; per-source link recipes → `references/source-recipes.md`; the three
-conditional dives' full text → `references/conditional-dives.md`; native video → `references/native-video.md`.
-What stays is the workflow and every branch condition — each Step 5 ruling ends in a mid-scroll action
-an agent must take without opening a file.
+Length verdict (§2): 2026-11-14 — ~390 lines, under the 500-line threshold. Depth lives in
+`references/` (X-native mechanics, browser-instrument traps, per-source recipes, the conditional dives,
+native video) and the two deterministic jobs in `scripts/`; what stays is the workflow and every
+branch condition, because each Step 5 ruling ends in a mid-scroll action an agent must take without
+opening a file.
 
 ## When to use
 
@@ -37,10 +36,7 @@ an agent must take without opening a file.
   the quoted post.
 - A `t.co` link in a post needs resolving or reading.
 - The post is mostly a **screenshot** (a changelog, a chart, code) — Step 6 reads the pixels.
-- **A YouTube link** in the post → hand it to `watch-video`. **A video hosted natively on X** → pull the
-  mp4 and sample frames with `ffmpeg` (`references/native-video.md`): check for an audio stream with
-  `ffprobe` and its level with `volumedetect` before saying anything about audio; if there is speech,
-  transcribe it (watch-video's local-file mode) and read the transcript before the frames.
+- **A YouTube link** in the post → hand it to `watch-video`. **A video hosted natively on X** → Step 6b.
 
 ## Capability note — the driver is not the method
 
@@ -50,10 +46,15 @@ has; tool names below are written generically (navigate, read the page, run a pa
 scroll with real input events).
 
 - **No browser at all** → with a shell you can still read one public post's text: X's syndication
-  endpoint `cdn.syndication.twimg.com/tweet-result?id=<id>` and, for a long-form post,
-  `api.fxtwitter.com/<handle>/status/<id>`; its photos via `mediaDetails[].media_url_https` with
-  `?name=orig`. Say plainly that the self-thread and replies could not be collected. With neither a
-  browser nor a shell, say the host cannot read X — never report an empty post.
+  endpoint `cdn.syndication.twimg.com/tweet-result?id=<id>&lang=en&token=a` and, for a long-form post,
+  `api.fxtwitter.com/<handle>/status/<id>` (an X Article: `bun run "SKILLDIR/scripts/x-article.ts"
+  "<URL>"`, where SKILLDIR is the folder this SKILL.md was loaded from); its photos via
+  `mediaDetails[].media_url_https` with `?name=orig`. ⚠️ Keep the `token` parameter — without it the
+  endpoint answers 200 with `{}` (as of 2026-11-13), which reads as an empty post. Say plainly that
+  the self-thread and replies could not be collected. **No shell either, but a web-fetch tool** → fetch
+  those two URLs with it; an empty read is a claim about the fetch wrapper, not the post
+  (`references/x-native.md`). Only with no browser, no shell and no web fetch, or when every one of
+  them came back empty, say the host cannot read X — never report an empty post.
 - **Verify the login with a positive probe**: the profile link `[data-testid="AppTabBar_Profile_Link"]`
   (its `href` is the signed-in handle), or the `unlike` / `removeBookmark` testids that only a signed-in
   session renders. Some selectors that look like login tests don't exist on every X build (verified as
@@ -69,16 +70,24 @@ gives you — and while work remains keep exactly one in progress:
 1. Step 1 — validate the URL
 2. Step 2 — open a fresh tab
 3. Step 3 — navigate + wait for the article (60 s budget)
-4. Step 4 — extract from the article subtree
-5. Step 4b — read the quoted post (conditional)
-6. Step 5 — read the full thread (self-thread + notable replies)
-7. Step 6 — read every attached image
-8. Native video — sample frames, `ffprobe` audio check, `volumedetect` level check (conditional)
-9. Step 7 — follow embedded links
-10. Linked material is a RETELLING — tag every figure with its primary source (conditional)
-11. The post claims something ABOUT A CORPUS — download the dump and grep it (conditional)
-12. The post announces a SOLVED problem — re-run the mechanism on the cited witness, with a control (conditional)
-13. Step 8 — format as Markdown
+4. Step 4 — extract from the article subtree ("Show more" expanded)
+5. Step 4 — an X Article → `x-article.ts`, then check its stderr (conditional)
+6. Step 4b — read the quoted post (conditional)
+7. Step 5 — reply counter read; scroll-and-collect the timeline
+8. Step 5.3 — conversation search for the author's self-replies
+9. Step 5.4 — ranked-view windows, when replies pass ~50 (conditional)
+10. Step 5.5 — thin self-thread on a demo/claim → the author's later top-level posts (conditional)
+11. Step 5.5 — old post with fresh replies → `quoted_tweet_id:` search (conditional)
+12. Step 5.6 — pick the notable replies (scope by intent)
+13. Step 6 — read every attached image
+14. Step 6b — native video: list variants, read a contact sheet (conditional)
+15. Step 6b — native video audio: `ffprobe` stream check AND `volumedetect` level check (conditional)
+16. Step 6b — native video speech: transcribe via watch-video, read before frames (conditional)
+17. Step 7 — follow embedded links
+18. Linked material is a RETELLING — tag every figure with its primary source (conditional)
+19. The post claims something ABOUT A CORPUS — download the dump and grep it (conditional)
+20. The post announces a SOLVED problem — re-run the mechanism on the cited witness, with a control (conditional)
+21. Step 8 — format as Markdown, then close every tab this run opened
 Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never left
 open. No such tool? SEARCH for one first — on hosts with deferred tools it exists but is not loaded,
 and its name differs per host; anything that creates items and marks them in progress and completed IS
@@ -88,12 +97,18 @@ or bookmarks sweep), these items ADD to its list; its calling item stays open un
 
 ## Step 1 — Validate the URL
 
-Accept only `https://x.com/...` and `https://twitter.com/...`; normalize `twitter.com` → `x.com`.
-Anything else: refuse with `URL must be x.com or twitter.com (got <host>)`.
+Normalize to `https://x.com/<handle>/status/<id>`: accept `x.com`, `www.x.com`, `twitter.com`,
+`mobile.twitter.com`, and mirror hosts that keep X's path (`fxtwitter.com`, `fixupx.com`,
+`vxtwitter.com`, a Nitter instance). A URL with no handle (`x.com/i/status/<id>`) or a bare `t.co`
+link: open it in the browser and take the canonical URL from where it lands — the post's own
+`/<handle>/status/<id>` link. With no browser, a handle-free id still works: the syndication URL needs
+only the id, and `api.fxtwitter.com/i/status/<id>` answers too (it returns the handle). Anything that is not an X post after that: refuse with
+`URL must be an x.com post (got <host>)`.
 
 ## Step 2 — Open a fresh tab
 
-Always a **new** tab on the normalized URL; never reuse one the user is working in. Close it when done.
+Always a **new** tab on the normalized URL; never reuse one the user is working in. Close it, and
+every other tab this run opened, at the end (the Step 8 item) — including on a run that stops early.
 
 ## Step 3 — Navigate + wait for the article
 
@@ -101,7 +116,7 @@ X lazy-loads the post. Poll for an `article` element **for at least 60 s** befor
 page has mounted at ~16 s in one run and ~40–50 s in another, so a shorter budget reports a login wall
 that isn't there. `n=0` in the first seconds is normal. The cheap readiness signal is the **tab title**,
 which flips to the post's text the moment the article mounts. Only after 60 s fall back to the
-login-wall branch (Edge cases).
+login-wall branch (Edge cases) — and only once the positive login probe (Capability note) has failed.
 
 ## Step 4 — Extract from the article subtree
 
@@ -121,7 +136,13 @@ Read the article subtree (accessibility tree or DOM) and extract:
 - **Attached images** — links matching `/<handle>/status/<id>/photo/<N>`; record each `N`. `alt` text
   is usually empty — Step 6 reads the pixels.
 - **A long post's body may be truncated** behind "Show more" (`[data-testid="tweet-text-show-more-link"]`);
-  expand it, or read `note_tweet` via the syndication endpoint (`references/x-native.md`).
+  expand it, or open the permalink, which usually renders in full. With no browser use
+  `api.fxtwitter.com` — the syndication endpoint carries only the `note_tweet` id, never its body.
+- **An X Article** (the long-form format, a title over a card) →
+  `bun run "SKILLDIR/scripts/x-article.ts" "<URL>"` renders it as Markdown with each image figure's URL
+  in place; read each figure (Step 6). Embedded code blocks, posts and videos come out as
+  `[embedded … — not rendered]` with a count on stderr — read those parts, and any article whose body
+  reads shorter than the page, in the browser.
 
 ## Step 4b — Read the QUOTED post, when there is one
 
@@ -129,7 +150,7 @@ A quote-tweet's argument lives in two places, and the post you were handed is us
 **Detect it:** a nested `article`, or a status link to a different id that isn't a `/photo/N` or
 `/analytics` suffix. **Read it:** take what is rendered in the nested subtree; when it is truncated or
 carries its own links or media, open `https://x.com/<other-handle>/status/<other-id>` in a new tab and
-run Steps 3–6 on it. If the quoted author continued in a self-thread, Step 5 applies to them too.
+run Steps 3–6b on it. If the quoted author continued in a self-thread, Step 5 applies to them too.
 
 **Attribute it separately** — its own `## Quoted post` block, never folded into the root body.
 ⚠️ **Media belongs to one post each**: a `/photo/N` under the root's status path is the root's; media
@@ -160,10 +181,13 @@ other people's replies — announcements are routinely continued there.
    - ⚠️ **Neither `scrollY` nor the article count alone proves the scroll worked** — each has lied in
      opposite directions. Treat disagreement as a signal; convergence is "the count stopped growing".
 2. **Check the reply counter FIRST.** `reply:0` with one article is the correct, complete state.
-3. **Timeline that never mounts** (positive reply count, still one article and a spinner after ~60–90 s
-   and one reload) → stop waiting and use **conversation search**:
-   `https://x.com/search?q=conversation_id%3A<root id>&f=live` — **no `from:`** reaches everyone's
-   replies; add `from:<handle>` for just the author's self-thread.
+3. **Run conversation search after the page read — always, on someone else's post.**
+   `https://x.com/search?q=from%3A<handle>%20conversation_id%3A<root id>&f=live` lists the author's
+   self-replies, and the artifact a reader is after (the repo, the prompt, the link) has sat there,
+   invisible on the status page, in every measured case (`references/x-native.md`). Drop `from:` to
+   reach everyone's replies — also the way out when the timeline never mounts (positive reply count,
+   one article and a spinner after ~60–90 s and one reload). Do 3–4 scroll passes once it mounts,
+   with the same real-input scroll and ~6 s wait as 5.1.
 4. **Ranked-view ceiling** — on a root with many replies (suspicious past ~50), scrolling plateaus well
    short of the counter: that is X's capped "Relevant" view, not the end. Use the same
    `conversation_id:` search with overlapping `since_time:` / `until_time:` windows sized to how the
@@ -172,7 +196,13 @@ other people's replies — announcements are routinely continued there.
    Report "read N of M replies", never "read the thread". (Measured windows and counts:
    `references/x-native.md`.)
 5. **Self-thread** — every reply by the root author; treat it as the post's continuation (it usually
-   carries the caveats, docs links and "how it works").
+   carries the caveats, docs links and "how it works"). **A demo or claim whose self-thread is thin**
+   → before writing "the author never explained" (and only after the bare `from:<handle>` control
+   in the Capability note came back non-empty), also search the author's later top-level posts:
+   `from:<handle> since:<root date> until:<root date + 2 days> -filter:replies`, widening `until:`
+   only if that is empty — the explanation is often a separate post, not a reply.
+   **An OLD post whose replies restarted months later** → search `quoted_tweet_id:<root id>` first:
+   a quote is a new conversation, so neither the page nor `conversation_id:` shows why it resurfaced.
 6. **Notable replies** — the few that add signal: official accounts, high engagement, answers with docs
    or fixes. Skip jokes and reactions.
 7. Links in the self-thread and notable replies feed Step 7.
@@ -184,14 +214,33 @@ the whole self-thread and harvest notable replies.
 
 `alt` is almost never present, so **always read the pixels** of each `photo/<N>` — screenshots carry the
 substance (changelogs, charts, code) the post only gestures at. The rule follows you to linked
-articles: **their figures are images too** — an article's prose has been seen to name no technology at
-all while its figures named every component and date.
+articles: **their figures are images too** — read them, not just the prose around them.
 
-For each `N`: navigate to `https://x.com/<handle>/status/<id>/photo/<N>`, screenshot, and transcribe text
+For each `N`: in a second tab (the post tab holds Step 5's `sessionStorage` accumulator), open
+`https://x.com/<handle>/status/<id>/photo/<N>`, screenshot, and transcribe text
 and code verbatim, summarize charts, name the subject. For dense text, zoom a region — ⚠️ on drivers
 that take a region it is `[x1, y1, x2, y2]` (corners), not `[x, y, width, height]`; on drivers that
 don't support region zoom (some return a full screenshot with a note saying so), zoom the page instead.
 Say when a tall image was cropped. If a screenshot fails, say so for that image — never drop it silently.
+
+## Step 6b — Native video (when any read post carries one)
+
+1. `bun run "SKILLDIR/scripts/x-video-variants.ts" "<status id>"` lists every native video on the post AND its
+   quoted post: the highest-bitrate mp4, the duration in seconds, and a contact-sheet grid. A reply's
+   or a parent's video needs its own call with that post's id.
+2. Download each mp4 into its own `mktemp -d` and read one contact sheet (`ffmpeg` `tile=<C>x<R>`,
+   at the script's `sheet.fps`, which it lowers for long clips so one sheet stays ≤36 cells); fall
+   back to full-size frames when text in the frame is what matters (`references/native-video.md`).
+   **A long clip** (minutes, or speech you will transcribe) → download the lowest entry in `smaller`
+   instead (when `smaller` is empty, `mp4` is the only variant): frames and audio need a few hundred
+   pixels, not the top bitrate. **No `ffmpeg` on this host** → read the `poster` frame the script
+   prints, and report each check that needs it — frames, the audio stream and level, transcription —
+   as "not done: no ffmpeg on this host", never as "video unreadable" or "no audio".
+3. **Before saying anything about audio**: `ffprobe` for an audio stream, then `volumedetect` for its
+   level. A missing stream and a silent stream are different findings.
+4. **Speech → transcribe it** with `watch-video`'s local-file mode (it asks before a first-run model
+   download) and read the transcript before the frames.
+5. Name whose video it is in the report — the root's, the quoted post's, a reply's.
 
 ## Step 7 — Follow embedded links
 
@@ -205,15 +254,15 @@ Say when a tall image was cropped. If a screenshot fails, say so for that image 
 4. Post body only? Just list the resolved destinations (real URL + title).
 
 Non-X destinations may go to a web fetch once `t.co` is resolved — **but check the per-source recipe
-first**: for some hosts a fetch tool returns a generated summary rather than the page's bytes, usable for
-orientation only, never as the source of a number or a quote. A recipe always overrides this paragraph.
+first**; a recipe always overrides this paragraph.
 
 **Per-source rulings** (detail and measurements: `references/source-recipes.md`, X-native ones in
 `references/x-native.md`; read the entry for the host in front of you):
 
 - **YouTube** → hand off to `watch-video`.
-- **Vendor blogs / announcement pages** — a fetch tool may return a generated summary: orientation only,
-  never the source of a number or quote; take the bytes with `curl --fail-with-body` and check the
+- **Vendor blogs / announcement pages** (and any host whose fetch tool returns a generated summary
+  rather than the page's bytes) — that summary is orientation only, never the source of a number or
+  quote; take the bytes with `curl --fail-with-body` and check the
   exit status. Charts are images — read them.
 - **A screenshot of a LIVE docs page** — the page may have been revised since; diff the live text
   against the picture before calling either "the source".
@@ -232,6 +281,10 @@ orientation only, never as the source of a number or a quote. A recipe always ov
   in model registries (quote both when they disagree), not the browser.
 - **A WebGL / three.js demo** — on a software renderer a wait means nothing if scene time is
   frame-coupled; read the animation's own progress, and say which states you did not reach.
+- **SEC / EDGAR filings** → `curl` the atom feed and the filing, not a fetch or search tool; a blank
+  figure in a pre-pricing filing means "not disclosed in this filing" — never fill it in.
+- **OpenAI announcements** → the page text for prose, the embedded chart datasets for the numbers.
+  **Google developer docs** → one page-text read returns the whole article.
 - **Typeform** — 🔴 never click through: it saves partial answers in the user's name; read the form's
   inline field model. **Luma** → the public calendar JSON.
 - **An old post with fresh replies, X Articles, self-thread search, the syndication endpoint, CDN
@@ -251,23 +304,21 @@ Full text, precedents and recipes: `references/conditional-dives.md`. The ruling
   Diff revisions of append-only pages, probe paraphrases (a keyword sweep is not a semantic read), and
   keep the corpus out of the main context — a subagent where your host has one.
 - **The post announces a SOLVED problem** (a decoded text, a cracked benchmark) → re-run the mechanism
-  yourself on the cited witness, with a control, within a feasibility gate. ⚠️ For an early-modern
-  printed source, the **edition** is load-bearing — a decode checked against the wrong edition proves
-  nothing.
+  yourself on the cited witness — the exact one the claim used — with a control, within a
+  feasibility gate.
 
 ## Trust the instrument — the one-line rulings
 
 Every one of these has produced a confident wrong reading; measurements in `references/browser-traps.md`:
 
 - A **resize that reports success** may change nothing — read `innerWidth` back.
-- Page-script calls have a **~45 s cap** on some bridges even with short sleeps; the tool may **not
+- Page-script calls have a **~45 s cap** on some bridges (as of 2026-09) even with short sleeps; the tool may **not
   await** a returned Promise; a long async loop in one call can wedge the automation path — keep calls
   short and loops outside the page.
 - The bridge can **redact values** (two different messages) — a redaction is not an empty field.
 - **Collapsed `<details>` content is absent from `innerText`**; open them on a copy, not the live DOM.
-- **Page variables don't survive a navigation or reload** — accumulate in `sessionStorage`.
-- Some drivers **reuse a tab** when you ask for a new one; re-read the URL after navigating — a
-  successful navigate is not proof you are on the page.
+- Some drivers **reuse a tab** when you ask for a new one — check the tab list after opening.
+- A **navigate that reports success** is not proof you are on the page — re-read the URL.
 - **In-browser video seeking is not a substitute for the `ffmpeg` path** — on at least one host the
   player didn't decode.
 - A **whole browser can hang** (every call timing out, even on example.com) — test a second site before
@@ -316,12 +367,11 @@ be a false one.
 
 | Case | Behaviour |
 |------|-----------|
-| Not logged into X | After the full 60 s poll the article is missing or shows a login prompt: report the page heading and ask the user to log into X in that browser. Never earlier. |
+| Not logged into X | After the full 60 s poll the article is missing or shows a login prompt: read the text by the no-browser path (Capability note) and report that the thread and replies need a signed-in browser — ask the user to log into X there. Never earlier than 60 s. |
 | Logged-out view, many replies | It renders the author's self-thread plus about one other reply, then "Continue in X". Report "logged-out view caps replies — notable replies not collected", never "no notable replies". |
 | Post deleted / 404 | The page says "Hmm... this page doesn't exist" → "post not found". |
-| Protected (locked) account | The article mounts **empty** and stays so past 30 s — it reads like a slow mount. Screenshot it ("…limits who can view their Posts"); confirm with the syndication endpoint (`TweetTombstone`) plus a positive control on a known-public id. Don't look in archives or mirrors — the author restricted access. If the caller's brief carries an earlier transcription of the post, report it as such; otherwise report the post unreadable. |
+| Protected (locked) account | The article mounts **empty** and stays so through the 60 s poll — it reads like a slow mount. Screenshot it ("…limits who can view their Posts"); confirm with the syndication endpoint (`TweetTombstone`) plus a positive control on a known-public id. Don't look in archives or mirrors — the author restricted access. If the caller's brief carries an earlier transcription of the post, report it as such; otherwise report the post unreadable. |
 | A `t.co` that resolves to the post's own media | Self-media — Images / Video, not Embedded links. |
-| Non-X URL | Refuse: `URL must be x.com or twitter.com (got <host>)`. |
 
 ## Bundled resources
 
@@ -334,3 +384,7 @@ be a false one.
   the host in front of you.
 - `references/conditional-dives.md` — the retelling, corpus and solved-problem dives in full.
 - `references/browser-traps.md` — the measurements behind *Trust the instrument*.
+- `scripts/x-article.ts` — an X Article as Markdown with figures in place (fxtwitter, no browser).
+  `--help` for usage; exit 1 = not an Article, 2 = unreadable.
+- `scripts/x-video-variants.ts` — every native video on a post and its quoted post: best mp4,
+  seconds, contact-sheet grid. Exit 1 = no video, 2 = unreadable.
