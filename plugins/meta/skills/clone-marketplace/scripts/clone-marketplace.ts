@@ -89,7 +89,8 @@ for (let i = 0; i < argv.length; i++) {
         'Usage:\n' +
           '  clone-marketplace.ts --new <dir> --name <name> [--display] [--owner-name]\n' +
           '                       [--owner-email] [--source] [--dry-run]\n' +
-          '  clone-marketplace.ts --update <dir> [--source]',
+          '  clone-marketplace.ts --update <dir> [--source]\n' +
+          `\n--source defaults to ${DEFAULT_SOURCE} (the canonical meta plugin).`,
       );
       process.exit(0);
     default:

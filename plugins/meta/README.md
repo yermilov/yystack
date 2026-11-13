@@ -9,7 +9,9 @@ itself. It ships six skills and a session-start hook:
   live in it: the repo layout, the **Claude + Codex dual-manifest** packaging, the **version-bump
   discipline** the marketplace auto-update keys off, **where a skill belongs** (domain, tool and platform plugins,
   one-way dependencies, when to create, split, move or merge a plugin), and what makes a plugin/skill
-  actually worth installing. Trigger when setting up or growing a plugin marketplace, adding a plugin,
+  actually worth installing. Ships `scripts/check-manifests.ts`, which runs the mechanical half of its
+  pre-ship checklist (both marketplaces agree, manifests in lockstep, versions bumped vs a base ref).
+  Trigger when setting up or growing a plugin marketplace, adding a plugin,
   deciding which plugin a skill goes in, packaging a skill for Claude and/or Codex, or debugging why an
   install doesn't show a new plugin/skill.
 - **skill-authoring** — how to write, structure, and review great Agent Skills (SKILL.md files): the

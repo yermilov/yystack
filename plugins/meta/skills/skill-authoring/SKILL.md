@@ -22,9 +22,9 @@ guide: how to make the prose itself good.
 > This skill practices what it preaches — its own description, structure, and length are meant as a
 > worked example. If you change it, keep it that way.
 
-Length verdict (§2): 2026-08-30, tested section by section. The movable depth is out — the worked
-precedents, the script-writing depth behind §5 and the workflow mechanics behind §2 are all in
-`references/`. What stays inline is every section's rulings and branch conditions, which §2 forbids
+Length verdict (§2): 2026-11-13, re-tested section by section after a content review found five
+dated case stories still inline; they are now in `references/precedents.md` §11–§14, alongside the
+script-writing depth behind §5 and the workflow mechanics behind §2. What stays inline is every section's rulings and branch conditions, which §2 forbids
 relocating because an agent needs them **before** it can decide whether to open a file. That is the
 single reason each remaining section failed the move-it-out test. Re-argue it if you disagree;
 don't re-derive it.
@@ -65,8 +65,10 @@ the structure guidance below (§2) applies *through* the lens of the kind you pi
 others **by name** across the installed set. Grow small composable skills rather than one monolith;
 the God Skill (§6) is what you get when you don't.
 
-**When NOT to use this skill:** for the _mechanics_ of running evals / packaging a `.skill`, or for
-analysing a finished session to decide what to change — this one is about writing the prose well.
+**When NOT to use this skill:** for packaging and wiring a plugin (that is `plugin-dev`), for building
+or running an eval harness (use whatever eval tooling your host provides — §7 here says only *what* to
+test), or for analysing a finished session to decide what to change. This one is about writing the
+prose well.
 
 ## 1. Activation — the description is the trigger, the flags decide who may pull it
 
@@ -109,8 +111,8 @@ Bad:  Helps with testing.   ← no artifacts, no verbs, no situations; fires on 
   indirect phrasings, near-misses sharing a keyword). If the description can't separate them, rewrite it.
 - **There is a ceiling: keep the description under 1024 characters.** Codex's skill *validator* fails
   a longer one outright ("Description is too long … Maximum is 1024"); its *runtime* is more insidious
-  — it accepts the skill and **truncates** (both checked in codex-cli 0.147.0, 2026-08-11; don't infer
-  one from the other). **And under the cap is not safe either:** the runtime fits all installed skills
+  — it accepts the skill and **truncates** (verified as of 2026-08 on Codex CLI; don't infer one from
+  the other, and re-check on a new major version). **And under the cap is not safe either:** the runtime fits all installed skills
   into a *skills context budget*, shortening descriptions and dropping whole skills to make them fit,
   so your length competes with your neighbours' for the right to be seen. Since **every cut comes off
   the tail**, put the routing there first — verbs, `Use when`, then the boundary — and let any
@@ -198,22 +200,17 @@ The biggest structural mistake is putting tier-3 material in tier 2. Once a skil
 ### A safeguard goes NEXT TO the action, not in the preamble — and deliberate duplication is the mechanism
 
 A warning sitting several screens above the step it governs mostly does not fire: the model reaches
-that step with momentum already built. **Measured externally, in an adjacent setup:** Anthropic, «An
-alignment assessment of recent cybersecurity incidents» (09.09.2026) — a scope reminder placed **last
-in context** stopped the behaviour **90%** of the time; the *same* reminder inserted **three turns
-before** the action stopped it **40%** of the time. That is a measurement on models taking harmful
-actions in a CTF setting, not on agents reading a `SKILL.md`, so carry it as an order of magnitude
-and an argument, never as a guarantee about our files.
+that step with momentum already built. An external measurement in an adjacent setup puts the gap at
+roughly 90% vs 40% for the same reminder placed last vs three turns earlier — an order of magnitude
+and an argument, not a guarantee about skill files (source and boundary: `references/precedents.md` §11).
 
 What follows for the author:
 
 - a ⚠️ block lives **inside the step it governs**, not only in a general section at the top;
-- **deliberate duplication is allowed and often mandatory** — a short warning at the point of the
-  mistake, plus the full measurement in a reference section below. A browser-automation skill in
-  this marketplace does exactly that for a scroll call that silently does nothing, and says so in
-  the file: *"Full measurement in **Browser instrument traps**; it is 700 lines below, which is why
-  the warning is repeated at the point you would actually make the mistake."* A long workflow skill
-  does the same for a keep-alive cadence its middle steps would otherwise drift past.
+- **deliberate duplication of a SAFEGUARD is allowed and often mandatory** — one short warning at
+  the point of the mistake, with the full measurement kept once, in a reference. This is the single
+  exception to §3's *say it once*, and it is narrow: it covers the one line that stops a mistake at
+  the step where it happens, never a second copy of a procedure or a rule's explanation.
   **Do not "remove the duplication" in such places** — the distance to the action IS the mechanism
   you would be breaking;
 - if a step is long, or another tool (a browser, a test suite, a build) sits between the warning and
@@ -313,14 +310,13 @@ then→now table, their worked rules→judgement rewrite and the per-surface gui
   issuing opposite instructions into the same request. When you add a rule, read what will be loaded
   alongside it and **delete the loser** rather than shipping both and hoping.
 - **Say it once.** If an instruction belongs in a tool/script description, a `--help`, or an enum, it
-  does not also belong in the body. Duplication was a workaround for older models weighting the end of
-  their context window; now it is pure conflict surface.
-- **Don't expect the host's tooling to rightsize your prose — run it before you budget a step for
-  it.** The vendor blog announcing these practices said `/doctor` applies them to skills and
-  `CLAUDE.md`; run it and you get an *installation* checkup. What exists is a separate skills view —
-  on Claude Code 2.1.226 a `/skill-doctor`, "which loaded skills are unused and costing context",
-  already folded into the usage screen (checked 2026-08-11). Useful for finding skills nobody
-  triggers; it will not shorten a line for you. Rightsizing is by hand.
+  does not also belong in the body — and a rule or procedure stated in two places of one file is two
+  rules waiting to diverge. Duplication was a workaround for older models weighting the end of their
+  context window; now it is pure conflict surface. The one exception is a one-line safeguard repeated
+  at the step it guards (§2) — and that exception is the whole of it.
+- **Don't expect the host's tooling to rightsize your prose.** Host "doctor" commands at most report
+  which skills are unused or costly; none shortens a line for you. Rightsizing is by hand (what was
+  checked, and when: `references/precedents.md` §12).
 - **This guidance is generation-specific.** Several of these reversals invert advice that was *correct*
   for older models. Re-verify when a new model family ships — and stamp what you write the same way.
 
@@ -434,10 +430,10 @@ reader can tell "no signal" from "nobody looked". (What it cost once: `reference
 **Self-Confirming Check — never write a capability test whose FAILURE looks like its own answer.**
 A branch of the form *"if tool X isn't in your tool list → fall back to the browser / escalate to the
 human"* is not a test on a host where tools are **deferred**: nothing is in the tool list until
-`ToolSearch` loads it, so the check answers "absent" every time and the fallback becomes the only
-path the skill can take. **The fix is to make the probe positive:** name the load step
-(`ToolSearch "select:<tool>"`) as part of the test, and only treat the capability as missing if the
-load itself comes back empty. (What it cost, and why it survived so long: `references/precedents.md` §10.)
+the host's tool search loads it, so the check answers "absent" every time and the fallback becomes the only
+path the skill can take. **The fix is to make the probe positive:** name the host's deferred-tool
+search/load step as part of the test, and only treat the capability as missing if the load itself
+comes back empty. (What it cost, and why it survived so long: `references/precedents.md` §10.)
 
 **The same defect has a mirror image, and it is worse: a check with no floor tells a correct agent it
 is wrong.** If a skill asserts a capability exists and offers no way to conclude otherwise, a
@@ -467,16 +463,12 @@ You don't know a skill helps until you compare **with-skill vs. no-skill** on th
   facts (API versions, prices, policies), stamp them verified-on, and review skills like dependencies.
 - **Write every measurement with its BOUNDARY attached — "what this does not establish" — or it
   reads as a conclusion and gets obeyed as one.** A number in a skill file has no author standing
-  beside it to say how far it generalises, so the next agent takes the widest reading available.
-  Two shapes of damage, both measured in one window: a session concluded «на цьому хості зображення
-  взагалі не рендеряться» from one failed page, and a later run went blind for a whole session on
-  that line; and a `curl` refusal on one host became «GitHub API не працює» when the true scope was
-  *this host, this tool, and not the same on the next session*. The fix is a habit, not a format:
-  after each measured claim, finish the sentence *"…which does not establish …"*. In a table, the
-  `stonkfly` repo's `validation.md` does it as a second column — **Observed result | What it does
-  not establish** — and that shape is worth stealing for any skill whose output is a finding (a
-  health check, a perf sweep, a research dive). A measurement whose boundary you cannot state is a
-  measurement you have not finished reading.
+  beside it to say how far it generalises, so the next agent takes the widest reading available
+  (two measured shapes of that damage: `references/precedents.md` §13). The fix is a habit, not a
+  format: after each measured claim, finish the sentence *"…which does not establish …"*. In a table,
+  give it a second column — **Observed result | What it does not establish** — a shape worth stealing
+  for any skill whose output is a finding (a health check, a perf sweep, a research dive). A
+  measurement whose boundary you cannot state is a measurement you have not finished reading.
 - **When you review a skill, RUN the commands it prescribes — don't read them.** Prose review cannot
   see this rot: the command still exists and still looks right while privilege requirements, renamed
   flags and moved output formats have quietly broken it. Execute each on a real machine, and where one
@@ -493,12 +485,8 @@ You don't know a skill helps until you compare **with-skill vs. no-skill** on th
 - **A fix aimed at one STEP does not bind the other steps that can produce the same bug — after you
   patch, grep your OWN file for every route to that failure.** The rollout bullet below is the same
   gap one level out (other skills); this one is easier to miss precisely because the file you just
-  edited feels handled. The shape, measured on a long workflow skill in 2026: a step that posts to
-  an API grew a correct, emphatic ⚠️ that one request field is mandatory — and it went into **that
-  step only**, while a later step in the same file still said "paste the contents into a comment"
-  and named neither the field nor the endpoint. Agents kept hitting the identical 400 from the
-  second step, and the run that finally diagnosed it put the cost plainly: the same bug, from the
-  same instructions, will simply happen again. **The check is mechanical and is one command** — grep
+  edited feels handled (the case that proved it: `references/precedents.md` §14). **The check is
+  mechanical and is one command** — grep
   your file for the endpoint, flag or tool the fix names, and ask which OTHER steps reach it; a hit
   list that clusters in one section while another section plainly does the same operation IS the
   finding. Patch them in the same change, or point them all at one canonical recipe.
@@ -585,7 +573,9 @@ on one but not the other is the usual portability failure.
    situations, synonyms, one boundary? Did you trigger-test ~10/~10?
 2. Is the **body lean** (~100–250 lines), tier-3 material moved to bundled files, references
    **signposted with conditions**? For anything you moved out: did **both halves** of each paired
-   rule travel together, so nothing is left only-prohibited inline?
+   rule travel together, so nothing is left only-prohibited inline? Reading the body ALONE, does the
+   agent know **which way to go at every branch** (§2)? Does each safeguard sit **at the step it
+   guards**, not only in a preamble (§2)?
 3. **Imperative + why**; hard rules marked **Must/Never**, the rest **Default/Prefer**; no wall of caps?
    Could any rule here be **cut and left to judgement** (§3)? Does anything **contradict a neighbouring
    skill or `CLAUDE.md`** — or restate what a tool description already says?
@@ -596,8 +586,9 @@ on one but not the other is the usual portability failure.
 6. Ran **with-skill vs. baseline** on real prompts?
 7. Volatile facts dated; destructive actions gated by `disable-model-invocation` rather than by prose
    alone (§1); nothing sneaky?
-8. Shipping to more than one host? Body names **capabilities, not host-only tools**; both manifests +
-   both marketplaces registered; plugin `version` bumped in **lockstep**; tested on each host (§9).
+8. Shipping to more than one host? Body names **capabilities, not host-only tools**; tested on each
+   host (§9). Packaging — manifests, versions, marketplace wiring — is `plugin-dev`'s checklist; run
+   that one too.
 9. **Workflow skill?** Does it open with the copyable **Step-0 TODO block** carrying a marker
    sentence verbatim, does every item resolve to a named place in the body (and vice-versa), is no
    item a **bundle of independently-skippable checks**, and is every deep step's evidence in

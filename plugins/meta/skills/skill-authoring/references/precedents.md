@@ -67,8 +67,8 @@ know what to do — or does it merely learn that a file exists?"*
 ## 6. All-or-nothing gate — 19 hours of coverage destroyed to protect a standard (§6)
 
 A monitoring skill carried a completeness rule: read all 16 channels or write nothing. Three
-consecutive runs hit a broken login and each **correctly** reported *«не створював оцінок, сигналів чи
-ground-truth міток»* — discarding everything they had gathered.
+consecutive runs hit a broken login and each **correctly** reported *"created no assessments, signals or ground-truth
+marks"* — discarding everything they had gathered.
 
 The series lost roughly **19 hours of coverage** which, being time-series, can never be backfilled —
 over a window in which the event being monitored for actually occurred.
@@ -323,3 +323,44 @@ agent into one that distrusts its own reading. Hence both halves of the ruling i
 probe positive** (name the load step, and treat only an empty *load* as absence), and **give the
 absence a floor** (two empty probes settle it, and that is a fact about the host, not the agent's
 mistake) — then date the row so the next reader knows to re-measure rather than to obey.
+
+## 11. Distance to the action — the external measurement behind §2's safeguard rule (§2)
+
+Anthropic, «An alignment assessment of recent cybersecurity incidents» (09.09.2026): a scope reminder
+placed **last in context** stopped the behaviour **90%** of the time; the *same* reminder inserted
+**three turns before** the action stopped it **40%** of the time. That is a measurement on models taking
+harmful actions in a CTF setting — **it does not establish** any particular rate for agents reading a
+`SKILL.md`. Carry it as an order of magnitude and an argument for putting the safeguard at the step.
+
+The in-library shape it justified: a browser-automation skill repeats a one-line warning about a scroll
+call that silently does nothing at the step where the call is made, and keeps the full measurement once,
+hundreds of lines below — saying in the file that the distance is why the line is repeated. A long
+workflow skill does the same for a keep-alive cadence its middle steps would otherwise drift past.
+
+## 12. "The doctor will rightsize it" — what the host command actually did (§3)
+
+The vendor post announcing the Claude 5 practices said `/doctor` applies them to skills and memory
+files. Run, it gave an *installation* checkup. What existed was a separate skills view — on Claude Code
+2.1.226 a `/skill-doctor`, "which loaded skills are unused and costing context", already folded into
+the usage screen (checked 2026-08-11). Useful for finding skills nobody triggers; **it does not
+establish** anything about a skill's prose, and it shortened nothing.
+
+## 13. Measurements obeyed past their boundary (§8)
+
+Two shapes, both measured in one window:
+
+- A session concluded "images do not render on this host at all" from **one** failed page; a later run
+  went blind for a whole session on that line.
+- A `curl` refusal on one host became "the GitHub API does not work", when the true scope was *this
+  host, this tool, and not the same on the next session*.
+
+Neither claim was false about what was observed; both were read at their widest.
+
+## 14. A fix that bound one step, and the same 400 from the next (§8)
+
+On a long workflow skill (2026), a step that posts to an API grew a correct, emphatic ⚠️ that one
+request field is mandatory — in **that step only**. A later step in the same file still said "paste the
+contents into a comment" and named neither the field nor the endpoint. Agents kept hitting the
+identical 400 from the second step; the run that finally diagnosed it put the cost plainly: the same
+bug, from the same instructions, will simply happen again. A grep of the file for the endpoint name
+would have listed both steps.

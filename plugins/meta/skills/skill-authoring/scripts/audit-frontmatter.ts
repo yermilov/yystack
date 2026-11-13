@@ -21,7 +21,7 @@ import { basename, dirname, join, resolve } from 'node:path'
 
 const CAP = 1024
 const NEAR_CAP = 0.9 // flag descriptions crowding the cap: they compete for the skills context budget
-const BOUNDARY = /do not use (for|it|this)|not for\b|—\s*that'?s\b/i
+const BOUNDARY = /do not use (for|it|this|to|when|on)|not for\b|—\s*that'?s\b/i
 
 interface Row {
   path: string

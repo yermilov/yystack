@@ -1,6 +1,6 @@
 ---
 name: enable-autoupdate
-description: Turn ON auto-update for an installed plugin marketplace — Claude Code or Codex — so it stays current on its own. On Claude Code, set extraKnownMarketplaces.<name>.autoUpdate=true in settings.json (or the /plugin UI toggle); on Codex, git-sourced marketplaces already auto-update, so the fix for a stale one is re-adding it from its Git source or running `codex plugin marketplace upgrade`. Use when the user asks to "enable/turn on marketplace auto-updates", "keep my plugins up to date automatically", "stop my marketplace going stale", "make yystack auto-update", or right after marketplace-health reports auto-update OFF — «увімкни авто-апдейт маркетплейсу», «хай плагіни оновлюються самі». This is the ACTION counterpart to marketplace-health (which only diagnoses); do not use it to check status, nor to author/version a marketplace (that is plugin-dev).
+description: Turn ON auto-update for an installed plugin marketplace — Claude Code or Codex — so it stays current on its own. Use when the user asks to "enable/turn on marketplace auto-updates", "keep my plugins up to date automatically", "stop my marketplace going stale", "make <marketplace> auto-update", or right after marketplace-health reports auto-update OFF — «увімкни авто-апдейт маркетплейсу», «хай плагіни оновлюються самі». Do not use it to check status (that's marketplace-health, which only diagnoses), nor to author/version a marketplace (that's plugin-dev). Covers the Claude Code settings flag and the Codex git-vs-local source fix.
 ---
 
 # Enable marketplace auto-update
@@ -10,7 +10,7 @@ skill and nobody sees it" problem on the *consumer* side. **The mechanism differ
 host, so branch first:**
 
 - **Claude Code** → one setting controls it: `extraKnownMarketplaces.<name>.autoUpdate`
-  in **settings.json** (third-party marketplaces default to **off**). Follow steps 1–4.
+  in **settings.json** (third-party marketplaces default to **off**). Follow steps 1–4, then Output.
 - **Codex** → there's **no flag**; git-sourced marketplaces auto-update on their own.
   Skip to the **Codex** section — the fix there is about the marketplace's *source*,
   not a toggle.
@@ -39,8 +39,7 @@ replies — state it once, name each item as you start it, account for every one
 
 ## 1. Identify the marketplace name (Claude Code)
 
-The name is the `name` field in the marketplace's `marketplace.json` (e.g.
-`yystack`), and it's the key you'll write under `extraKnownMarketplaces`.
+The name is the `name` field in the marketplace's `marketplace.json`, and it's the key you'll write under `extraKnownMarketplaces`.
 Confirm what's installed non-interactively:
 
 ```
@@ -88,19 +87,22 @@ confirmation is the one line this skill won't cross.
 var **`DISABLE_AUTOUPDATER=1`** turns off ALL updates regardless of the per-marketplace
 flag. If auto-update "won't stick", check the environment. (`DISABLE_AUTOUPDATER=1`
 together with `FORCE_AUTOUPDATE_PLUGINS=1` keeps plugin updates on while pausing
-Claude Code's own binary updates.)
+Claude Code's own binary updates.) Both names verified as of 2026-08 — if they seem
+inert, re-check the current Claude Code docs; env names move.
 
 ## 4. Verify
 
 Re-run **marketplace-health** (or read the flag back) to confirm it now reports
-**auto-update: ON**. To pull the current version immediately rather than waiting
-for the next auto-refresh, run `claude plugin marketplace update <name>` once.
+**auto-update: ON**. If the user wants the current version immediately rather than
+at the next auto-refresh, **propose** `claude plugin marketplace update <name>` and run
+it on their yes — it re-pulls from the network, the same go-ahead rule marketplace-health
+follows.
 
 ## Codex
 
 Codex works differently: there is **no auto-update flag to set**, because Codex
 **auto-updates git-sourced marketplaces unconditionally** — a built-in background
-task keeps them current on its own. So "enabling" auto-update is about the
+task keeps them current on its own (verified as of 2026-08 on Codex CLI). So "enabling" auto-update is about the
 marketplace's **source**, not a toggle. Detect and act by `source_type` in
 `~/.codex/config.toml` (`[marketplaces.<name>]`):
 

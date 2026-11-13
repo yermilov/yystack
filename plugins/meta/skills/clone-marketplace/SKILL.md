@@ -1,17 +1,14 @@
 ---
 name: clone-marketplace
 description: >-
-  Bootstrap a NEW AI-agent skills marketplace, or bring an existing one up to date, from the
-  canonical yystack structure + its meta plugin — always fetched from GitHub at the LATEST
-  version, never a copy that happens to be on this machine. Use when the user wants to "create/start
-  my own skills marketplace", "clone/bootstrap a marketplace like this one", "scaffold a new plugin
-  marketplace repo", or "update my marketplace's meta plugin / structure to the latest" — «створи свій
-  маркетплейс скілів», «онови meta-плагін маркетплейсу». Runs the bundled Bun script
-  clone-marketplace.ts (needs Bun; else run install-bun): --new scaffolds a fresh repo (both
-  marketplace manifests + meta plugin + CLAUDE.md/AGENTS.md + README + LICENSE + git init); --update
-  refreshes an existing repo's meta plugin + scaffolding in place, leaving your plugins untouched. Do
-  NOT use to add one plugin/skill to a marketplace you already run (that is plugin-dev), nor to write
-  SKILL.md prose (skill-authoring).
+  Bootstrap a NEW AI-agent skills marketplace, or bring an existing one's meta plugin and structure up
+  to date, from the canonical marketplace — always fetched from GitHub at the latest version, never a
+  local copy. Use when the user wants to "create/start my own skills marketplace", "clone/bootstrap a
+  marketplace like this one", "scaffold a new plugin marketplace repo", or "update my marketplace's
+  meta plugin / structure to the latest" — «створи свій маркетплейс скілів», «онови meta-плагін
+  маркетплейсу». Do NOT use to add one plugin/skill to a marketplace you already run (that is
+  plugin-dev), nor to write SKILL.md prose (skill-authoring). Runs a bundled Bun script (--new
+  scaffolds, --update refreshes meta in place).
 ---
 
 # clone-marketplace — start a marketplace, or update it, from the canonical one
@@ -61,21 +58,24 @@ Written in Bun + TypeScript (per the repo's script rule), so it needs **Bun** in
 missing, run the **install-bun** skill first.
 
 ```
-bun run scripts/clone-marketplace.ts --new    <target-dir> --name <marketplace-name> \
+bun run "SKILLDIR/scripts/clone-marketplace.ts" --new    <target-dir> --name <marketplace-name> \
                                      [--display "<UI name>"] [--owner-name "<name>"] \
                                      [--owner-email "<email>"] [--source <git-url>]
-bun run scripts/clone-marketplace.ts --update <target-dir> [--source <git-url>]
-bun run scripts/clone-marketplace.ts --new ... --dry-run   # print actions, change nothing
+bun run "SKILLDIR/scripts/clone-marketplace.ts" --update <target-dir> [--source <git-url>]
+bun run "SKILLDIR/scripts/clone-marketplace.ts" --new ... --dry-run   # print actions, change nothing
 ```
 
-`--source` defaults to `https://github.com/yermilov/yystack`; override it to seed from a
-different canonical marketplace. It requires `git`. It **never** creates the GitHub repo or pushes —
+⚠️ `SKILLDIR` is a placeholder: substitute the **literal** directory you loaded this `SKILL.md` from
+(it is not a shell variable — a command built from an unset one resolves to `/scripts/…` and fails).
+
+`--source` defaults to the canonical marketplace this meta plugin is published from (the script's
+`--help` prints the URL); override it to seed from a different one. It requires `git`. It **never** creates the GitHub repo or pushes —
 that stays a human step (auth, naming, visibility).
 
 ## 1. Create a NEW marketplace
 
 ```
-bun run scripts/clone-marketplace.ts --new ./my-skills --name my-skills \
+bun run "SKILLDIR/scripts/clone-marketplace.ts" --new ./my-skills --name my-skills \
   --owner-name "Ada Lovelace" --owner-email "ada@example.com"
 ```
 
@@ -94,7 +94,7 @@ Then the **human follow-ups** (the script prints them):
 ## 2. UPDATE an existing marketplace to the latest
 
 ```
-bun run scripts/clone-marketplace.ts --update ./my-skills   # (add --dry-run first to preview)
+bun run "SKILLDIR/scripts/clone-marketplace.ts" --update ./my-skills   # (add --dry-run first to preview)
 ```
 
 Refreshes an existing marketplace repo **in place**:
@@ -117,9 +117,9 @@ It does **not** touch your `marketplace.json` plugin list or edit your own plugi
 
 ## After running — the checks that keep it honest
 
-- **Review against the meta plugin.** Run the **plugin-dev** pre-ship checklist over the result (both
-  marketplace manifests present and listing the same plugins; every plugin has both `plugin.json`s
-  with matching `name`/`version`; all JSON parses). For a fresh repo, that's the whole gate.
+- **Review against the meta plugin.** Run the **plugin-dev** pre-ship checklist over the result — its
+  `check-manifests.ts` script does the mechanical part. For a fresh repo, that checklist is the whole
+  gate.
 - **Version discipline is already handled for meta** (its version came from upstream). If YOU then
   add or change plugins, that's ordinary plugin-dev version work.
 - **No secrets** land in a public repo — the scaffold ships none; keep it that way.

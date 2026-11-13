@@ -1,6 +1,6 @@
 ---
 name: marketplace-health
-description: Check whether an installed plugin marketplace — on Claude Code or Codex — is HEALTHY — (1) the latest published version of each plugin is actually installed (not a stale cached copy), and (2) auto-update is active so it stays current (Claude Code's extraKnownMarketplaces.autoUpdate flag, or a Codex git vs local source_type). Use when the user asks "is my marketplace up to date / am I on the latest?", "why didn't my new skill/plugin show up after I pushed?", "are plugin auto-updates on?", "check marketplace health", "did my marketplace update", "is my Codex marketplace current?", or after publishing a plugin change to confirm clients will pull it — «чи оновлений маркетплейс», «чому не підтягнулась нова версія скіла», «увімкнені авто-апдейти плагінів». Do not use to AUTHOR a marketplace/plugin or bump versions (that's plugin-dev) — this only diagnoses an already-installed one.
+description: Check whether an installed plugin marketplace — on Claude Code or Codex — is HEALTHY — (1) the latest published version of each plugin is actually installed (not a stale cached copy), and (2) auto-update is active so it stays current. Use when the user asks "is my marketplace up to date / am I on the latest?", "why didn't my new skill/plugin show up after I pushed?", "are plugin auto-updates on?", "check marketplace health", "did my marketplace update", "is my Codex marketplace current?", or after publishing a plugin change to confirm clients will pull it — «чи оновлений маркетплейс», «чому не підтягнулась нова версія скіла», «увімкнені авто-апдейти плагінів». Do not use to AUTHOR a marketplace/plugin or bump versions (that's plugin-dev), nor to turn auto-update ON (that's enable-autoupdate) — this only diagnoses an already-installed one.
 ---
 
 # Marketplace health check
@@ -38,40 +38,13 @@ job — it's what makes Claude Desktop re-discover a newly *added/removed* plugi
 in the catalog — so check it too when the complaint is "a whole new plugin
 never appeared", not just "a plugin didn't update".)
 
-**⚠️ ENABLED IS NOT INSTALLED — the trap that makes a brand-new plugin's
-cross-references inert.** `enabledPlugins: {"<plugin>@<marketplace>": true}` in
-a `settings.json` records an *intent*; the plugin is only usable once
-`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/` actually exists. A
-plugin created today fails that on day one, and not because of a version pin:
-the marketplace **clone** under `~/.claude/plugins/marketplaces/<name>/` is a
-git checkout that lags the push, so until it is re-pulled the catalog has no
-such plugin and there is nothing to cache. Observed: a plugin pushed and enabled
-the same day, with the clone still sitting a day behind at an older commit — the
-settings file said `true`, the cache directory did not exist, and a routing table
-added to a *different* skill that same day pointed at skills nobody could invoke.
-Diagnose with two reads. **The authority is the installed-plugin registry, not the
-cache directory** — `claude plugin list --json` (or
-`~/.claude/plugins/installed_plugins.json`); a cache directory can linger from an
-uninstalled or superseded copy, so `ls` alone gives false positives (verified:
-`.orphaned_at` marker files sit inside retained version directories, and a folded-away
-plugin still had a cache dir with zero registry entries). Second read: compare
-`git -C ~/.claude/plugins/marketplaces/<name> log --oneline -1` against the commit
-that added the plugin, to see whether the catalog even knows about it yet.
-
-**The fix is TWO steps, and refreshing alone is not enough** — both are
-**state-changing, so report the diagnosis and get the go-ahead first** (§ When to
-act); do not install off the back of a "why is it missing?" question. Re-pull the
-catalog (`claude plugin marketplace update <name>`, or `git pull --ff-only` on
-the clone — what the auto-updater does anyway), *then* actually install it:
-`claude plugin install <plugin>@<marketplace> --scope <scope>`, where `<scope>` is exactly one of
-`project`, `user` or `local` (pick the one the plugin is enabled at — an unquoted `a|b|c` in a real
-shell is a pipeline, not a choice).
-The refresh only makes the plugin *visible* in the catalog; the install is what
-populates `~/.claude/plugins/cache/…` and the installed-plugin registry. Verify
-with `claude plugin list --json` (the registry, not an `ls`), and expect the skills
-to become invokable on the next session start. **So: after shipping a plugin, do not write instructions
-that route to it without checking it is on disk — and when you do write such a
-routing rule, give it a capability gate plus a named fallback.**
+**⚠️ Enabled is not installed.** `enabledPlugins: {"<plugin>@<marketplace>": true}` records an
+intent; the plugin is usable only once the installed-plugin registry (`claude plugin list --json`)
+lists it. A plugin pushed today usually is not there yet, because the local marketplace clone lags the
+push. The authority is the **registry, not the cache directory** (stale cache dirs linger). The fix is
+two state-changing steps — refresh the catalog, then install — **both only with the user's go-ahead**
+(§ When to act). Read `references/enabled-not-installed.md` when a plugin never appeared at all: it has
+the two diagnostic reads, the exact install command, and the case that produced this rule.
 
 ## Register the run
 
@@ -130,10 +103,12 @@ surface moves":
 `claude plugin list --json` vs the version the
 just-refreshed remote catalog lists for it. Equal → up to date. Installed < remote
 → **stale** (the fix is a refresh + `/plugin update`). If you can't refresh
-(offline / the `git pull` failed), say so rather than guessing — set
-`CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1` keeps the last-good cache
-instead of wiping it, so at least report the cached versions and flag them
-"unverified against remote".
+(offline / the `git pull` failed), say so rather than guessing: report the
+cached versions and flag them "unverified against remote". (If refreshes keep
+failing and wiping the cache, Claude Code's
+`CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1` makes it keep the last-good
+copy instead — propose it, don't set it; verified as of 2026-08, re-check with
+the current docs.)
 
 **Version-pin gotcha to name in the report:** if the remote repo shipped new
 code but did NOT bump the plugin's `version` string, the client correctly sees
@@ -167,10 +142,10 @@ The per-marketplace toggle lives in **settings.json** under
 - **Global override wins:** if the env var `DISABLE_AUTOUPDATER=1` is set, ALL
   updates are off regardless of the per-marketplace flag (check the environment
   too). `DISABLE_AUTOUPDATER=1` + `FORCE_AUTOUPDATE_PLUGINS=1` keeps plugin
-  updates on while pausing the Claude Code binary's own updates.
-- Toggling it on is interactive today (`/plugin` → Marketplaces → the
-  marketplace → enable auto-update) or a one-line settings.json edit; recommend
-  whichever the user prefers, don't silently edit their settings.
+  updates on while pausing the Claude Code binary's own updates. (Both verified
+  as of 2026-08; env names change — re-check the current docs if they seem inert.)
+- **Turning it on is not this skill's job** — report the verdict and hand the
+  fix to `enable-autoupdate`.
 
 ## Codex
 
@@ -198,9 +173,10 @@ Don't assume Claude Code's `claude plugin …` commands or the
 - **Reporting** (list, read cache paths, read settings, read env) is
   non-destructive — do it freely.
 - **`marketplace update`** re-pulls from the network and can change what's
-  installed — a small but real state change. On an interactive session just do
-  it; when running unattended, do the read-only comparison first and only run
-  the refresh if the user asked to "update / fix", not merely "check".
+  installed — a small but real state change. Run it only when the user asked to
+  "update / fix" (that request IS the go-ahead) or said yes to your proposal;
+  on a plain "check", do the read-only comparison and report the versions as
+  unverified against remote.
 - **Never edit `settings.json` or run `/plugin update` silently** — propose the
   exact change (the `autoUpdate: true` line, or the update command) and let the
   user apply it.
@@ -213,7 +189,7 @@ A tight verdict, not a command dump:
 Marketplace <name> (<owner/repo>)
  • Versions: <plugin> cached x.y.z vs remote a.b.c → STALE   (or "all current")
  • Auto-update: OFF (extraKnownMarketplaces.<name>.autoUpdate absent → third-party default)
- → Fix: `claude plugin marketplace update <name>` then set autoUpdate:true
+ → Fix: `claude plugin marketplace update <name>`, then turn auto-update on (enable-autoupdate)
 ```
 
 Lead with healthy/stale and the one action that fixes it. If everything is

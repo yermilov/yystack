@@ -1,28 +1,28 @@
 ---
 name: plugin-dev
 description: >-
-  Build and maintain an AI-agent skills marketplace and its plugins: the repo layout, the Claude
-  (.claude-plugin) + Codex (.agents / .codex-plugin) DUAL-manifest packaging that lets one repo serve
-  both hosts, the version-bump discipline the auto-update keys off, adding a plugin or skill, which
-  plugin a skill belongs in (domain, tool and platform plugins, dependencies, when to split, move or
-  merge), and what makes a plugin/skill worth installing. Use when creating a marketplace,
-  adding/removing a plugin, packaging a skill for Claude Code / Cowork / Codex, writing or fixing a
+  Build and maintain an AI-agent skills marketplace and its plugins: repo layout, the Claude + Codex
+  dual-manifest packaging, the version-bump discipline auto-update keys off, adding a plugin or skill,
+  and which plugin a skill belongs in (split, move, merge). Use when creating a marketplace,
+  adding/removing a plugin, packaging a skill for Claude Code / Cowork / Codex, editing a
   marketplace.json or plugin.json, or debugging why a new plugin or skill doesn't show up after an
-  update. Triggers: "set up a plugin marketplace", "add a plugin", "package this skill for Claude and
-  Codex", "marketplace.json", "my new plugin isn't showing up", "which plugin should this skill go
-  in", "should I split this plugin". Not for writing the SKILL.md prose itself (that's
-  skill-authoring) — this is about marketplace + plugin PACKAGING.
+  update — "add a plugin", "package this skill for Claude and Codex", "my new plugin isn't showing
+  up", "which plugin should this skill go in". Do not use for writing the SKILL.md prose (that's
+  skill-authoring), nor for authoring hooks, slash commands, agents or MCP servers — use the host's
+  own plugin-component docs or skills for those; this is about marketplace + plugin PACKAGING.
 ---
 
 # plugin-dev — how a great skills marketplace looks
 
 A **marketplace** is just a **git repo** that hosts installable **plugins**; a **plugin** is a folder
-of **skills** (+ optional commands, agents, MCP servers) with a manifest. Agents install a plugin and
-its skills become available. The whole thing is plain files in git — no build step, no server.
+of **skills** (hosts also accept commands, agents, hooks and MCP servers — out of scope here) with a
+manifest. Agents install a plugin and its skills become available. The whole thing is plain files in
+git — no build step, no server.
 
 This skill is the prescriptive guide to structuring that repo so it (a) installs cleanly on **both**
-Claude and Codex from one source, and (b) reliably delivers updates. The `yystack` repo this
-skill ships in is the worked example.
+Claude and Codex from one source, and (b) reliably delivers updates. The marketplace this skill ships
+in is one worked example; when you read it from a copy inside another marketplace, that marketplace is
+yours to apply it to.
 
 ## The one job
 
@@ -66,77 +66,25 @@ reach installed clients). Anything that doesn't serve it is noise — cut it.
 
 ## 2. The two marketplace manifests
 
-Each host reads its own file. Keep both listing the **same** plugins.
+Each host reads its own file: `.claude-plugin/marketplace.json` (Claude) and
+`.agents/plugins/marketplace.json` (Codex). **Keep both listing the same plugins.** Differences that
+bite (verified as of 2026-11):
 
-**Claude** — `.claude-plugin/marketplace.json`:
-
-```json
-{
-  "name": "yystack",
-  "owner": { "name": "Your Name", "email": "you@example.com" },
-  "metadata": {
-    "description": "One line on what this marketplace is.",
-    "version": "0.1.0"
-  },
-  "plugins": [
-    {
-      "name": "meta",
-      "source": "./plugins/meta",
-      "description": "One sentence: what it does + when to install it."
-    }
-  ]
-}
-```
-
-**Codex** — `.agents/plugins/marketplace.json`:
-
-```json
-{
-  "name": "yystack",
-  "interface": { "displayName": "yystack" },
-  "plugins": [
-    {
-      "name": "meta",
-      "source": { "source": "local", "path": "./plugins/meta" },
-      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
-      "category": "Productivity",
-      "description": "One sentence for the Codex Directory."
-    }
-  ]
-}
-```
-
-Differences that bite: Claude's `source` is a **string path**; Codex's `source` is an **object**
-(`{ "source": "local", "path": … }`) and each Codex entry also carries `policy` + `category`. Only
-the Claude marketplace manifest has a `metadata.version`.
+- Claude's plugin `source` is a **string path**; Codex's is an **object**
+  (`{ "source": "local", "path": … }`), and each Codex entry also carries `policy` + `category`.
+- Only the Claude marketplace manifest has a `metadata.version` (§4 says when to bump it).
 
 ## 3. A plugin = two manifests in lockstep
 
 Every plugin carries BOTH `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`. The Codex one
-is a superset (adds `license`, `keywords`, `skills` path, and an `interface` block for the Directory
-card). Keep `name`, `version`, and the gist of `description` identical across the two.
+is a superset (adds `license`, `keywords`, a `skills` path and an `interface` block for the Directory
+card). Keep `name`, `version` and the gist of `description` identical across the two.
 
-```jsonc
-// .claude-plugin/plugin.json
-{ "name": "meta", "version": "0.1.0", "description": "…", "author": { "name": "…", "email": "…" } }
-```
-```jsonc
-// .codex-plugin/plugin.json
-{
-  "name": "meta", "version": "0.1.0", "description": "…",
-  "author": { "name": "…", "email": "…" }, "license": "MIT",
-  "keywords": ["…"], "skills": "./skills/",
-  "interface": {
-    "displayName": "Meta", "shortDescription": "…", "longDescription": "…",
-    "developerName": "…", "category": "Productivity",
-    "capabilities": ["Read", "Write"],
-    "defaultPrompt": ["A prompt that shows off the plugin"]
-  }
-}
-```
+The `SKILL.md` files are **host-agnostic** — the same body backs both hosts. Write the skill once; the
+two manifests are just packaging.
 
-The `SKILL.md` files are **host-agnostic** — the same body backs both hosts. Write the skill once;
-the two manifests are just packaging.
+Read `references/manifests.md` when you create a marketplace or plugin from scratch, or a host rejects
+a manifest — it has a copyable template for all four files.
 
 ## 4. Version discipline — the gotcha that hides your work
 
@@ -157,17 +105,16 @@ and edits silently never reach anyone.
   marketplace minor bump too.
 - **Never** assume "deployed = visible in this session." A newly-added plugin/skill/tool can stay
   invisible to a running agent until its client reconnects / refreshes its plugin snapshot. Don't
-  promise a same-tick dogfood.
+  promise a same-tick dogfood — and don't write a routing rule in another skill that points at a
+  just-shipped plugin without a capability gate and a named fallback: until the client re-pulls,
+  that pointer leads nowhere (`marketplace-health` diagnoses it).
 
 ## 5. What makes a plugin/skill worth installing
 
 - **One clear job per plugin**, named in a one-sentence description that says *what it does* **and**
   *when to install it*. A vague description is why nobody installs it.
-- **Skills that trigger.** The skill's `description` is a classifier the agent reads to decide
-  whether to open the body — name the task verbs, the domain, the situations, and synonyms. (Writing
-  that prose well is its own craft — pair with a skill-authoring guide.)
-- **Lean bodies, progressive disclosure.** Keep `SKILL.md` focused; push long procedures/reference
-  material into `references/` and heavy logic into `scripts/`, loaded only when needed.
+- **Skills that trigger and stay lean** — that is the `skill-authoring` skill's whole subject; follow
+  it for every `SKILL.md` you ship.
 - **No secrets in the repo** — it's public. Skills take config via flags/args and read tokens from
   the environment, never hard-coded.
 - **A README per plugin** listing its skills + one-line triggers, so a human browsing the repo knows
@@ -210,95 +157,52 @@ ships without touching them, so treat updating them as part of every change, not
 - Update the bullet in the same commit that adds, removes, renames, or materially changes a skill.
   A plugin README edit is a plugin-file change, so the plugin **version bump** (section 4) applies.
 - Keep repo-wide conventions (layout, version discipline) out of plugin READMEs — they live in this
-  skill and in the repo's `CLAUDE.md`; a plugin README describes only that plugin.
+  skill and in the repo's own memory file (`CLAUDE.md` / `AGENTS.md`); a plugin README describes only
+  that plugin.
 
 ## 8. Where a skill belongs — grouping skills into plugins
 
-Section 6 says *how* to add, split and move; this section says *when*. The organising idea: **a
-plugin is the unit of an install decision.** Skills live together when the same user on the same
-host wants them together.
+Section 6 says *how* to add, split and move; this section says *when*. **A plugin is the unit of an
+install decision** — skills live together when the same user on the same host wants them together.
 
-**Three kinds of plugin.** Name which kind a plugin is before deciding anything else:
-- **Domain plugin** — grouped around a domain object the user cares about: money, home, health,
-  a client's shop. Its skills are the *jobs* done on that object.
-- **Tool plugin** — grouped around an instrument: a browser, a messenger, an image generator, a
-  cloud provider. Its skills are *how to drive* that instrument, reusable by any domain.
-- **Platform plugin** — the environment every skill runs inside: the task system the agents work
-  from, the profile of facts about the user, the development process. It is neither a job nor an
-  instrument, and *anything* may depend on it, tool plugins included ("report back through the
-  task system", "read the user profile first"). Keep it small and stable in shape — every other
-  plugin pays for its churn.
+**Name the plugin's kind first:**
+- **Domain** — around an object the user cares about (money, home, health); its skills are the jobs
+  done on it.
+- **Tool** — around an instrument (a browser, a messenger, a cloud provider); its skills are how to
+  drive it, reusable by any domain.
+- **Platform** — the environment every skill runs inside (the task system, the user profile, the
+  development process). Keep it small and stable; everyone pays for its churn.
 
-A plugin grouped by **how its skills are triggered** ("everything that runs on a schedule", "all
-the recurring jobs") is none of the three; that is a sign to split it by domain (rule 3 below).
+A plugin grouped by **how its skills trigger** ("everything on a schedule") is none of these — split it
+by domain. A skill that mixes both ("pay the bill through the bank's website") belongs to the
+**domain**; the browser mechanics stay in the tool plugin, referenced by name.
 
-A skill that mixes both ("pay the bill through the bank's website") belongs to the **domain**; the
-browser mechanics it needs belong in the tool plugin, referenced by name.
+**Dependencies run one way:** domain → tool and anyone → platform; never tool → domain (a tool plugin
+must not know its consumers); domain → domain is a smell (merge, or extract the shared instrument); no
+cycles. A routing pointer (*Do not use for… — that's `<plugin>:<skill>`*) is not a dependency and may
+point anywhere. Declare a real dependency in the dependent plugin's README ("Requires: `<plugin>`").
 
-**Dependencies between plugins — allowed, in one direction.** To avoid repeating the same
-instrument recipe in several domains, a domain plugin may **depend on** a tool plugin: its skill
-names the tool skill (`use the <tool-plugin>:<skill> skill to sign in`) instead of copying the
-steps. Rules:
-- **Domain → tool, never tool → domain.** A tool plugin must not know which domains use it; if
-  it starts naming them, the domain-specific part belongs back in the domain plugin. The same goes
-  for a shared service skill inside a domain (a ledger, a policy): it does not keep a list of its
-  consumers — each consumer names it.
-- **Anyone → platform.** Domain and tool plugins alike may depend on a platform plugin; a
-  platform plugin depends on nothing but other platform plugins.
-- **A routing pointer is not a dependency.** "Not for X — that's `<other-plugin>:<skill>`" in a
-  description or a *Do not use* line only sends the agent elsewhere; it is allowed in any
-  direction. A dependency is a skill that *uses* another skill's method to do its job.
-- **Tool → tool is fine; domain → domain is a smell.** Two domains that keep calling each other
-  are either one domain (merge) or share an instrument that should be extracted into a tool plugin.
-- **No cycles.**
-- **Declare it.** Today a dependency is a by-name skill reference, not a manifest field the host
-  enforces — so say it in the dependent plugin's README ("Requires: `<tool-plugin>`") and keep
-  the depended-on plugin in the same marketplace.
+**The five decisions:**
+1. **Which plugin gets a new skill?** The one whose one-sentence job covers it *without widening the
+   sentence*; with two candidates, the **domain** decides, not the instrument.
+2. **New plugin** when no job fits without "…and also X", or the skill has a different **install
+   boundary** (audience, public vs private, one host/OS, heavy dependencies). Otherwise wait for 2–3
+   skills of the new domain.
+3. **Split** when the description needs "and… and…", skills form clusters that never reference each
+   other, or a reusable instrument grew inside a domain (extract a tool plugin). Size alone only says
+   *look*.
+4. **Move a skill** when its references and triggers point into another plugin, or it is a tool recipe
+   in a domain plugin (or the reverse).
+5. **Merge** when two plugins are always installed together, for one audience, under one sentence,
+   and reference each other.
 
-**1. Which existing plugin does a new skill go into?** The one whose one-sentence job already
-covers it *without widening that sentence*. Test: would everyone who installs that plugin want
-this skill? With two candidates, the **domain** decides, not the instrument. Supporting signal:
-the skill shares references, scripts, an MCP server or credentials with its would-be neighbours.
+**Privacy decides where a plugin may live, not which plugin a skill joins:** a skill carrying
+personal data never joins a public plugin or marketplace — strip it to the reusable pattern first, or
+keep it private. In a private, single-user marketplace the install-decision test rarely says no, so
+decide by the description sentence, the clusters and the dependency direction.
 
-**2. When to create a new plugin.** The skill fits no plugin's job without blurring its
-description ("…and also X"), **or** it has a different *install boundary*: a different audience
-(a separate client), different privacy (public vs private), a single OS or host (a hook-only
-plugin), or heavy dependencies. A one-skill plugin is justified only by such a boundary or by
-being a tool plugin others depend on; otherwise wait for 2–3 skills of the new domain.
-
-**3. When to split a plugin.** Its description no longer fits one sentence without "and… and…";
-its skills fall into clusters that never reference each other; someone wants only part of it; or
-a reusable instrument recipe has grown inside a domain plugin (extract it as a tool plugin and
-depend on it). Size alone (more than ~12–15 skills) is a reason to *look* for clusters, not a
-reason to split.
-
-**4. When to move a skill.** Most of its cross-references and shared references point into
-another plugin; its triggers compete with skills in another plugin; it is a tool recipe sitting
-in a domain plugin (or the reverse); or it landed where it is only because there was no better
-place at the time.
-
-**5. When to merge two plugins.** They are always installed together, have the same audience,
-one sentence describes both, and they reference each other — e.g. a single-channel plugin that
-turned out to be one part of a broader personal-publishing domain.
-
-**Privacy is a separate axis — where a plugin may live, not which plugin a skill joins.** In a
-private marketplace almost every plugin carries some personal context (names, accounts,
-addresses), so "this plugin holds the user's personal memory" does not single out a plugin type
-and is not a reason to merge. Split the memory by scope instead: facts about the user that no one
-domain owns live in **one platform plugin** (the user profile); facts of a domain live in that
-**domain plugin, beside the method that uses them** — so when a domain is split out, its memory
-moves with it. What privacy DOES decide is the install boundary of rule 2: a skill carrying
-personal data never joins a public plugin or marketplace — strip it to the reusable pattern first,
-or give it a private plugin of its own. Inside one private marketplace, where every plugin is
-already private, privacy draws no further line.
-
-**A private, single-user marketplace weakens the install-decision argument** — everything gets
-installed, so "would everyone who installs it want this skill?" rarely says no. There, decide by
-the other signals above: whether the plugin's description still fits one sentence, whether its
-skills form clusters that reference each other, and which direction the dependencies run.
-
-Whichever you do, the mechanics are section 6, and the version and README rules (sections 4, 7)
-apply to every plugin touched.
+Read `references/grouping.md` when a placement is genuinely contested or you must explain it — it has
+the reasoning and examples behind each ruling above.
 
 ## Pre-ship checklist
 
@@ -310,4 +214,22 @@ apply to every plugin touched.
 6. Root README documents how to install on each target host (see the repo README).
 7. READMEs are in sync with the change (root Plugins table row per plugin; plugin README's skill
    bullets) — see section 7.
-8. All JSON parses (`jq . <file>`), and each `SKILL.md` frontmatter parses as YAML.
+8. All JSON parses and each `SKILL.md` frontmatter parses as YAML.
+
+Items 1, 2, 4 and 8 are mechanical — run the script rather than checking them by eye, and read its
+exit code (0 clean, 1 defects listed with the fix, 2 could not run):
+
+```bash
+bun run "SKILLDIR/scripts/check-manifests.ts" "MARKETPLACE_ROOT" --base origin/main
+```
+
+⚠️ Substitute both placeholders with **literal** paths — `SKILLDIR` is the directory you loaded this
+`SKILL.md` from; it is not a shell variable. `--base` is the ref your change will land on; omit it to
+check only the static structure (items 1, 2, 8).
+
+## Bundled resources
+
+- `references/manifests.md` — copyable templates for the four manifest files. Read it when creating a
+  marketplace or plugin, or when a host rejects a manifest.
+- `references/grouping.md` — the reasoning behind §8. Read it when a placement is contested.
+- `scripts/check-manifests.ts` — the mechanical half of the pre-ship checklist (above).
