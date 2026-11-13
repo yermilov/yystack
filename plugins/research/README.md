@@ -5,6 +5,15 @@ and being honest about what was and wasn't read.
 
 ## Skills
 
+- **deep-research** — an LLM council: pose one question to the user's own logged-in ChatGPT and Gemini
+  web UIs (optionally Claude.ai), cross-examine their answers anonymously, and write a chairman's brief
+  with every load-bearing citation verified. Proposes before running, because it spends paid quotas.
+  Needs a browser-automation tool with a signed-in profile. Triggers: "deep research this", "second
+  opinion from other models", "run a council".
+- **read-twitter** — read one X/Twitter post through a logged-in browser: body, author self-thread,
+  notable replies, quoted post, images read as pixels, native video, and the real content behind every
+  `t.co` link, with per-source recipes for what posts commonly link to. Read-only. Triggers: an x.com
+  URL whose content matters, or a fetch of x.com returning 402.
 - **fetch-web-sources** — a ladder of cheap, credential-free recipes for when a fetch comes back
   empty, 404 or all navigation: find the real docs path in `llms.txt`, ask for the markdown twin, run
   literal code search (Sourcegraph) and issue / repository search (GitHub) without a token, take an

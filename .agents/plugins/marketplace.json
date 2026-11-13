@@ -41,7 +41,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity",
-      "description": "Research skills: reach docs, code and repositories a plain fetch can't see (fetch-web-sources), extract what a video says and shows (watch-video), and check which saved links still work (link-rot-checker)."
+      "description": "Research skills: run a multi-vendor research council with a verified brief (deep-research), read one X post with its thread and links (read-twitter), reach docs, code and repositories a plain fetch can't see (fetch-web-sources), extract what a video says and shows (watch-video), and check which saved links still work (link-rot-checker)."
     }
   ]
 }

@@ -7,8 +7,8 @@ description: >-
   repositories without a GitHub token; when you must find what people have BUILT with a new product;
   or when a login gates a host whose product is open-source — «сторінка не читається», «знайти рядок
   у репозиторії», "code search 401", "client-rendered docs". Do not use for an ordinary web search
-  that already works, nor for reading an X/Twitter post itself (use a skill built for X where
-  installed — X pages need a logged-in browser).
+  that already works, nor for reading an X/Twitter post itself (that's read-twitter — X pages
+  need a logged-in browser).
 ---
 
 # Fetching a source the fetcher can't see
