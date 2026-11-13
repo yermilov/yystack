@@ -9,7 +9,7 @@ The failure that costs the most here is not a page you could not read; it is a r
 believed from an instrument that never moved.
 
 - **`resize_window` returns success and changes nothing on this host.** Asked for 1440×1300, got
-  "Successfully resized", and `innerWidth`/`innerHeight` stayed 1728/907. **Always read
+  "Successfully resized", and `innerWidth`/`innerHeight` stayed at their old values. **Always read
   `innerHeight` back.** You cannot force more content to mount by resizing.
 - **The CDP call times out at ~45s even with only ~11–13s of declared sleeps** — the grabs and
   X's own rendering cost real time on top. Keep any loop inside a `javascript_tool` call short and
@@ -26,7 +26,7 @@ believed from an instrument that never moved.
     Measured 3× while reading fetched source, where a single line `const MEDIA_PROXY =
     "/api/media?u="` was enough to lose the whole return. ⚠️ **The dot-defang does NOT help here** —
     strip the punctuation instead: `.replace(/[?&=]/g,' ')`, and `.replace(/https?:\/\/\S+/g,'[url]')`
-    if URLs are riding along. ⚠️ The allowlist filter in the GitHub-source subsection below,
+    if URLs are riding along. ⚠️ The allowlist filter in the GitHub recipe (`references/source-recipes.md`),
     `.replace(/[^A-Za-z0-9 ,.:=(){}[\]<>+*/_-]/g,' ')`, is **not** a drop-in substitute here: it
     strips `?` and `&` but deliberately **keeps `=`** (verified — `a?b=c&d /` → `a b=c d /`),
     because code is unreadable without it. Use it for source listings; use the `[?&=]` strip when
@@ -67,8 +67,8 @@ believed from an instrument that never moved.
   above, but firing exactly where the tool's own documentation says it should not. **RETURN the
   state from the tool call before the next `preview_start`** — that is the fix on this driver,
   because the remote browser exposes no second-tab tool: `tabs_create`/`navigate` belong to
-  `claude-in-chrome` and are not reachable from a Cowork session (check your own `allowed-tools`
-  before reaching for them). ⚠️ `sessionStorage` is NOT a substitute here, and this is where it
+  `claude-in-chrome` and are not reachable from a Cowork session (check which tools your session
+  actually has before reaching for them). ⚠️ `sessionStorage` is NOT a substitute here, and this is where it
   matters most: it is scoped to the origin, and the whole point of a second `preview_start` is
   usually a different one (`github.com` → the attachment's S3 host, or → `x.com`), where the old
   origin's store is simply not readable — the same constraint spelled out in the GitHub tree bullet

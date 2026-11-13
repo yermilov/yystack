@@ -77,9 +77,10 @@ Merge into any existing `extraKnownMarketplaces` block — don't clobber other
 marketplaces. If the key already exists with `autoUpdate: false`, just flip it to
 `true`.
 
-**Never edit the user's settings.json silently.** Show the exact diff and get a
-go-ahead first (or hand them path A). Editing config on someone's behalf without
-confirmation is the one line this skill won't cross.
+**Never edit the user's settings.json silently.** Always show the exact diff before writing
+it. If the user explicitly asked to enable auto-update, that request is the go-ahead for this
+diff; if the edit came up some other way, or the diff touches anything beyond this
+marketplace's `autoUpdate`, wait for their yes (or hand them path A).
 
 ## 3. Mind the global override
 
@@ -93,10 +94,9 @@ inert, re-check the current Claude Code docs; env names move.
 ## 4. Verify
 
 Re-run **marketplace-health** (or read the flag back) to confirm it now reports
-**auto-update: ON**. If the user wants the current version immediately rather than
-at the next auto-refresh, **propose** `claude plugin marketplace update <name>` and run
-it on their yes — it re-pulls from the network, the same go-ahead rule marketplace-health
-follows.
+**auto-update: ON**. **The go-ahead rule (the same in marketplace-health and enable-autoupdate):** an explicit request to update / fix / enable IS the go-ahead for the state change it names; anything else — a refresh, install, settings edit or re-add the user did not ask for — is proposed with the exact command or diff, and run on their yes. So pull the current version immediately
+(`claude plugin marketplace update <name>`) only when the user asked for it now; otherwise
+offer it.
 
 ## Codex
 
@@ -113,7 +113,9 @@ marketplace's **source**, not a toggle. Detect and act by `source_type` in
 - **`source_type = "local"`** → a pinned local snapshot Codex will **never**
   refresh (and `codex plugin marketplace upgrade` won't help — it refreshes only
   **git** marketplaces). The fix is to re-add it from its **Git** source (e.g.
-  `codex plugin marketplace add <owner/repo>`) so it joins the auto-upgrade set. A
+  `codex plugin marketplace add <owner/repo>`) so it joins the auto-upgrade set — a config
+  change: show the command; an explicit "enable auto-update" request covers it, otherwise run it
+  on the user's yes (the go-ahead rule). A
   deliberate local dev checkout is expected to be updated by hand (git pull the
   source); there is no auto-update for it.
 

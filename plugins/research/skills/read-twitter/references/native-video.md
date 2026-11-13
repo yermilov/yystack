@@ -1,7 +1,7 @@
 # read-twitter — native video and CDN media (depth)
 
-Moved verbatim from SKILL.md `references/source-recipes.md` / `references/x-native.md` → «Media pixels straight off the CDN»,
-which keeps the ruling and points here. «Above»/«below» refer to the original place in SKILL.md.
+The depth behind read-twitter's native-video ruling (SKILL.md, *When to use*) and the CDN-media recipe
+in `references/x-native.md`. «Above»/«below» refer to this file.
 
 ---
 

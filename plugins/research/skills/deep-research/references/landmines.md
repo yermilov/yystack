@@ -1,4 +1,4 @@
-# Landmines — measured precedents behind SKILL.md «Common landmines»
+# Landmines — measured precedents behind SKILL.md «Other landmines» and «Usage-policy refusals»
 
 > **UI language.** Labels below were measured on a Ukrainian-localized ChatGPT and Gemini (2026-08/09),
 > so they are quoted as seen. English equivalents: «Міркування» = Thinking/Reasoning · «Швидка» = Fast ·
@@ -9,7 +9,7 @@
 > Research completed. Match by structure (the control's position and role) first; labels drift and are
 > localized to the account's language.
 
-Moved verbatim from `SKILL.md` on 2026-10-02: the dated measurements and war stories behind each one-line ruling that stays in SKILL.md «Common landmines». Read when a ruling there does not cover what you are seeing, or before arguing with one.
+Moved verbatim from `SKILL.md` on 2026-10-02: the dated measurements and war stories behind each one-line ruling that stays in SKILL.md «Other landmines». Read when a ruling there does not cover what you are seeing, or before arguing with one.
 
 ## AUP — subagent option (history)
 
@@ -53,8 +53,7 @@ What the 2026-08-23 run measured instead is below. ⚠️ **Scope it as one host
 - **All three progress indicators freeze while the answer is still streaming** — `body.innerText.length`, `model-response.innerText`, and the Stop-button selector (which stays truthy after completion). `get_page_text` is the only reliable reader; take the LAST `model-response` element.
 - An **empty** `model-response` for several minutes on a follow-up turn is a stall, not the Pro-tier hang documented above: reload the `/app/<id>` URL.
 - ⚠️ **`computer` with `action: "type"` IGNORES its own `tabId` and types into whatever tab is
-  foreground.** Clicks and screenshots respect `tabId`; `type` does not (measured 10.09.2026,
-  gygylyna task `b443a7a4`). Text meant for a Gemini tab landed in the ChatGPT composer twice in one
+  foreground.** Clicks and screenshots respect `tabId`; `type` does not (measured 10.09.2026). Text meant for a Gemini tab landed in the ChatGPT composer twice in one
   session, and the whole cross-round council never happened because of it. Before any `type` call in
   a multi-tab council, confirm the TARGET tab is actually focused/foreground, and **read the
   composer back** before submitting.
@@ -74,4 +73,4 @@ What the 2026-08-23 run measured instead is below. ⚠️ **Scope it as one host
 
 **Gemini Pro Thinking can hang indefinitely on follow-up «продовжи» turns.** Symptom: you ask Gemini to continue from a truncated section, the streaming indicator appears, the second response container shows up empty (length 0), and the tab eventually stops responding to CDP `Page.captureScreenshot` (timeout after 30s). This isn't a council failure — it's a Gemini-side issue specific to long Thinking generations on continuation turns. **Recovery:** don't keep waiting. If you have ChatGPT's full response and substantive convergence on the spine, synthesize from what you have and note the partial Gemini coverage in the brief. The marginal value of Gemini's missing sections is rarely worth a 10-minute wait that may never resolve.
 
-**CDP `Runtime.evaluate` 45-second timeout.** When the prompt loop in JS does `for (label of labels) await createLabel(...)` over 16+ items, the whole batch can exceed the bridge's 45s evaluation cap and you'll get «Runtime.evaluate timed out». Recovery: navigate-and-recheck — the items that completed before the timeout did stick (they fired actual network requests). Re-run the loop with the remaining items only. **Prevention:** keep any single `javascript_tool` call under ~25 seconds of expected work; split into multiple calls with explicit waits between if longer.
+**Page-script calls have a ~45-second cap on some browser bridges** (CDP `Runtime.evaluate`). A long loop inside one call — sending several prompts, polling a stream — can exceed it even when each step is short; after a timeout the completed steps did stick, so re-run only the remainder, and keep each call under ~25 s.

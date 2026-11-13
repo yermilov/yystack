@@ -1,6 +1,6 @@
 {
   "name": "research",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Research skills for reading the web well: deep-research convenes a multi-vendor council (the user's logged-in ChatGPT and Gemini, cross-examined anonymously) and writes a chairman's brief with verified sources; read-twitter reads one X post with its thread, replies, quoted post, images, video and linked material; fetch-web-sources reaches docs pages, code and repositories a plain fetch cannot see; watch-video extracts what a video says and shows; link-rot-checker decides which links in a batch are alive, dead or unknown.",
   "author": {
     "name": "Yaroslav Yermilov",

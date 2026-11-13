@@ -6,8 +6,8 @@ description: >-
   and the real content behind every t.co link. Use when an x.com / twitter.com URL appears and its
   content matters: reading a post, thread, X Article or its replies, following a link in a tweet,
   citing a tweet as prior art, or when a web fetch of x.com returned HTTP 402. Do not use for a batch
-  of posts or a bookmarks sweep (a batch skill should call this one per post), nor for a YouTube link
-  in a tweet (hand it to watch-video). Read-only: never posts, replies, likes or unbookmarks.
+  of posts or a bookmarks sweep (a batch skill should call this one per post), for a YouTube link
+  in a tweet (hand it to watch-video), or for a non-X page a fetch can't read (fetch-web-sources). Read-only: never posts, replies, likes or unbookmarks.
 ---
 
 # read-twitter
@@ -21,7 +21,7 @@ quote-tweet, a screenshot with the real content in its pixels, or a bare link to
 Steps 1–8 get the post; the link recipes get the material it points at, which is usually where the
 content actually lives.
 
-Length verdict (§2): 2026-11-13, re-tested for the public port — 1 324 → 317 lines. Moved out, each
+Length verdict (§2): 2026-11-13, re-tested for the public port — 1 324 → 336 lines. Moved out, each
 leaving its ruling inline: the X-native mechanics (Article extraction, reply counter, self-thread
 search, syndication endpoint, CDN media) → `references/x-native.md`; every browser-instrument trap →
 `references/browser-traps.md`; per-source link recipes → `references/source-recipes.md`; the three
@@ -208,16 +208,35 @@ Non-X destinations may go to a web fetch once `t.co` is resolved — **but check
 first**: for some hosts a fetch tool returns a generated summary rather than the page's bytes, usable for
 orientation only, never as the source of a number or a quote. A recipe always overrides this paragraph.
 
-**Link recipe index** (all in `references/source-recipes.md` unless noted; read the one you need):
-YouTube → `watch-video` · vendor blogs and announcement pages (summary-only fetchers, charts as images) ·
-live docs pages a post screenshots (re-read the live page) · Google developer docs · bot-blocked hosts ·
-Framer sites (one search-index JSON) · launch posts → their Hacker News thread via Algolia · OpenAI docs
-(`.md` twins) · GitHub code, freshness and sandbox egress gates · Medium teasers · Vercel bot checkpoints ·
-AI-built-app demos (the deployed bundle is the source) · model releases (the HuggingFace repo) · model
-registries and WebGL demos · Typeform (🔴 never click through — it saves partial answers) · Luma
-calendars · an old post with fresh replies, X Articles, self-thread search, the syndication endpoint and
-CDN media → `references/x-native.md`. For a docs page or repo a plain fetch can't see, the
-`fetch-web-sources` skill has the general ladder.
+**Per-source rulings** (detail and measurements: `references/source-recipes.md`, X-native ones in
+`references/x-native.md`; read the entry for the host in front of you):
+
+- **YouTube** → hand off to `watch-video`.
+- **Vendor blogs / announcement pages** — a fetch tool may return a generated summary: orientation only,
+  never the source of a number or quote; take the bytes with `curl --fail-with-body` and check the
+  exit status. Charts are images — read them.
+- **A screenshot of a LIVE docs page** — the page may have been revised since; diff the live text
+  against the picture before calling either "the source".
+- **Bot-blocked hosts** (a 403, or a 202 with a tiny body) → facts about the fetcher; open the browser.
+- **Framer sites** → one `curl` of the search-index JSON. **Launch posts** → their Hacker News thread via
+  Algolia. **OpenAI-style docs** → the `.md` twin.
+- **GitHub** — on a sandboxed host, probe `api.github.com` once (a 403 may be the egress proxy, not the
+  repo); pin raw reads to a commit SHA; run a positive control before reporting "the repo doesn't
+  contain X".
+- **Medium** — often a teaser; check the author's own domain. **Vercel 429 "Security Checkpoint"** — a
+  bot challenge, not an empty site; read it in the browser.
+- **A demo of an AI-built app** — the deployed bundle is the primary source: read every JS chunk before
+  claiming a feature is absent.
+- **A model release** — the HuggingFace repo is the artifact; a file's bytes are a FLOOR on memory —
+  they can qualify a "runs on N GB" claim, never confirm one. **A model named in a post** → resolve it
+  in model registries (quote both when they disagree), not the browser.
+- **A WebGL / three.js demo** — on a software renderer a wait means nothing if scene time is
+  frame-coupled; read the animation's own progress, and say which states you did not reach.
+- **Typeform** — 🔴 never click through: it saves partial answers in the user's name; read the form's
+  inline field model. **Luma** → the public calendar JSON.
+- **An old post with fresh replies, X Articles, self-thread search, the syndication endpoint, CDN
+  media** → `references/x-native.md`.
+- For any docs page or repo a plain fetch can't see, `fetch-web-sources` has the general ladder.
 
 ## Three conditional dives — when the linked material changes what "read" means
 

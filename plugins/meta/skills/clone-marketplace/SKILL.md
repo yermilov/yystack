@@ -7,7 +7,8 @@ description: >-
   marketplace like this one", "scaffold a new plugin marketplace repo", or "update my marketplace's
   meta plugin / structure to the latest" — «створи свій маркетплейс скілів», «онови meta-плагін
   маркетплейсу». Do NOT use to add one plugin/skill to a marketplace you already run (that is
-  plugin-dev), nor to write SKILL.md prose (skill-authoring). Runs a bundled Bun script (--new
+  plugin-dev), nor to check whether an INSTALLED marketplace is current (marketplace-health), nor to
+  write SKILL.md prose (skill-authoring). Runs a bundled Bun script (--new
   scaffolds, --update refreshes meta in place).
 ---
 
@@ -38,10 +39,13 @@ result (§ After running) — its close enumerates the three checks
 follow-ups: create the GitHub repo, commit + push, add plugins (§ 1)
 
 **`--update`:** 1. Check `bun` is installed, else run install-bun (§ The script)
-2. Preview with `--update --dry-run` (§ 2)   3. Run `--update` (§ 2)
-4. Review `git status` + `git diff` (§ 2, step 1)   5. Run the plugin-dev pre-ship checklist
-(§ After running) — its close enumerates the three checks   6. Confirm no secrets landed
-(§ After running)   7. Commit, without bumping marketplace `metadata.version` (§ 2, step 2)
+2. Confirm `git status` is clean — `--update` replaces `plugins/meta/` wholesale, so local edits
+there would be lost and later diffs would mix with them (§ 2)   3. Preview with `--update --dry-run`
+(§ 2)   4. Run `--update` (§ 2)
+5. Review `git status` + `git diff` (§ 2, step 1)   6. Run the plugin-dev pre-ship checklist
+(§ After running) — its close enumerates the three checks   7. Confirm no secrets landed
+(§ After running)   8. Commit on the user's yes (or hand it to them), without bumping marketplace
+`metadata.version` (§ 2, step 2)
 
 Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
 left open — an unfinished list at the end must mean something really is unfinished.
@@ -96,6 +100,8 @@ Then the **human follow-ups** (the script prints them):
 ```
 bun run "SKILLDIR/scripts/clone-marketplace.ts" --update ./my-skills   # (add --dry-run first to preview)
 ```
+
+⚠️ **Start from a clean tree** (`git status` empty under `plugins/meta/`): the script replaces that directory wholesale, so uncommitted edits there are lost.
 
 Refreshes an existing marketplace repo **in place**:
 - Replaces `plugins/meta/` with upstream's latest — so it picks up new meta skills, the cross-host

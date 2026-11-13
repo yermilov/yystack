@@ -59,8 +59,8 @@ go-ahead to update/fix; a plain "check" request completes it «not refreshed», 
 (§ Why staleness happens, «ENABLED IS NOT INSTALLED») — only when a plugin never appeared at all
 6. Read the per-marketplace `autoUpdate` flag, project over user (§ Check 2)
 7. Check the global env override, `DISABLE_AUTOUPDATER` / `FORCE_AUTOUPDATE_PLUGINS` (§ Check 2)
-8. Propose the fix and get the go-ahead before any refresh, install, `/plugin update` or settings edit
-(§ When to act)
+8. Apply the go-ahead rule before any refresh, install, `/plugin update` or settings edit — an explicit
+"update / fix" request is the go-ahead; otherwise propose and wait (§ When to act)
 9. Report the verdict (§ Output)
 **On Codex** items 2–7 read differently (§ Codex): 2 is `codex plugin marketplace upgrade`, 3–4 compare
 the cached `<version>` path segment, 5 is completed «Claude Code only», 6 is `source_type`, and 7 is
@@ -172,14 +172,12 @@ Don't assume Claude Code's `claude plugin …` commands or the
 
 - **Reporting** (list, read cache paths, read settings, read env) is
   non-destructive — do it freely.
-- **`marketplace update`** re-pulls from the network and can change what's
-  installed — a small but real state change. Run it only when the user asked to
-  "update / fix" (that request IS the go-ahead) or said yes to your proposal;
-  on a plain "check", do the read-only comparison and report the versions as
-  unverified against remote.
-- **Never edit `settings.json` or run `/plugin update` silently** — propose the
-  exact change (the `autoUpdate: true` line, or the update command) and let the
-  user apply it.
+- **The go-ahead rule (the same in marketplace-health and enable-autoupdate):** an explicit request to update / fix / enable IS the go-ahead for the state change it names; anything else — a refresh, install, settings edit or re-add the user did not ask for — is proposed with the exact command or diff, and run on their yes.
+- So `marketplace update` / `plugin install` / `/plugin update` run on an "update /
+  fix" request or a yes; on a plain "check", do the read-only comparison and report
+  the versions as unverified against remote.
+- **Never edit `settings.json` silently** — turning auto-update on is
+  enable-autoupdate's job; hand it over with the verdict.
 
 ## Output
 

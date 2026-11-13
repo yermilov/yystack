@@ -1,8 +1,9 @@
 # read-twitter — per-source recipes (depth)
 
-Moved verbatim from SKILL.md `references/source-recipes.md` / `references/x-native.md` (and two entries from «Browser instrument
-traps»). Each is reached only when that link type appears; SKILL.md keeps the routing ruling for
-each one and points here. «Above»/«below» inside an entry refer to its original place in SKILL.md.
+Per-source depth for the links a post points at. Each section is reached only when that link type
+appears; SKILL.md's link-recipe index carries the one-line ruling for each and points here. The
+**Per-source rulings** section at the end is the compact list of those rulings; the sections before it
+carry the measured detail. «Above»/«below» inside an entry refer to this file.
 
 ---
 
@@ -400,9 +401,8 @@ each one and points here. «Above»/«below» inside an entry refer to its origi
   ⚠️ **An EARLIER run (2026-08-26) measured the trees API and the HTML directory listing as both
   EMPTY, with a guess-the-filename fallback — that run fetched through a WRAPPER
   (`web_fetch`-style), not a literal `curl`, so it doesn't apply once `curl` is available; keep it
-  only for a host that has a page-rendering fetch tool but no `curl`/Bash** (this skill's
-  `allowed-tools` on Claude Code has no `WebFetch`, so `curl` is the norm here; a host like
-  Cowork's `mcp__workspace__web_fetch` may be wrapper-only for some tasks):
+  only for a host that has a page-rendering fetch tool but no `curl`/Bash** (where a shell is available, `curl` is the norm; a host whose only fetcher is a
+  page-rendering wrapper may get summaries for some tasks):
   - `https://github.com/<owner>/<repo>` through the wrapper returns the rendered README as
     markdown — cheapest single fetch on that kind of host, start here.
   - The trees API and the HTML directory page (`.../tree/<branch>/<dir>`) may both return EMPTY
@@ -840,7 +840,7 @@ each one and points here. «Above»/«below» inside an entry refer to its origi
 
 ---
 
-# Recipes moved from SKILL.md (per-source, reached only when that link appears)
+# Per-source rulings (compact list — the detail for each is in the sections above)
 
 
 Steps 1–8 get you the tweet. These are what it takes to get the **material behind it** — and each
@@ -882,13 +882,12 @@ a reading of it.
   facts about the fetcher, not the content — open them in the browser instead.
 - **A Framer-built site**: one `curl` of the `framer-search-index` JSON gives the text of every page;
   accordion/FAQ answers are in neither it nor the HTML — click the chevron bottom-up and verify by
-  SCREENSHOT. 📖 → `references/source-recipes.md`.
+  SCREENSHOT.
 - **A LAUNCH tweet → its Hacker News thread via Algolia, no browser.** Identify the story by `url`,
   `title` and `created_at` (never `points`), save the tree to a file and walk it in python — never
-  into the main loop; filter by `author` for the founder's answers. 📖 → `references/source-recipes.md`.
+  into the main loop; filter by `author` for the founder's answers.
 - **`developers.openai.com` / `learn.chatgpt.com` docs: append `.md` to the PATH** (before any
-  `?query`/`#fragment`); `openai.com/index/*` has no `.md` twin and 403s `curl` — use the browser.
-  📖 → `references/source-recipes.md`; the cross-site form is `research:fetch-web-sources` §1.
+  `?query`/`#fragment`); `openai.com/index/*` has no `.md` twin and 403s `curl` — use the browser.; the cross-site form is `research:fetch-web-sources` §1.
 - **`openai.com/index/*` (an OpenAI announcement)**: `get_page_text` for the prose; every chart's
   full dataset is a Vega-Lite spec in the RSC payload — **read the arrays before repeating a
   vendor's comparison**, they carry the rows the prose omits. 📖 extraction script → `references/source-recipes.md`.
@@ -906,11 +905,11 @@ a reading of it.
   reach it). A `user-attachments` asset that is an SVG: read its `<text>`, not its pixels.
   📖 the probe bodies, the ladder, the SVG and issue-comment recipes → `references/source-recipes.md`.
 - **Medium** 403s a plain `curl` while `WebFetch` reads it; a Medium post is often a TEASER — check
-  the author's own domain for the full text before summarising. 📖 → `references/source-recipes.md`.
+  the author's own domain for the full text before summarising.
 - **A Vercel page answering `curl` with HTTP 429 «Vercel Security Checkpoint»** is a per-project bot
   challenge, not an empty site — tell it from the HEADERS (`x-vercel-mitigated: challenge`); a UA
   does not help; read it in the browser and assert `document.title !== "Vercel Security
-  Checkpoint"` before parsing. 📖 → `references/source-recipes.md`.
+  Checkpoint"` before parsing.
 - **A tweet demoing an AI-BUILT APP: the DEPLOYED BUNDLE is the primary source, not the video.**
   Read EVERY JS chunk (close the set transitively), check the rendering and feature claims against
   the bundle and the DOM — an absence is a claim about the chunks you read — and count in python,
@@ -919,7 +918,6 @@ a reading of it.
   `api/models/<org>/<repo>?blobs=true` gives exact file sizes. 🔴 A file's bytes are a FLOOR on a
   setup's memory: they can QUALIFY a «runs on N GB» claim and must never CONFIRM one. `limit=100`
   is a first page, not the org's shelf. Tag figures to the vendor/card/API, never the aggregator.
-  📖 → `references/source-recipes.md`.
 
 - **A Typeform link**: 🔴 **never click through the form** — Typeform saves PARTIAL responses, so
   clicking forward submits an unfinished application in the user's name. Read the `"fields"` model
@@ -928,13 +926,13 @@ a reading of it.
   thank-you screen too). 📖 extraction script → `references/source-recipes.md`.
 - **A Luma calendar link**: the public `api.lu.ma/calendar/get-items` JSON (calendar id from the
   `apple-itunes-app` meta) — one call is never an exhaustive event history; `Grep` the spilled
-  file. 📖 → `references/source-recipes.md`.
+  file.
 
 
 - **A model named in a tweet — resolve it WITHOUT the browser.** First call
   `openrouter.ai/api/v1/models/<slug>/endpoints` (answers even after delisting; empty `endpoints[]`
   = no OpenRouter provider serves it now), then `models.dev/api.json` to a file. Both are registries,
-  not the vendor — quote both when they disagree. 📖 → `references/source-recipes.md`.
+  not the vendor — quote both when they disagree.
 - **⚠️ A linked WebGL / three.js demo cannot be "waited" into a later state on a software
   renderer.** Before waiting, grep its loop: if scene time is FRAME-coupled (clamped `dt`, fixed
   step), a wait means nothing — poll the animation's own progress variable; the spawn frame is the

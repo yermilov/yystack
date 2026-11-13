@@ -2,7 +2,7 @@
 
 Quick reference for council prompts on benign-but-classifier-adjacent topics — legal, financial, medical, government procedures, filling in official forms. The Anthropic AUP defines explicit «Universal Standards» and «High-Risk Use Case Requirements»; the classifier fires _early_ in a session (≤ 3-4 tool calls) when wording in the council prompt lands too close to one of them. Read this before drafting Phase-0 wording when the topic touches any of these areas.
 
-For _mechanism-side_ triggers (pattern-stacking late in the run, JS injection into other LLM frontends, repeated extractions), see Phase 2 «Sending the prompt» and the «AUP refusal» landmine in SKILL.md — different problem, different fix.
+For _mechanism-side_ triggers (pattern-stacking late in the run, JS injection into other LLM frontends, repeated extractions), see Phase 2 «Sending the prompt» and «Usage-policy refusals» in SKILL.md — different problem, different fix.
 
 ## The 4 substance categories the classifier most often misreads
 
@@ -81,7 +81,7 @@ For these, SKILL.md Phase 0 documents the stop-and-reframe protocol with three e
 When the host reports a usage-policy refusal (on Claude Code: `API Error: Claude Code is unable to respond…`), the timing tells you which side fired:
 
 - **Early refusal (≤ 3-4 tool calls)** — almost certainly substance-side. Classifier didn't like _what_ you asked. This file is the right response: reframe against the 4 categories above using the 5 rules, then retry.
-- **Late refusal (8-15+ cumulative tool calls, deep in extraction / paste-back loop)** — mechanism-side. This file won't help; go to SKILL.md «AUP refusal — main-session context hygiene» landmine.
+- **Late refusal (8-15+ cumulative tool calls, deep in extraction / paste-back loop)** — mechanism-side. This file won't help; go to SKILL.md «Usage-policy refusals» (the hygiene rules).
 
 ## Source
 

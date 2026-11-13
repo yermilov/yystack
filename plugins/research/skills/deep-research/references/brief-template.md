@@ -1,6 +1,6 @@
 # Council brief template — used by SKILL.md Phase 4 «Brief structure»
 
-Moved verbatim from `SKILL.md` on 2026-10-02. Use this exact template for `outputs/council/<slug>/brief.md`.
+Moved verbatim from `SKILL.md` on 2026-10-02. Use this exact template for `<output>/council/<slug>/brief.md`.
 
 ```markdown
 # [Topic] — Council Brief

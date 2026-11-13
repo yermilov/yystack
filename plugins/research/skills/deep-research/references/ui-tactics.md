@@ -36,7 +36,7 @@ If anonymous on either platform, **stop and tell the user**. Never try to log in
 
 ## 2. ChatGPT — model picker by tier
 
-Click the `ChatGPT ▾` button at the top to open the model picker.
+**What the control looks like depends on the account and the month.** Measured 2026-08 on a Pro account: the composer shows the current effort as a word (`Pro`, `High`, …) and clicking it opens a reasoning-effort SLIDER — there was no separate model menu (`landmines.md`). The table below is an older reading of a model picker, kept for accounts that still show one. Either way the target is the same: the strongest thinking-capable setting at **High** effort, never the heaviest `Pro` option. Find the control by its role; layouts move.
 
 | Tier | Picker shows | Council pick |
 |------|--------------|--------------|
@@ -192,7 +192,7 @@ Symptom: after 30–60 min of active research, the report card shows the title �
 
 In the real run that this skill is tuned for, the retry completed in ~25 min after the first attempt failed at ~50 min — the second attempt is often noticeably faster because cached search results from the first attempt are reused. Total wall-clock: ~75–90 min for a single ChatGPT Plus DR with one retry.
 
-If a second retry also fails, stop and tell the user. Don't burn their quota on a third attempt without his explicit approval.
+If a second retry also fails, stop and tell the user. Don't burn their quota on a third attempt without the user's explicit approval.
 
 ### Generic — long-running DR tab silently stalls
 
@@ -204,27 +204,9 @@ Symptom: DR has been running 30+ minutes, length/counter stopped changing, no er
 3. **Navigate to the same conversation URL to refresh** — works for both Gemini and ChatGPT. If the DR completed server-side or moved to a later stage, the refresh reveals the true state. (Real run: ChatGPT counter appeared frozen at 533 queries; after refresh it showed the run was actually at 536 queries and finalizing — the websocket had dropped while the server kept working.)
 4. If after refresh the run is still active, just wait longer — Plus tier ChatGPT DR can spend 20+ min in the writing/citation phase with no visible UI updates.
 
-## 8. Round 2 challenge prompt template (literal)
+## 8. Round 2 challenge prompt — why the template is worded as it is
 
-Copy-paste this and fill in the `[brackets]`. The exact phrasing matters — it's tuned to break sycophancy:
-
-```
-Two pieces of pushback from another expert reviewing the same question.
-Engage with each — where do they go wrong, if anywhere? If they are right,
-steelman the argument and tell me what to add to my recommendation. If they
-are wrong, refute specifically with concrete reasoning.
-
-Pushback 1 — [topic]:
-"[their claim, in their own words, ~3–6 sentences. Strip platform-specific
-phrasing or model-name giveaways. Frame as a confident assertion, not a
-question.]"
-
-Pushback 2 — [topic]:
-"[same shape]"
-
-Where do these go wrong, if at all? Be specific. If you change your earlier
-position, say so explicitly.
-```
+The template itself lives once, in SKILL.md Phase 3 — copy it from there.
 
 Three properties of this template that earn their keep:
 

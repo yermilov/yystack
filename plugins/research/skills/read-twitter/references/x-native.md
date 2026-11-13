@@ -61,8 +61,8 @@ say when each was true.
   Programmatic scroll doesn't fire the events X gates its reply-loading on. **This confirms Step
   5's existing procedure** (`computer(action=scroll)` first) — treat it as load-bearing, not
   optional: use `computer(action=scroll)` for **every** pagination step on a conversation page, not
-  just the first — Step 5's own §`references/browser-traps.md` entry (`window.scrollBy` did not scroll
-  an X status page at all, further down this file) means a `window.scrollBy` "fine-tune" pass can
+  just the first — the `window.scrollBy` entry in `references/browser-traps.md` (it did not scroll
+  an X status page at all) means a `window.scrollBy` "fine-tune" pass can
   silently do nothing and read as false convergence, dropping later self-thread posts or replies.
   Reserve `window`/`read_page` calls for reading what's already mounted, never for advancing it.
   ⚠️ **Wait a few seconds and re-poll after EACH `computer(action=scroll)` before checking whether
@@ -334,7 +334,7 @@ say when each was true.
   `window`/`sessionStorage` accumulator on the page survives it — and this works even fully logged
   out. ⚠️ **One screenshot only captures the viewport.** A `note_tweet` body long enough to need
   "Show more" is frequently taller than the viewport too — the same cropping risk Step 6 already
-  flags for images (§4). Scroll and take overlapping screenshots (or a full-page capture, if the
+  flags for images (SKILL.md Step 6). Scroll and take overlapping screenshots (or a full-page capture, if the
   driver has one) until you reach the end, rather than assuming a single frame caught the whole
   expansion.
 

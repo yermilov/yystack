@@ -142,7 +142,7 @@ scored **32/32** on the right witness against a **2.77/32** shuffled baseline; l
 replications as partial — neither number means anything alone, and a headline "solved" is not a
 per-line score.
 
-**Scope and feasibility gate.** This applies to a research dive (a bookmark dive, a "research this"
+**Scope and feasibility gate.** This applies to a research dive (a "research this"
 brief) — not to a request that only asks for the post's text, which stays within Step 7's scope.
 And it applies only when the rule is actually executable from public material: the source text is
 fetchable, the mechanism is stated precisely enough to code, and a meaningful control exists. A
@@ -161,11 +161,8 @@ internally correct:
 **So: before concluding a claimed solve is wrong, confirm you loaded the edition the claim cites** —
 and name the witness (shelfmark / TCP id / archive.org id) beside every score you report.
 
-Primary-text channels that work with plain `curl`: EEBO-TCP TEI (rejoin `EOLhyphen` splits before
-tokenising), archive.org `_djvu.txt` (check `archive.org/metadata/<item>` for
-`access-restricted-item` before concluding there is no text; strip OCR running heads), and an HN
-thread as JSON via Algolia (to a file, never into the main loop).
-📖 commands and measured traps → `references/conditional-dives.md`.
+The primary-text channels (EEBO-TCP TEI, archive.org `_djvu.txt`, an HN thread via Algolia) are listed
+with their commands and traps near the top of this file.
 
 When the refutation lives in a GitHub repo, judging its provenance (created_at, stars, pushed_at)
 needs `api.github.com`, which a Cowork sandbox gates — the GitHub recipe (`references/source-recipes.md`)

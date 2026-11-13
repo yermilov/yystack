@@ -2,13 +2,14 @@
 name: deep-research
 description: >-
   Convene a multi-vendor research council — drive the user's own logged-in ChatGPT and Gemini web
-  UIs (optionally Claude.ai) in a browser, cross-examine their answers anonymously, and write a
+  UIs in a browser, cross-examine their answers anonymously, and write a
   chairman's brief with verified sources. Use when the user asks for deep or outside research on a
   contested or high-stakes question — "deep research this", "get a second opinion from other models",
-  "what do ChatGPT and Gemini think", "run a council", "brief me on X with sources", «зроби рісерч»,
+  "run a council", "brief me on X with sources", «зроби рісерч»,
   «другий погляд» — or when a decision is expensive to get subtly wrong. Do not use for a quick
-  factual lookup or a single-agent web-search report (answer directly or use the host's own research
-  tool), nor for a second opinion on code in front of you. Needs a browser-automation tool with a
+  factual lookup, nor for a single-agent research report from web search (hosts often bundle their own
+  "deep research" tool for that — this skill is the multi-vendor council), nor for a second opinion on
+  code in front of you. Needs a browser-automation tool with a
   profile signed in to the vendors; spends the user's paid quotas, so it proposes before it runs.
 ---
 
@@ -161,9 +162,9 @@ order of preference:
 
 **Fallback only:** injecting text with `execCommand('insertText')` from a page script. Each injection
 raises usage-policy risk ("one AI driving another through a non-standard channel"), and stacking three
-or more reliably triggers a refusal; on at least one sandboxed host the refusal then blocked every later
-page-script call for the run. Use it once, if 1–4 all failed — and if it fails too, ask the user to
-paste. 📖 rationale and snippets → `references/prompt-delivery.md`.
+or more reliably triggers a refusal. **On a sandboxed cloud host, skip it entirely** — there the refusal
+has blocked every later page-script call for the rest of the run; ask the user to paste instead.
+Elsewhere, use it once, only if 1–4 all failed — and if it fails too, ask the user to paste. 📖 rationale and snippets → `references/prompt-delivery.md`.
 
 ### Capturing responses
 
