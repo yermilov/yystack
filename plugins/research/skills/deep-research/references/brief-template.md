@@ -1,12 +1,12 @@
-# Council brief template — used by SKILL.md Phase 4 «Brief structure»
+# Council brief template — used by SKILL.md Phase 4
 
-Moved verbatim from `SKILL.md` on 2026-10-02. Use this exact template for `<output>/council/<slug>/brief.md`.
+Use this exact template for `<output>/council/<slug>/brief.md`, then run the pre-handoff check in SKILL.md Phase 4.
 
 ```markdown
 # [Topic] — Council Brief
 
 **Question:** [the framed question from phase 0]
-**Council:** ChatGPT [model], Gemini [model]; Deep Research: [yes/no]; rounds: [1 or 2]
+**Council:** [each member + its model and mode]; **Depth:** [Quick / Standard / Deep Research]; **Rounds:** [1 or 2]
 **Date:** [YYYY-MM-DD]
 
 ## tl;dr
@@ -27,7 +27,7 @@ my read on the merged recommendation.]
 
 ## What I (Chairman) checked or pushed back on
 
-[Citations I verified with WebSearch. Claims I think one or both models got
+[Citations I verified with my own web search. Claims I think one or both models got
 wrong despite their confidence. Claims that smell like hallucinations and I
 couldn't confirm.]
 

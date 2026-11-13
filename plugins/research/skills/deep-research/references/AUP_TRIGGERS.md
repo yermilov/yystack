@@ -1,6 +1,6 @@
 # AUP Triggers — substance-side reference
 
-Quick reference for council prompts on benign-but-classifier-adjacent topics — legal, financial, medical, government procedures, filling in official forms. The Anthropic AUP defines explicit «Universal Standards» and «High-Risk Use Case Requirements»; the classifier fires _early_ in a session (≤ 3-4 tool calls) when wording in the council prompt lands too close to one of them. Read this before drafting Phase-0 wording when the topic touches any of these areas.
+Quick reference for council prompts on benign-but-classifier-adjacent topics — legal, financial, medical, government procedures, filling in official forms. The Anthropic AUP defines explicit «Universal Standards» and «High-Risk Use Case Requirements»; the classifier fires _early_ in a session (≤ 3-4 tool calls) when wording in the council prompt lands too close to one of them. Read this before drafting Phase-0 wording when the topic touches any of these areas. The quotes below are from Anthropic's policy, the one a Claude host enforces; other vendors' policies draw the same four lines, so the rephrasing rules carry over.
 
 For _mechanism-side_ triggers (pattern-stacking late in the run, JS injection into other LLM frontends, repeated extractions), see Phase 2 «Sending the prompt» and «Usage-policy refusals» in SKILL.md — different problem, different fix.
 
@@ -12,7 +12,7 @@ For _mechanism-side_ triggers (pattern-stacking late in the run, JS injection in
 
 **What this looks like in council prompts that get blocked:** "give me the step-by-step procedure to register as a sole trader", "how do I file a lawsuit", "draft this contract for me", "tax optimisation", "which drug for X", "which bank is best". The classifier reads «AI replacing qualified professional in legal / tax / medical domain» — which is exactly what AUP says you shouldn't do without human-in-the-loop.
 
-**What to do instead:** frame as _research / landscape overview_, not as procedure. "What do accountants currently discuss about sole-trader registration for IT freelancers in 2026", "what kinds of claims exist in disputes of type X", "which drug classes are prescribed for X" — all pass. The substance the council can usefully cover is unchanged; the wording stops claiming to be the qualified professional.
+**What to do instead:** frame as _research / landscape overview_, not as procedure. "What do accountants currently discuss about registering as a sole trader", "what kinds of claims exist in disputes of type X", "which drug classes are prescribed for X" — all pass. The substance the council can usefully cover is unchanged; the wording stops claiming to be the qualified professional.
 
 Add an explicit disclaimer in the prompt itself: "This is a research overview; every legal / tax / medical decision will be checked with a qualified [accountant / lawyer / doctor] before acting." Two reasons: (1) makes the AUP human-in-the-loop requirement visible to the classifier, (2) keeps the user honest about the actual decision protocol downstream.
 
@@ -20,9 +20,9 @@ Add an explicit disclaimer in the prompt itself: "This is a research overview; e
 
 **AUP wording:** «Create falsified documents including fake IDs, licenses, currency, or other government documents.»
 
-**What this looks like in council prompts that get blocked:** "help me fill in registration form X so that …", "what should I write in the tax return so that …", "which activity code avoids …". Even when the intent is fully legitimate — the user is the actual taxpayer filling in their own form — the wording "fill it in so that" reads as instruction-evasion to the classifier.
+**What this looks like in council prompts that get blocked:** "help me fill in registration form X so that …", "what should I write in the tax return so that …", "which category avoids …". Even when the intent is fully legitimate — the user is the actual taxpayer filling in their own form — the wording "fill it in so that" reads as instruction-evasion to the classifier.
 
-**What to do instead:** ask about the form, not about filling it. "What does field X on form Y mean", "what are the typical mistakes in return X", "in which situations is activity code A chosen over B". The user then fills in the form themselves, informed.
+**What to do instead:** ask about the form, not about filling it. "What does field X on form Y mean", "what are the typical mistakes in return X", "in which situations is category A chosen over B". The user then fills in the form themselves, informed.
 
 ### 3. Impersonation
 
@@ -78,7 +78,7 @@ For these, SKILL.md Phase 0 documents the stop-and-reframe protocol with three e
 
 ## Diagnostic: substance-side vs. mechanism-side refusal
 
-When the host reports a usage-policy refusal (on Claude Code: `API Error: Claude Code is unable to respond…`), the timing tells you which side fired:
+When the host reports a usage-policy refusal (for example, one host shows `API Error: … is unable to respond…`), the timing tells you which side fired:
 
 - **Early refusal (≤ 3-4 tool calls)** — almost certainly substance-side. Classifier didn't like _what_ you asked. This file is the right response: reframe against the 4 categories above using the 5 rules, then retry.
 - **Late refusal (8-15+ cumulative tool calls, deep in extraction / paste-back loop)** — mechanism-side. This file won't help; go to SKILL.md «Usage-policy refusals» (the hygiene rules).
