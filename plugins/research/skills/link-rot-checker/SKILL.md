@@ -18,6 +18,14 @@ or a wrong id for a verdict. One link is not worth this skill — open it and lo
 
 ## The flow
 
+Register the five steps below as TODOs and work the list — steps 3 and 5 as one item per URL, so a
+batch cannot be closed after one link. **Register them in this session's own todo/plan tool — if
+you don't see one, SEARCH for it before concluding there is none**: on hosts with deferred tools it
+exists under a name you weren't looking for, and anything that creates items and marks them in
+progress and completed IS it. Never an external tracker. If there genuinely is none, keep the list in
+your replies and account for every item at the end. An item a branch makes moot (no link needed a
+browser; nothing dead to replace) is completed with that reason, never left open.
+
 1. **Fetch directly first** — `curl -sL -o /dev/null -w '%{http_code} %{url_effective}\n' '<url>'`, or
    the host's web-fetch tool. A clean 404/410, or a redirect to a category/search page, is a dead
    signal. Fast and cheap; do the whole batch this way first.
