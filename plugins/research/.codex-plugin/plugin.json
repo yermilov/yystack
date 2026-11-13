@@ -1,0 +1,26 @@
+{
+  "name": "research",
+  "version": "0.1.0",
+  "description": "Research skills for reading the web well: fetch-web-sources reaches docs pages, code and repositories a plain fetch cannot see (llms.txt, markdown twins, token-less code / issue / repository search, open-source gates); watch-video extracts what a video says and shows (offline for local files, Gemini for YouTube, with a transcript knowledge file to chat from); link-rot-checker decides which of a batch of links are alive, dead or unknown, with a positive marker for each verdict.",
+  "author": {
+    "name": "Yaroslav Yermilov",
+    "email": "yermilov17@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": ["research", "web", "fetch", "llms.txt", "github", "sourcegraph", "video", "youtube", "transcript", "links"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Research",
+    "shortDescription": "Read the web, code and video an agent's fetcher can't see",
+    "longDescription": "Research skills for the yystack marketplace. fetch-web-sources is a ladder of cheap, credential-free recipes for when a fetch comes back empty or 404: find the real docs path in llms.txt, ask for the markdown twin, search code and issues without a GitHub token, take an uptake census of a new product, and research an open-source deployment behind a login from its own public issues and docs. watch-video extracts content from a video — offline with ffmpeg and whisper.cpp for a local file, or through Gemini for YouTube, optionally saving a timestamped knowledge file to answer follow-ups from. link-rot-checker classifies a batch of links as alive, dead or unknown, demanding a positive marker for each verdict and a made-up-id control.",
+    "developerName": "Yaroslav Yermilov",
+    "category": "Productivity",
+    "capabilities": ["Bash", "Read", "Write"],
+    "defaultPrompt": [
+      "This docs page comes back empty — get me its content.",
+      "Find every public repository that contains this exact string.",
+      "Summarise this YouTube talk and extract the steps.",
+      "Which of these saved links still work?"
+    ]
+  }
+}

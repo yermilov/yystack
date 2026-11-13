@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Yaroslav Yermilov's public showcase of AI-agent skills — an installable Claude Code / Codex plugin marketplace.",
-    "version": "0.2.1"
+    "version": "0.3.0"
   },
   "plugins": [
     {
@@ -18,6 +18,11 @@
       "name": "home-it",
       "source": "./plugins/home-it",
       "description": "Home IT skills. check-network diagnoses home-network speed and DNS failures: compare system / router / public resolvers, inspect negative caches / upstreams / filters, measure throughput / latency / loss / Wi-Fi signal, localize the failing layer, inspect the router UI, and verify one fix at a time."
+    },
+    {
+      "name": "research",
+      "source": "./plugins/research",
+      "description": "Research skills: reach docs, code and repositories a plain fetch can't see (fetch-web-sources), extract what a video says and shows (watch-video), and check which saved links still work (link-rot-checker)."
     }
   ]
 }

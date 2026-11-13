@@ -29,6 +29,19 @@
       },
       "category": "Productivity",
       "description": "Home IT skills. check-network diagnoses home-network speed and DNS failures: compare system / router / public resolvers, inspect negative caches / upstreams / filters, measure throughput / latency / loss / Wi-Fi signal, localize the failing layer, inspect the router UI, and verify one fix at a time. The same SKILL.md files back the Claude Code plugin."
+    },
+    {
+      "name": "research",
+      "source": {
+        "source": "local",
+        "path": "./plugins/research"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity",
+      "description": "Research skills: reach docs, code and repositories a plain fetch can't see (fetch-web-sources), extract what a video says and shows (watch-video), and check which saved links still work (link-rot-checker)."
     }
   ]
 }
