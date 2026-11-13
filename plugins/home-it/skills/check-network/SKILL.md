@@ -1,13 +1,13 @@
 ---
 name: check-network
 description: >-
-  Diagnose home-network speed and DNS failures end-to-end and apply or recommend the
-  highest-leverage fix. Use when Wi-Fi is slow, latency spikes, a domain returns NXDOMAIN only at
-  home, public DNS works while the router fails, or the user asks about an extender / router / mesh
-  — “speeds are below my plan”, “DNS is broken”, “site works on mobile data”, “bufferbloat”,
-  «інтернет повільний», «роутер не резолвить домен», «помилка DNS». Measures the failing path,
-  distinguishes router/cache/upstream/client causes, inspects the router UI, and verifies one change
-  at a time. Not for public/office networks you don't administer or server-side app latency.
+  Diagnose home-network speed, DNS and drop-out failures and apply or recommend the
+  highest-leverage fix. Use when Wi-Fi is slow, latency spikes, the connection keeps dropping, the
+  router seems to reboot itself, a 4G/LTE router only recovers after a power-cycle, a domain returns
+  NXDOMAIN only at home, or the user asks about an extender / router / mesh — “speeds are below my
+  plan”, “DNS is broken”, “site works on mobile data”, “Wi-Fi drops every few hours”, “bufferbloat”,
+  «інтернет повільний», «вай-фай відвалюється», «роутер не резолвить домен». Not for public/office
+  networks you don't administer, nor for server-side app latency.
 ---
 
 # check-network — diagnose and fix a home network
@@ -45,15 +45,18 @@ your run bookkeeping is not someone's backlog. If there genuinely is none, keep 
 replies and account for every item at the end — "I'll track it inline" with no stated list is
 precisely the failure this block exists to prevent.
 
-1. Classify the symptom as performance or DNS/reachability
+1. Classify the symptom as performance, DNS/reachability, or intermittent drop-outs — and ask the
+   owner for an authenticated router session now if any later step may need the admin UI
 2. Run the DNS fast path when a host fails to resolve (§ DNS-specific fast path)
 3. Measure where the problem is — Wi-Fi, at the affected spot (§1)
 4. Measure next to the router — Wi-Fi (§1)
 5. Measure wired into the router over Ethernet (§1) — **its own item because it is the control, and
    the control is what gets skipped**; one "measure the baseline" item would hide that
 6. Localize the bottleneck to a layer (§2)
-7. Inspect the router admin UI (§3)
-8. Diagnose, repair or recommend, then verify (§4)
+7. On drop-outs: prove or rule out router reboots (§2a)
+8. Inspect the router admin UI (§3)
+9. On a cellular WAN: grade the radio signal and the reconnect rate (§3a)
+10. Diagnose, repair or recommend, then verify (§4)
 
 Items 3–5 are one item per **position**, not per metric — but each closes naming the four
 measurements §1 asks for at that spot (throughput+bufferbloat · loss+latency · link quality/rate ·
@@ -61,11 +64,11 @@ client sanity), or which one you skipped and why. "Measured the desk" without th
 the table you cannot fill. On the DNS branch, close item 2 naming system/router/public answers, the
 negative TTL, configured upstream/filter findings **with the pass count of each probe series**, and
 the end-to-end control on the affected device — or which remained unreadable. Close item 6 naming
-which layer each gap pointed at, and item 7 naming the router settings you actually read; an
+which layer each gap pointed at, and item 8 naming the router settings you actually read; an
 unenumerated "looked at the router" hides the one setting that was the answer.
 
-A step a branch makes moot — no admin access to the router, say — is completed with that reason, not
-left open.
+A step a branch makes moot — no admin access to the router, no drop-outs reported, a wired WAN rather
+than a cellular one — is completed with that reason, not left open.
 
 ## DNS-specific fast path
 
@@ -115,20 +118,17 @@ sites work. Do not infer “the router blocks the domain” from one cached answ
 
    ⚠️ **Then prove the device is testing the path you actually fixed.** A phone that resolved the
    hostname over **mobile data**, or through a resolver it still has pinned, passes this step while
-   proving nothing about the router. Before believing the result, confirm the device holds a LAN
-   address and that the resolver it is using is the gateway. Measured 2026-09-09, the two facts that
-   made the check mean something: Wi-Fi address `192.168.0.104`, DNS server `192.168.0.1` — without
-   them the `HTTP 200` that followed would have been an answer about somebody else's network.
+   proving nothing about the router. Before believing the result, record the two facts that make it
+   mean something: the device's Wi-Fi address is in the router's LAN subnet, and its DNS server IS
+   the gateway's address. Without them an `HTTP 200` is an answer about somebody else's network.
 
 Router credentials remain owner-controlled: use an already-authenticated session, or have the owner
 sign in and hand it back. Never extract or type their router password yourself.
 
 ⚠️ **So ask for that session in the FIRST minutes of the run, not the last.** Read-only diagnosis and
 the login request are independent, so send the request early and keep measuring while it is answered.
-Measured 2026-09-09: a run worked the whole comparison above, reached step 3, found the admin page
-asking for the router's local password — and ended there. The task sat `blocked` for **three hours**
-waiting for a login that could have been requested at minute one, and the next run had to re-establish
-the state the first had already measured.
+A run that only discovers the admin login at step 3 stops there, waits hours for an answer it could
+have had at minute one, and leaves the next run to re-measure what it already knew.
 
 ## 1. Measure the baseline (from the affected device)
 
@@ -218,35 +218,21 @@ upstream. Escalating to the ISP on an untested adapter is the expensive version 
   latency. Find out if one is in the path (router/mesh UI shows satellite nodes and their clients).
 - **Client** — negotiated rate and signal from step 1 tell you if the device is the limit.
 
-**"The Wi-Fi drops every so often" — prove whether the ROUTER reboots before theorising.** A drop of
-~60–90 s that every client sees at once is the signature of a router reboot, not of the ISP. You can
-prove it **without the admin password**: most consumer routers run miniupnpd, and UPnP answers an
-unauthenticated LAN query. SSDP-discover `urn:schemas-upnp-org:service:WANIPConnection:1`, then
-SOAP `GetStatusInfo` on its control URL → `NewUptime` (`now − uptime` dates the start). ⚠️ That is
-the UPnP daemon's uptime, or the system's when miniupnpd runs with `system_uptime=yes` — a daemon
-restart (some firmware restarts it on a WAN reconnect) resets it WITHOUT a reboot, so confirm each
-drop with the clients losing the gateway around that instant (Wi-Fi link down, ping gap) before you
-call it a reboot. Do not use the description's `UDN` as the router's identity either: an Archer AX23
-v2 regenerated it on every boot (two boots on 04.10.2026, two different `uuid:`s), and its control
-path is randomised per boot too — rediscover after any SOAP failure. `WANCommonInterfaceConfig` → `GetTotalBytesReceived`/`Sent` gives WAN
-traffic, so you can see whether reboots follow load. The device description's `modelNumber` often
-carries the firmware build. Log uptime every ~20 s plus a 1 Hz ping of the gateway and of a public IP
-to a **local file** (an outage cannot stop a local log), and keep the logging host awake on power: a
-sleeping laptop is a blind spot, never a quiet period — cross-check its sleep/wake log before reading
-any gap. Run it across the time of day the owner reports the drops; a clean night proves nothing
-about the evening.
+## 2a. Drop-outs — prove whether the ROUTER reboots before theorising
 
-Before you read the boot list, **drop the boots that someone's hands caused**: match each boot against
-when the owner touched the kit, and use photo filenames for that (Pixel's `PXL_YYYYMMDD_HHMMSS` is UTC).
-When the owner photographs the cabling, a boot can follow within minutes. Such a boot is **not**
-evidence of a fault, but it does point at a loose power plug. Rule out
-**load** by comparing WAN Mbit/s in the 5 min before each boot with the busiest windows that had no
-boot. Then use the power test the owner can run without a password. Put the router (and the ONT,
-if there is one) on a UPS or power station, and keep everything else unchanged. If the boots stop,
-the cause is mains or the socket. If they continue, the router's own adapter or the router is at
-fault. **The WAN type is in the UPnP description:** `WANIPConnection` means IPoE/DHCP and
-`WANPPPConnection` means PPPoE. A factory reset of an IPoE router with a default SSID costs only the
-Wi-Fi name and password. Find that out before you rule a reset out.
+A drop of ~60–90 s that every client sees at once is the signature of a router reboot, not of the ISP.
+Prove it before blaming anyone — and you can do it **without the admin password**, because most
+consumer routers answer an unauthenticated UPnP query with their uptime. Rulings:
+
+- **Confirm each "reboot" from the client side** (Wi-Fi link down, a ping gap at that instant): the
+  UPnP counter can reset on a mere daemon restart.
+- **Log to a local file on a host that stays awake**, across the hours the owner reports drops; a
+  sleeping laptop is a blind spot, not a quiet period.
+- **Discard boots someone's hands caused** before reading the list, then rule out load, then propose
+  the UPS power test — which the owner can run without any password.
+
+Read `references/router-reboots.md` when you set up the logger or read its boot list — it has the
+UPnP calls, their caveats, and the power test.
 
 ## 3. Inspect the router admin UI
 
@@ -267,42 +253,18 @@ take; an agent that stops here loses nothing, because everything below is read-o
   **whether its backhaul is wireless or wired**. Wireless backhaul is the top suspect.
 - **MTU / NAT boost / hardware accel** — confirm MTU 1500 (unless PPPoE) and HW acceleration on.
 
-**Prefer the router's own API over clicking through the UI.** Many routers expose the
-data the UI draws as JSON. One example is Keenetic's RCI. Its `/auth` answers 401 with a realm and a
-challenge. The client logs in with `sha256(challenge + md5("login:realm:password"))` and keeps the
-cookie. After that, `POST /rci/` takes `[{"show":{"log":{"max-lines":3000}}}]`, and
-`show interface rrd` returns traffic history at several resolutions. A log you can grep beats any
-screenshot. Two things to watch: the log's first lines can carry a pre-NTP date, and a log only goes
-back to the last reboot.
+**Prefer the router's own API over clicking through the UI** — a log you can grep beats a screenshot.
+Only with a session or token the owner hands you; the login step itself stays theirs. Read
+`references/router-api-and-cellular.md` §1 when the UI is backed by a JSON API.
 
-**A cellular (4G/LTE) WAN — the symptom "only a reboot helps" is usually radio, not the router.**
-Read the modem's signal fields from the interface status and grade them:
+## 3a. Cellular (4G/LTE) WAN — "only a reboot helps" is usually radio, not the router
 
-| metric | good | marginal | bad |
-|---|---|---|---|
-| RSRP | > −90 dBm | −90…−105 | < −105 |
-| RSRQ | > −10 dB | −10…−15 | < −15 |
-| SINR/CINR | > 10 dB | 0…10 | < 0 (noise louder than signal) |
-
-Then count `connection lost` / `Internet access lost` lines in the log. Several reconnects an hour
-on bad SINR means the radio link itself is the cause. Two fixes apply, in this order. First,
-placement: higher up, at a window facing the tower, away from heaters (also check the modem
-temperature). Second, an **automatic recovery probe**: a ping-check on the mobile interface that
-restarts the modem after N failed probes. Without one, the router can sit "connected" with no
-traffic until a human power-cycles it.
-
-Reading such a router's API, a few things hold across models. Find the mobile interface by its
-type, not by a guessed name, and read the ping-check (or "connection monitor") state from the
-router itself rather than inferring it. In the log, look for the mobile interface's connection-state
-transitions. A down→up pair while the modem device stays attached points to a reconnect. The
-modem's own device detaching and re-attaching points to a restart, or to a crash, a power dip or a
-loose connection. Treat each as a clue and correlate it: a detach that lines up with the probe's
-fail counter reaching its limit is probably the probe acting; one with no such change is not. When you configure the probe, read the config back: on some firmware, setting a probe
-host REPLACES the existing list rather than adding to it. After enabling a probe, watch the next few
-minutes of the log and the probe state: some firmware restarts the modem once before the probe
-settles. Call that a one-off only after the probe reports success and the connection holds. Finally, the modem's status payload usually
-carries the SIM's IMSI/ICCID, the IMEI and the subscriber number. Copy only the signal fields you
-need, and never forward or log the whole object.
+Grade RSRP / RSRQ / SINR from the modem's status, then count reconnects in the log; several an hour on
+bad SINR means the radio link is the cause. Fix placement first, then add an automatic recovery probe
+(a ping-check that restarts the modem). **Configuring that probe is a router write: owner's OK, one
+change, re-measure.** Never copy the modem's whole status object — it carries the SIM's identifiers.
+Read `references/router-api-and-cellular.md` §2 for the grading table, how to read the log, and the
+probe's firmware quirks.
 
 ## 4. Diagnose and recommend — the fix ladder
 
