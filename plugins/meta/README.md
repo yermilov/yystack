@@ -1,7 +1,7 @@
 # meta
 
-The **meta** plugin for the `yystack` marketplace — the tooling for building the marketplace
-itself. It ships six skills and a session-start hook:
+The **meta** plugin — the tooling for building a skills marketplace itself. Every marketplace
+bootstrapped with `clone-marketplace` carries a copy of it. It ships six skills and a session-start hook:
 
 ## Skills
 

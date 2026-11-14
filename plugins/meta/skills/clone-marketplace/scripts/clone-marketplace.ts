@@ -11,8 +11,11 @@
  *   bun run clone-marketplace.ts --new    <target-dir> --name <marketplace-name> \
  *          [--display "<UI name>"] [--owner-name "<name>"] [--owner-email "<email>"] \
  *          [--source <git-url>]
- *   bun run clone-marketplace.ts --update <target-dir> [--source <git-url>]
- *   bun run clone-marketplace.ts --new ... --dry-run   # print actions, change nothing
+ *   bun run clone-marketplace.ts --update <target-dir> [--source <git-url>] [--force]
+ *   add --dry-run to either mode to print the actions and change nothing
+ *
+ * --update refuses (exit 1) when plugins/meta has uncommitted or ignored files, when the target is
+ * not a git repo, or when the target IS the source marketplace; --force skips those three checks.
  *
  * Manifests are built with JSON.stringify, so owner/display/description values with
  * quotes or other special characters are always valid JSON. Does NOT create the
@@ -52,6 +55,7 @@ let ownerName = 'Your Name';
 let ownerEmail = 'you@example.com';
 let source = DEFAULT_SOURCE;
 let dryRun = false;
+let force = false;
 
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
@@ -83,13 +87,20 @@ for (let i = 0; i < argv.length; i++) {
     case '--dry-run':
       dryRun = true;
       break;
+    case '--force':
+      force = true;
+      break;
     case '-h':
     case '--help':
       console.log(
         'Usage:\n' +
-          '  clone-marketplace.ts --new <dir> --name <name> [--display] [--owner-name]\n' +
-          '                       [--owner-email] [--source] [--dry-run]\n' +
-          '  clone-marketplace.ts --update <dir> [--source]\n' +
+          '  clone-marketplace.ts --new <dir> --name <kebab-name> [--display <ui name>]\n' +
+          '                       [--owner-name <name>] [--owner-email <email>] [--source <git-url>] [--dry-run]\n' +
+          '  clone-marketplace.ts --update <dir> [--source <git-url>] [--dry-run] [--force]\n' +
+          '\n--dry-run prints every action and changes nothing.\n' +
+          '--update refuses when plugins/meta has uncommitted or ignored files, when <dir> is not a git repo,\n' +
+          '  or when <dir> is the source marketplace itself; --force skips those checks (local edits\n' +
+          '  under plugins/meta are then lost).\n' +
           `\n--source defaults to ${DEFAULT_SOURCE} (the canonical meta plugin).`,
       );
       process.exit(0);
@@ -100,6 +111,10 @@ for (let i = 0; i < argv.length; i++) {
 
 if (!mode) die('pass --new <dir> or --update <dir> (see --help)');
 if (!target) die('missing target directory');
+if (mode === 'new') {
+  if (!name) die('--new requires --name <marketplace-name> (kebab-case)');
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) die(`--name must be kebab-case (got '${name}')`);
+}
 
 function run(desc: string, fn: () => void): void {
   if (dryRun) console.log(`  would: ${desc}`);
@@ -134,7 +149,6 @@ try {
     readFileSync(join(upstream, 'plugins/meta/.claude-plugin/plugin.json'), 'utf8'),
   );
   const upstreamVersion: string = upstreamManifest.version ?? 'unknown';
-  const metaDescription: string = upstreamManifest.description ?? '';
   say(`upstream meta plugin version: ${upstreamVersion}`);
 
   // The source marketplace's own name (e.g. "yystack"), read from its manifest rather
@@ -150,10 +164,42 @@ try {
     }
   })();
 
-  const renamedClaudeMd = (toName: string) =>
-    // Retitle only the guide's heading: a blanket replace of the source name would also mangle
-    // ordinary words when the source marketplace is named something common (e.g. "skills").
-    readFileSync(join(upstream, 'CLAUDE.md'), 'utf8').replace(`# ${upstreamName} —`, `# ${toName} —`);
+  const sourceLabel = upstreamName || source;
+  // The meta entry's description, minus any "for the <source> marketplace" self-reference, so a
+  // clone's manifests and README do not present it as the source marketplace.
+  const metaDescription: string = String(upstreamManifest.description ?? '').replace(
+    upstreamName ? ` for the ${upstreamName} marketplace` : /^$/,
+    ' for a skills marketplace',
+  );
+
+  // The source's guide says the repo is the CANONICAL source of meta and invites edits under
+  // plugins/meta. In a clone both are false — meta is vendored, and the next --update replaces it —
+  // so that section is swapped for one that says so. Only the heading is retitled otherwise: a
+  // blanket replace of the source name would mangle ordinary words (a source named "skills").
+  const vendoredSection = (toName: string) => `## The \`meta\` plugin is vendored — do not edit it here
+
+\`plugins/meta/\` is a copy of the meta plugin from ${source}. \`clone-marketplace --update\`
+replaces that directory wholesale, so a local edit there is lost on the next update. To change a
+meta skill, propose the change upstream, or put your own variant in a plugin of your own.
+Everything else in ${toName} is yours.
+
+`;
+  const renamedClaudeMd = (toName: string): string => {
+    let md = readFileSync(join(upstream, 'CLAUDE.md'), 'utf8').replace(
+      `# ${upstreamName} —`,
+      `# ${toName} —`,
+    );
+    const start = md.search(/^## This repo is the canonical source of the `meta` plugin.*$/m);
+    if (start >= 0) {
+      const rest = md.slice(start + 3);
+      const nextHeading = rest.search(/^## /m);
+      const end = nextHeading >= 0 ? start + 3 + nextHeading : md.length;
+      md = md.slice(0, start) + vendoredSection(toName) + md.slice(end);
+    } else {
+      md = `${md.trimEnd()}\n\n${vendoredSection(toName)}`;
+    }
+    return md;
+  };
 
   // Retarget the copied meta's SessionStart health hook to the DESTINATION marketplace, so it
   // watches the marketplace it's installed in — not the canonical source it was cloned from.
@@ -190,7 +236,6 @@ try {
   };
 
   if (mode === 'new') {
-    if (!name) die('--new requires --name <marketplace-name> (kebab-case)');
     if (existsSync(target)) die(`target ${target} already exists — use --update for an existing repo`);
     if (!display) {
       display = name
@@ -212,7 +257,14 @@ try {
       retargetMetaHooks(join(target, 'plugins/meta'), name),
     );
 
-    if (!dryRun) {
+    if (ownerName === 'Your Name' || ownerEmail === 'you@example.com') {
+      say('WARNING: owner name/email are placeholders — pass --owner-name / --owner-email, or fix LICENSE and .claude-plugin/marketplace.json before pushing.');
+    }
+    if (dryRun) {
+      for (const f of ['.claude-plugin/marketplace.json', '.agents/plugins/marketplace.json', 'CLAUDE.md (meta section rewritten as vendored)', 'AGENTS.md → CLAUDE.md symlink', 'LICENSE (MIT)', 'README.md'])
+        console.log(`  would: write ${f}`);
+      console.log('  would: git init + git add -A');
+    } else {
       writeFileSync(
         join(target, '.claude-plugin/marketplace.json'),
         `${JSON.stringify(
@@ -220,7 +272,7 @@ try {
             name,
             owner: { name: ownerName, email: ownerEmail },
             metadata: {
-              description: 'A skills marketplace bootstrapped from yystack.',
+              description: `A skills marketplace bootstrapped from ${sourceLabel}.`,
               version: '0.1.0',
             },
             plugins: [{ name: 'meta', source: './plugins/meta', description: metaDescription }],
@@ -252,7 +304,10 @@ try {
       writeFileSync(join(target, 'CLAUDE.md'), renamedClaudeMd(name));
       symlinkSync('CLAUDE.md', join(target, 'AGENTS.md'));
       writeFileSync(join(target, 'LICENSE'), mitLicense(new Date().getFullYear(), ownerName));
-      writeFileSync(join(target, 'README.md'), starterReadme(name, ownerName, metaDescription, source));
+      writeFileSync(
+        join(target, 'README.md'),
+        starterReadme(name, ownerName, metaDescription, sourceLabel, source),
+      );
       execFileSync('git', ['init', '-q'], { cwd: target });
       execFileSync('git', ['add', '-A'], { cwd: target });
     }
@@ -264,6 +319,34 @@ try {
     if (!existsSync(join(target, '.claude-plugin/marketplace.json'))) {
       die(`${target} is not a marketplace repo (no .claude-plugin/marketplace.json)`);
     }
+    // The destination's own marketplace name — the target repo always has this manifest (checked
+    // above), so it's readable on a dry-run too.
+    const tgtName: string =
+      JSON.parse(readFileSync(join(target, '.claude-plugin/marketplace.json'), 'utf8')).name ??
+      'marketplace';
+    // Guards: --update deletes plugins/meta, so refuse where that would lose work. --force skips.
+    if (!force) {
+      if (upstreamName && tgtName === upstreamName) {
+        die(
+          `${target} is named '${tgtName}', like the source marketplace — it looks like the source itself, which is edited directly, never updated from GitHub. (--force to override.)`,
+        );
+      }
+      let porcelain = '';
+      try {
+        porcelain = execFileSync('git', ['status', '--porcelain', '--ignored', '--', 'plugins/meta'], {
+          cwd: target,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore'],
+        });
+      } catch {
+        die(`${target} is not a git repo, so local edits under plugins/meta cannot be checked. (--force to override.)`);
+      }
+      if (porcelain.trim()) {
+        die(
+          `plugins/meta has uncommitted or git-ignored files — --update would delete them. Commit, stash or move them first (--force to discard them):\n${porcelain.trimEnd()}`,
+        );
+      }
+    }
 
     say(`updating meta plugin + structure in ${target} to upstream latest (meta v${upstreamVersion})`);
     run(`rm -rf ${target}/plugins/meta`, () =>
@@ -273,16 +356,14 @@ try {
     run(`cp -R plugins/meta → ${target}/plugins/meta`, () =>
       cpSync(join(upstream, 'plugins/meta'), join(target, 'plugins/meta'), { recursive: true }),
     );
-    // The destination's own marketplace name — the target repo always has this manifest (checked
-    // above), so it's readable on a dry-run too.
-    const tgtName: string =
-      JSON.parse(readFileSync(join(target, '.claude-plugin/marketplace.json'), 'utf8')).name ??
-      'marketplace';
     run(`retarget meta health hook → ${tgtName}`, () =>
       retargetMetaHooks(join(target, 'plugins/meta'), tgtName),
     );
 
-    if (!dryRun) {
+    if (dryRun) {
+      if (!existsSync(join(target, 'CLAUDE.md'))) console.log('  would: add CLAUDE.md (missing)');
+      if (!existsSync(join(target, 'AGENTS.md'))) console.log('  would: add AGENTS.md → CLAUDE.md symlink (missing)');
+    } else {
       if (!existsSync(join(target, 'CLAUDE.md'))) {
         writeFileSync(join(target, 'CLAUDE.md'), renamedClaudeMd(tgtName));
         say('added CLAUDE.md (was missing)');
@@ -339,11 +420,11 @@ SOFTWARE.
 `;
 }
 
-function starterReadme(mp: string, owner: string, desc: string, src: string): string {
+function starterReadme(mp: string, owner: string, desc: string, label: string, src: string): string {
   return `# ${mp}
 
 ${owner}'s skills marketplace — an installable Claude Code / Codex plugin
-marketplace, bootstrapped from [yystack](${src}).
+marketplace, bootstrapped from [${label}](${src}).
 
 ## Plugins
 
