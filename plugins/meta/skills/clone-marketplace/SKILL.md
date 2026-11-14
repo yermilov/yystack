@@ -1,11 +1,11 @@
 ---
 name: clone-marketplace
 description: >-
-  Bootstrap a NEW AI-agent skills marketplace, or bring an existing one's meta plugin and structure up
-  to date, from the canonical marketplace — always fetched from GitHub at the latest version, never a
-  local copy. Use when the user wants to "create/start my own skills marketplace", "clone/bootstrap a
+  Bootstrap a NEW AI-agent skills marketplace, or refresh an existing one's vendored meta plugin, from
+  the canonical marketplace — fetched from its repo's latest commit (GitHub by default), never from an
+  installed copy. Use when the user wants to "create/start my own skills marketplace", "clone/bootstrap a
   marketplace like this one", "scaffold a new plugin marketplace repo", or "update my marketplace's
-  meta plugin / structure to the latest" — «створи свій маркетплейс скілів», «онови meta-плагін
+  meta plugin to the latest" — «створи свій маркетплейс скілів», «онови meta-плагін
   маркетплейсу». Do NOT use to add one plugin/skill to a marketplace you already run (that is
   plugin-dev), nor to check whether an INSTALLED marketplace is current (marketplace-health), nor to
   write SKILL.md prose (skill-authoring). Runs a bundled Bun script (--new
@@ -19,9 +19,11 @@ copies that shape — the two marketplace manifests, the **meta plugin**, `CLAUD
 README and LICENSE — so someone can stand up their own marketplace in one step, and keep its meta
 plugin current later.
 
-**The one rule that matters:** the meta plugin and structure are pulled **from GitHub, at the latest
-commit** (a shallow clone of the source repo's default branch) — *never* from a local checkout. So a
-clone/update always gets today's meta plugin, whatever is (or isn't) on the machine running this.
+**The one rule that matters:** the meta plugin and structure are pulled from the **source repo at its
+latest commit** (a shallow clone of its default branch; the canonical GitHub repo unless `--source`
+says otherwise) — *never* from whatever copy is installed on this machine. So a clone/update gets
+today's meta plugin, not a stale cache. `--source` accepts any git URL, a local path included; point
+it somewhere else only on the user's say-so.
 
 The work is deterministic, so it lives in a script — you mostly run it and then do the human-only
 follow-ups (create the GitHub repo, review, commit).
@@ -34,13 +36,14 @@ this run follows:
 
 **`--new`:** 1. Check `bun` is installed, else run install-bun (§ The script)   2. Ask the user for
 the marketplace name and the owner's name + email (§ 1)   3. Run `--new` (§ 1)   4. Run
-`check-manifests.ts` over the result (§ After running)   5. Hand the user the human follow-ups:
-create the GitHub repo, commit + push, add plugins (§ 1)
+`check-manifests.ts` over the result (§ After running)   5. Commit the scaffold on the user's yes,
+or hand it to them (§ 1)   6. Hand the user the human follow-ups:
+create the GitHub repo, push, add plugins (§ 1)
 
 **`--update`:** 1. Check `bun` is installed, else run install-bun (§ The script)
-2. Preview with `--update --dry-run` — it also shows whether a guard refuses (§ 2)   3. Run
-`--update` (§ 2)   4. Review `git status` + `git diff` (§ 2)   5. Run `check-manifests.ts` (§ After
-running)   6. Commit on the user's yes, or hand it to them (§ 2)
+2. Preview with `--update --dry-run` (§ 2)   3. If a guard refused: resolve it, or get the
+user's explicit yes for `--force` (§ 2)   4. Run `--update` (§ 2)   5. Review `git status` + `git diff` (§ 2)   6. Run `check-manifests.ts` (§ After
+running)   7. Commit on the user's yes, or hand it to them; pushing is theirs (§ 2)
 
 Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
 left open — an unfinished list at the end must mean something really is unfinished.
@@ -88,17 +91,17 @@ It produces, at `./my-skills`, a ready-to-push marketplace:
   marketplace's name so it watches yours;
 - `CLAUDE.md` — upstream's repo guide, retitled, with its "this repo is the canonical source of meta"
   section replaced by one saying meta is **vendored** here and edits to it are lost on `--update` —
-  plus an `AGENTS.md` symlink to it;
+  plus an `AGENTS.md` symlink to it (a copy, with a warning, where symlinks are not allowed);
 - a starter `README.md` and an MIT `LICENSE` in the owner's name;
 - `git init` + an initial stage.
 
 Then the **human follow-ups** (the script prints them):
 1. Create the GitHub repo (e.g. `gh repo create <owner>/my-skills --public`) — the owner/repo the
    README's install lines reference.
-2. `git commit` the scaffold and `git push`.
+2. Commit the scaffold (you may, on their yes) and `git push` (theirs).
 3. Add your own plugins/skills with **plugin-dev** + **skill-authoring**.
 
-## 2. UPDATE an existing marketplace to the latest
+## 2. Refresh an existing marketplace's meta plugin
 
 ```
 bun run "SKILLDIR/scripts/clone-marketplace.ts" --update ./my-skills --dry-run   # preview
@@ -119,7 +122,7 @@ edited directly). `--force` skips all three, and any local files under `plugins/
 
 After it runs:
 1. `git -C <dir> status && git -C <dir> diff` — review exactly what changed.
-2. Commit. The meta plugin's version bump travels with the copied files, so installed clients re-pull
+2. Commit on the user's yes (pushing stays theirs). The meta plugin's version bump travels with the copied files, so installed clients re-pull
    meta on their next update. The Claude manifest's `metadata.version` needs no bump — unless you
    also edit the meta entry in `marketplace.json` (its description, say), which per plugin-dev's
    **Version discipline** does need one.

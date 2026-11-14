@@ -1,11 +1,12 @@
 #!/usr/bin/env bun
 /**
  * clone-marketplace.ts — bootstrap a NEW skills marketplace, or UPDATE an existing
- * one, from the canonical yystack structure + its meta plugin.
+ * one, from the source marketplace's structure + its meta plugin.
  *
- * It ALWAYS fetches the meta plugin and scaffold from the source repo on GitHub at
- * its LATEST commit (a shallow clone of the default branch) — never a local copy —
- * so a clone/update gets the current meta plugin.
+ * It ALWAYS fetches the meta plugin and scaffold from the source repo at its LATEST commit
+ * (a shallow clone of the default branch) — the canonical GitHub repo unless --source names
+ * another git URL — never from a copy installed on this machine, so a clone/update gets the
+ * current meta plugin.
  *
  * Usage:
  *   bun run clone-marketplace.ts --new    <target-dir> --name <marketplace-name> \
@@ -23,14 +24,17 @@
  */
 import { execFileSync } from 'node:child_process';
 import {
+  copyFileSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
+  constants as fsConstants,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -302,7 +306,7 @@ Everything else in ${toName} is yours.
         )}\n`,
       );
       writeFileSync(join(target, 'CLAUDE.md'), renamedClaudeMd(name));
-      symlinkSync('CLAUDE.md', join(target, 'AGENTS.md'));
+      linkAgentsMd(target);
       writeFileSync(join(target, 'LICENSE'), mitLicense(new Date().getFullYear(), ownerName));
       writeFileSync(
         join(target, 'README.md'),
@@ -361,15 +365,15 @@ Everything else in ${toName} is yours.
     );
 
     if (dryRun) {
-      if (!existsSync(join(target, 'CLAUDE.md'))) console.log('  would: add CLAUDE.md (missing)');
-      if (!existsSync(join(target, 'AGENTS.md'))) console.log('  would: add AGENTS.md → CLAUDE.md symlink (missing)');
+      if (!present(join(target, 'CLAUDE.md'))) console.log('  would: add CLAUDE.md (missing)');
+      if (!present(join(target, 'AGENTS.md'))) console.log('  would: add AGENTS.md → CLAUDE.md symlink (missing)');
     } else {
-      if (!existsSync(join(target, 'CLAUDE.md'))) {
+      if (!present(join(target, 'CLAUDE.md'))) {
         writeFileSync(join(target, 'CLAUDE.md'), renamedClaudeMd(tgtName));
         say('added CLAUDE.md (was missing)');
       }
-      if (!existsSync(join(target, 'AGENTS.md'))) {
-        symlinkSync('CLAUDE.md', join(target, 'AGENTS.md'));
+      if (!present(join(target, 'AGENTS.md'))) {
+        linkAgentsMd(target);
         say('added AGENTS.md → CLAUDE.md symlink (was missing)');
       }
       // The refreshed plugin is only discoverable if `meta` is registered.
@@ -393,6 +397,34 @@ Everything else in ${toName} is yours.
   }
 } finally {
   rmSync(tmp, { recursive: true, force: true });
+}
+
+// AGENTS.md is a symlink to CLAUDE.md so every host reads one guide. Where symlinks are not
+// allowed (Windows without the privilege), write a copy instead and say so, rather than dying
+// halfway through a scaffold.
+// lstat, not existsSync: a dangling symlink "does not exist" to existsSync, and writing through
+// it would create a file wherever it points — possibly outside the marketplace.
+function present(p: string): boolean {
+  try {
+    lstatSync(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function linkAgentsMd(dir: string): void {
+  try {
+    symlinkSync('CLAUDE.md', join(dir, 'AGENTS.md'));
+  } catch (e) {
+    // Fall back only when the platform refuses symlinks; anything else (EEXIST, …) is a real error.
+    const code = (e as NodeJS.ErrnoException).code ?? '';
+    if (!['EPERM', 'EACCES', 'ENOTSUP', 'ENOSYS'].includes(code)) throw e;
+    copyFileSync(join(dir, 'CLAUDE.md'), join(dir, 'AGENTS.md'), fsConstants.COPYFILE_EXCL);
+    say(
+      'WARNING: could not create the AGENTS.md symlink here — wrote a copy of CLAUDE.md instead; keep the two in sync by hand.',
+    );
+  }
 }
 
 function mitLicense(year: number, holder: string): string {

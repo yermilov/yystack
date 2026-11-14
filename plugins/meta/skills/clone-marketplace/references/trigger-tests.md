@@ -23,7 +23,7 @@ been reviewed but not measured.
 | "set up a Codex plugin marketplace from scratch" | the other host |
 | "update my marketplace's meta plugin to the latest" | the update branch |
 | "pull the newest meta skills into my own marketplace repo" | update, no keyword |
-| "my marketplace was cloned months ago — bring its structure up to date" | update, a symptom |
+| "my marketplace was cloned months ago — its meta skills are out of date" | update, a symptom |
 | «створи свій маркетплейс скілів» | a native-language phrasing |
 | «онови meta-плагін маркетплейсу» | the native-language update |
 
