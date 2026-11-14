@@ -5,7 +5,8 @@
  * Parses every SKILL.md frontmatter as YAML (never a `description:` line-grep, which bleeds into the
  * keys that follow and over-reports length) and reports, per skill:
  *   - description length in CODE POINTS against the 1024-character cap (the skill validator refuses
- *     a longer one; the runtime accepts it and truncates the tail, so keep only capability prose there)
+ *     a longer one — Codex CLI, as of 2026-08: its runtime accepts it and truncates the tail, so keep only
+ *     capability prose there) and against SKILL.md §1's 500–900 aim (a warning)
  *   - whether the DESCRIPTION carries a `Do not use for…` boundary — read off the parsed field, not
  *     the file, because the same phrase in the body is not a boundary
  *   - `name` vs its directory
@@ -20,7 +21,10 @@
 import { basename, dirname, join, resolve } from 'node:path'
 
 const CAP = 1024
-const NEAR_CAP = 0.9 // flag descriptions crowding the cap: they compete for the skills context budget
+// SKILL.md §1's aim. Outside it is a warning, not a failure: a long one competes for the shared skills
+// budget (which shortens descriptions from the tail), a short one rarely names enough situations.
+const AIM_MIN = 500
+const AIM_MAX = 900
 const BOUNDARY = /do not use (for|it|this|to|when|on)|not for\b|—\s*that'?s\b/i
 
 interface Row {
@@ -38,14 +42,20 @@ function usage(): never {
 Scans <root>/plugins/*/skills/*/SKILL.md (default root: the current directory).
 
 Exits 1 on the defects a machine can be sure of: frontmatter that will not parse, a missing or
-non-string name/description, a name that disagrees with its directory, and a description over the
-${CAP}-character cap. Descriptions crowding the cap and missing boundaries are reported but do not
-fail the run — both need a human read. Exits 2 when the audit cannot run: no plugins/*/skills/*/SKILL.md under the root, or a Bun without its YAML parser (< 1.3).`)
+non-string or blank name/description, a name that disagrees with its directory, and a description over the
+${CAP}-character cap. Descriptions outside the ${AIM_MIN}–${AIM_MAX} aim and missing boundaries are reported but do not
+fail the run — both need a human read. Exits 2 when the audit cannot run: an unreadable root or no
+plugins/*/skills/*/SKILL.md under it, an unknown flag or a second root, or a Bun without its YAML
+parser (< 1.3).`)
   process.exit(0)
 }
 
 const args = process.argv.slice(2)
-if (args.includes('-h') || args.includes('--help')) usage()
+// --help wins only when nothing else on the line is wrong: `--bad --help` or two roots must still exit 2.
+const badFlag =
+  args.some((a) => a.startsWith('-') && !['--json', '--help', '-h'].includes(a)) ||
+  args.filter((a) => !a.startsWith('-')).length > 1
+if ((args.includes('-h') || args.includes('--help')) && !badFlag) usage()
 
 // Bun.YAML is built in from Bun 1.3. Fail with an actionable message rather than a bare TypeError:
 // an older Bun runs the script, so the version has to be checked here.
@@ -56,21 +66,45 @@ if (typeof Bun.YAML?.parse !== 'function') {
   )
   process.exit(2)
 }
+// Refuse what we do not parse: a typo'd flag silently ignored would audit the wrong thing and pass.
+const unknown = args.filter((a) => a.startsWith('-') && !['--json', '--help', '-h'].includes(a))
+const positional = args.filter((a) => !a.startsWith('-'))
+if (unknown.length > 0 || positional.length > 1) {
+  console.error(
+    unknown.length > 0
+      ? `audit-frontmatter: unknown flag ${unknown.join(' ')} — the flags are --json and --help.`
+      : `audit-frontmatter: one marketplace root at most, got ${positional.length}: ${positional.join(' ')}`,
+  )
+  process.exit(2)
+}
 const asJson = args.includes('--json')
-const root = resolve(args.find((a) => !a.startsWith('--')) ?? '.')
+const root = resolve(positional[0] ?? '.')
 
 const glob = new Bun.Glob('plugins/*/skills/*/SKILL.md')
-const paths = (await Array.fromAsync(glob.scan({ cwd: root }))).sort()
+let paths: string[]
+try {
+  paths = (await Array.fromAsync(glob.scan({ cwd: root }))).sort()
+} catch (e) {
+  console.error(`cannot read ${root} (${(e as Error).message}) — pass the marketplace root, the directory that holds plugins/.`)
+  process.exit(2)
+}
 
 if (paths.length === 0) {
-  console.error(`no plugins/*/skills/*/SKILL.md under ${root} — wrong directory?`)
+  console.error(`no plugins/*/skills/*/SKILL.md under ${root} — wrong directory? (permanent: fix the path, a retry will not help)`)
   process.exit(2)
 }
 
 const rows: Row[] = []
 for (const rel of paths) {
   const full = join(root, rel)
-  const text = await Bun.file(full).text()
+  let text: string
+  try {
+    text = await Bun.file(full).text()
+  } catch (e) {
+    // A skill we cannot read would silently shrink the audit, so stop instead.
+    console.error(`cannot read ${full} (${(e as Error).message}) — the audit did not run (permanent: fix the permissions or the path).`)
+    process.exit(2)
+  }
   const dir = basename(dirname(full))
   const base: Row = { path: rel, name: '', dir, length: 0, boundary: false }
 
@@ -112,12 +146,13 @@ for (const rel of paths) {
 
 const broken = rows.filter((r) => r.error)
 const overCap = rows.filter((r) => !r.error && r.length > CAP)
-const nearCap = rows.filter((r) => !r.error && r.length <= CAP && r.length >= CAP * NEAR_CAP)
+const longish = rows.filter((r) => !r.error && r.length <= CAP && r.length > AIM_MAX)
+const shortish = rows.filter((r) => !r.error && r.length < AIM_MIN)
 const mismatched = rows.filter((r) => !r.error && r.name !== r.dir)
 const noBoundary = rows.filter((r) => !r.error && !r.boundary)
 
 if (asJson) {
-  console.log(JSON.stringify({ root, rows, overCap, nearCap, mismatched, noBoundary }, null, 2))
+  console.log(JSON.stringify({ root, rows, overCap, overAim: longish, underAim: shortish, mismatched, noBoundary }, null, 2))
 } else {
   const line = (r: Row) => `  ${String(r.length).padStart(4)}  ${r.path}`
   console.log(`${rows.length} skills under ${root}\n`)
@@ -125,21 +160,23 @@ if (asJson) {
   // A skill whose frontmatter will not parse has no description to measure, so it is counted in NONE
   // of the buckets below. Say so up here: a reader who takes "over the cap: 2" at face value while a
   // parse failure hides a third one has been under-reported by the very tool that was meant to stop
-  // them hand-counting. (Measured: one library's only unparseable skill also had a 1232-char
-  // description, absent from the over-cap list.)
+  // them hand-counting.
   if (broken.length)
     console.log(
       `${broken.length} of these have UNREADABLE frontmatter and are counted in none of the buckets\n` +
         `below — a parse failure silently shrinks every number here. They are listed at the end.\n`,
     )
 
-  // The runtime accepts an over-cap description and silently truncates it — it is the packaged-skill
-  // validator that refuses one. Either way the tail is what you lose, so nothing but capability prose belongs there.
+  // On Codex CLI (as of 2026-08, SKILL.md §1) the runtime accepts an over-cap description and silently
+  // truncates it — it is the packaged-skill validator that refuses one. Either way the tail is what you lose, so nothing but capability prose belongs there.
   console.log(`over the ${CAP}-char cap — validator refuses, runtime truncates: ${overCap.length}`)
   overCap.forEach((r) => console.log(line(r)))
 
-  console.log(`\ncrowding the cap (≥${Math.round(CAP * NEAR_CAP)}) — cut capability prose: ${nearCap.length}`)
-  nearCap.forEach((r) => console.log(line(r)))
+  console.log(`\nover the ${AIM_MAX}-char aim (warning) — cut capability prose: ${longish.length}`)
+  longish.forEach((r) => console.log(line(r)))
+
+  console.log(`\nunder the ${AIM_MIN}-char aim (warning) — does it name enough situations?: ${shortish.length}`)
+  shortish.forEach((r) => console.log(line(r)))
 
   console.log(`\nname ≠ directory: ${mismatched.length}`)
   mismatched.forEach((r) => console.log(`  ${r.name} in ${r.path}`))

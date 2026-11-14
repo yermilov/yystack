@@ -6,7 +6,7 @@ description: >-
   auto-firing, length, steps or Codex portability, even one you could answer from memory. Use when
   creating, editing, improving, reviewing, shortening or debugging a skill / SKILL.md: «як написати
   скіл», «створити/покращити скіл», «чому скіл не тригериться», "write a skill", "make a SKILL.md",
-  "my skill never triggers", "stop a skill auto-firing", "my workflow skill skips steps", "will my
+  "my skill never triggers", "my workflow skill skips steps", "will my
   skill work on Codex", "review my skill before I publish it". Do not use for plugin PACKAGING —
   manifests, version bumps, marketplace wiring, README tables (that is plugin-dev) — nor for
   building or running evals (the host's eval tooling), nor for a CLAUDE.md / AGENTS.md, a slash
@@ -20,17 +20,19 @@ triggers, follows, and benefits from — thousands of times. This is the prescri
 guide: how to make the prose itself good.
 
 > This skill practices what it preaches — its own description and structure are meant as a worked
-> example (its open test items are recorded in `references/trigger-tests.md`). If you change it, keep
-> it that way.
+> example. Its trigger runs so far are Claude Code only; Codex routing is untested
+> (`references/trigger-tests.md`). To review a skill, work the Pre-ship checklist at the end: it is the
+> review procedure. If you change this skill, keep it a worked example.
 
-Length verdict (§2): 2026-11-14 — ~540 lines after a section-by-section pass that moved out the
-description-cap story, §3's Claude 5 sources, §5's script reasoning, §6's pattern explanations, the
-Step-0 line-by-line rationale and the library-review mechanics (`references/`). Every section still
-inline is a ruling an author applies while writing (§1 activation and the two-host flag table, §2
-tiers and the Step-0 block authors copy verbatim, §3 voice, §4 generalising, §5 bundling, the §6
-index table, §7 testing, §8 maintenance rulings, §9 portability, the checklist); none carries
-evidence that is not already in a reference. A further cut would mean splitting this guide into two
-skills, which is not proposed.
+Length verdict (§2): 2026-11-14 — 571 lines. Every section still inline is a ruling an author
+applies while writing (§1 activation and the two-host flag table, §2 tiers, §3 voice, §4
+generalising, §5 bundling, §7 testing, §8 maintenance rulings, §9 portability); evidence, sources
+and mechanics live in `references/`. Three choices keep it over 500 on purpose: the Step-0 block
+stays inline because it is the template every workflow skill adapts and the source of the marker
+`audit-markers.ts` checks; the §6 table stays as an index, where a row whose rule a section states
+points at that section; and the pre-ship checklist has 36 items because it is the review procedure,
+so §2's one-item-per-skippable-check rule applies to it too. A further cut would mean splitting this
+guide into two skills, which is not proposed.
 
 ## The one job
 
@@ -68,9 +70,9 @@ the structure guidance below (§2) applies *through* the lens of the kind you pi
 others **by name** across the installed set. Grow small composable skills rather than one monolith;
 the God Skill (§6) is what you get when you don't.
 
-**When NOT to use this skill:** for packaging and wiring a plugin (that is `plugin-dev`), for building
-or running an eval harness (use whatever eval tooling your host provides — §7 here says only *what* to
-test). This one is about writing the prose well.
+**When NOT to use this skill:** the description's boundary — packaging a plugin (`plugin-dev`), an
+eval harness (your host's tooling; §7 says only *what* to test), a `CLAUDE.md` / `AGENTS.md`, a slash
+command or a subagent definition. This one is about writing the prose well.
 
 ## 1. Activation — the description is the trigger, the flags decide who may pull it
 
@@ -99,17 +101,12 @@ Bad:  Helps with testing.   ← no artifacts, no verbs, no situations; fires on 
   symmetric pair, or a broad skill and the narrow one it shadows — put a `Do not use for… — that's
   <sibling>` on *each* description, not just the one you happen to be editing. A one-sided boundary
   still lets the unmarked sibling win the trigger from the other direction.
-- **Rank the boundary-less by cross-reference DIRECTION — fix the hub first.** The skill every
-  sibling points *at* while pointing at nobody is both the likeliest gap (a hub reads as "obviously
-  the main one") and the worst one (the classifier already defaults to it, and the hub is typically
-  the skill that CHANGES STATE while its siblings only read). Worked case: `references/precedents.md` §1.
-- **No boundary is the default defect**, and it fails silently (a near-miss skill quietly wins the
-  trigger). Check it on the PARSED description, not a file grep, and audit this skill too; the sweep
-  is in `references/library-maintenance.md` §2.
+  No boundary is the default defect, and it fails silently: check the PARSED description, never a
+  file grep (sweep and order: `references/library-maintenance.md` §2).
 - **Write the description last,** once the body is stable — the behaviour you built, not the aspiration.
-- **Trigger-test it:** list ~10 prompts that _should_ fire and ~10 that _shouldn't_ (typos, slang,
-  indirect phrasings, near-misses sharing a keyword). If the description can't separate them, rewrite it.
-- **Keep the description under 1024 characters, and aim for 500–900** (the audit script warns from 922). Codex's validator rejects a
+- **Trigger-test it (§7)**, and rewrite the description if it cannot separate the two sets.
+- **Keep the description under 1024 characters, and aim for 500–900** (the audit script warns
+  outside that band). Codex's validator rejects a
   longer one and its runtime truncates it (Codex CLI, 2026-08); under the cap, a shared skills budget
   still shortens descriptions from the tail. So put the routing first (verbs, `Use when`, the
   boundary) and any capability sweep last. Measure with `audit-frontmatter.ts` (Bundled resources),
@@ -166,7 +163,7 @@ The biggest structural mistake is putting tier-3 material in tier 2. Once a skil
   over the whole file) naming the sections that had to stay; `audit-markers.ts` checks it (hand-grep
   traps: `references/precedents.md` §9). This is the one statement of the rule; workflow skills
   follow it too, and judge length per step.
-- **Body skeleton that works:** `When to use` (+ when not) → `Goal`/success state → `Workflow` →
+- **Body skeleton that works for a task skill:** the opening prompt (the kinds above) → `When to use` (+ when not) → `Goal`/success state → `Workflow` →
   `Decision rules` (If X, do Y) → `Output` → `Quality checks` → `Bundled resources`.
 - **Signpost with activation conditions**, never "see the references": write `Read
   references/schema.md only when creating or validating the event schema.` The agent shouldn't have
@@ -239,7 +236,7 @@ one that did eight. Test every item: *could it be closed while a named sub-check
 performed?* Then split it — but **bound the splitting** at *skippable with consequence and invisibly
 so*, not *decomposable*; below that line the item stays whole and **its close carries the
 enumeration**. Unlike the marker, this is a **property**: no string detects it, so its audit is that
-per-item test plus checklist item 9 (§8 says why the distinction matters).
+per-item test plus checklist item 36 (§8 says why the distinction matters).
 
 **Length: a workflow skill may run past the ~100–250 default** — budget it per step, with one
 reference per deep step, keeping each step's order, branch conditions and rulings inline. The over-500
@@ -266,7 +263,7 @@ Brief a competent, fast, literal-ish, context-budgeted colleague — not a lawye
   dominates, more if options differ materially" beats "always produce exactly five." Over-constraint
   paralyses; a strong heuristic + the model's pre-training does better on the cases you can't foresee.
 
-### Under-constrain on purpose — what changed with the Claude 5 generation
+### Under-constrain on purpose — what changed with the Claude 5 generation (as of 2026-08)
 
 Over-constraint now costs **conflict**, not tokens: two surfaces saying opposite things make the model
 spend its reasoning reconciling you. So write the least instruction that still gets the behaviour
@@ -294,7 +291,7 @@ Optimise for the distribution of prompts you'll never see, not your three demo p
 - **An example CAGES as much as it teaches — prefer a better interface to another example.** A worked
   example narrows the model to the shape you demonstrated, so first ask whether an **expressive
   interface** carries the same information: a parameter named for its meaning, an `enum` of the legal
-  values, a `--help` stating the contract. (Anthropic's Todo tool needs no example: `status:
+  values, a `--help` stating the contract. (A host's todo tool, as of 2026-08, needs no example: `status:
   pending|in_progress|completed` plus "keep exactly one item `in_progress`" already specifies it.)
   Keep examples where the lesson is a **judgment boundary** you can't encode structurally — and there
   pick ones that **differ along axes** (short/long, clear/ambiguous, happy/edge). Five examples that
@@ -325,8 +322,8 @@ because SKILL.md is Markdown.
 - **`scripts/`** — deterministic work where exactness matters or the model makes mechanical mistakes
   (validate frontmatter, check the tree, convert formats, lint, parse logs). Give them `--help` and
   **verbose, LLM-readable errors** so the agent can debug a failure instead of staring at exit-1. Not
-  for judgment ("decide the positioning"). Three rulings, each of which has already cost a run
-  (the why and the cases: `references/skill-scripts.md` §1–§3):
+  for judgment ("decide the positioning"). The rulings, each of which has already cost a run (the
+  why and the cases: `references/skill-scripts.md`):
   - **TypeScript run with bun is the default language**; Python when only Python has the library;
     anything else, bash included, only for a reason written in the file.
   - **A script may be a pure transformation; it may not supervise a long-lived process, keep state
@@ -335,7 +332,11 @@ because SKILL.md is Markdown.
   - **A documented command must run from any working directory using only what the agent has**: a
     name already on `PATH`, or a quoted placeholder the agent replaces with a literal path it knows
     (the directory it loaded the skill from). Never a repo-relative path, and never `$SKILL_DIR`, which
-    is not set in the agent's shell. When you fix an invocation, replace the old form.
+    is not set in the agent's shell. When you fix an invocation, replace the old form. A plugin's
+    `bin/` directory was on `PATH` on some hosts and not others (as of 2026-08-26), so verify it per host before relying
+    on it.
+  - **A script refuses arguments it did not parse** (exit 2 with a one-line reason) and its errors
+    say whether a failure is permanent or worth a retry.
 - **`assets/`** — reusable non-instruction files: templates, logos, themes, sample outputs.
 
 **Prefer a reference in CODE form over the same thing in prose** — an artifact the model can read in
@@ -348,7 +349,7 @@ re-explaining it. Reach for prose only when no artifact form exists.
 **Strong opinion:** every non-trivial skill ships **at least one validation mechanism** — a script, a
 checklist, a rubric. Without a way to check the output, a skill is just vibes in Markdown. Note that
 this checks the skill's OUTPUT and is not a test of the script itself; scripts under `skills/` have
-no test runner, which is a reason to keep them small rather than a reason to relax.
+usually no test runner, which is a reason to keep them small rather than a reason to relax.
 
 📖 **`references/skill-scripts.md` before you add or grow a `scripts/` file** — why the language
 order is what it is, the bash failures that read as successes, what an unfindable command cost, and
@@ -356,34 +357,36 @@ how to write an error a model can act on.
 
 ## 6. Anti-patterns → the fix
 
+An index: where the fix is a § pointer, the rule is stated there in full.
+
 | Anti-pattern           | Symptom                                          | Fix                                                                                                   |
 | ---------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| **Invisible Skill**    | great when invoked, never auto-fires             | description too vague / internal jargon → rewrite with verbs + artifacts + situations                 |
-| **Keyword Trap**       | fires on irrelevant tasks                        | broad noun ("data", "docs") → add domain + action + one negative boundary                             |
-| **God Skill**          | one skill for "frontend development"             | bloats & confuses → split into focused skills                                                         |
-| **Context Dumpster**   | works but slow/expensive                         | body holds everything → cut to workflow + rules + links; move rest to `references/`                   |
-| **All-Caps Tyrant**    | obeys dumb rules even when adaptation is obvious | separate hard constraints from defaults (§3 hierarchy)                                                |
-| **Conflicting Neighbour** | agent hesitates, or honours the opposite half of two rules | a sibling skill / `CLAUDE.md` says the opposite → find the contradiction across everything loaded together and DELETE the loser; don't add emphasis (§3) |
-| **Example Cage**       | agent only ever produces the demonstrated variant | a usage example narrowed the exploration space → replace it with an expressive interface: enum, named parameter, `--help` (§4) |
-| **Demo-Prompt Skill**  | perfect in the README demo, fails in real use    | replace example-specific steps with general rules; test on messy prompts                              |
-| **Dead Reference**     | "see the reference" but the agent never does     | list each file **with an activation condition**                                                       |
-| **Severed Permission** | agent refuses work the skill actually allows     | a rule's *"you may"* half moved to `references/` while its *"but never"* half stayed inline → keep both halves in the same file (§2) |
+| **Invisible Skill**    | great when invoked, never auto-fires             | §1 — verbs, artifacts, situations |
+| **Keyword Trap**       | fires on irrelevant tasks                        | §1 — a domain and a boundary |
+| **God Skill**          | one skill for "frontend development"             | The three kinds — split it |
+| **Context Dumpster**   | works but slow/expensive                         | §2 tiers                                                                                              |
+| **All-Caps Tyrant**    | obeys dumb rules even when adaptation is obvious | §3 hierarchy                                                                                          |
+| **Conflicting Neighbour** | agent hesitates, or honours the opposite half of two rules | §3 — delete the loser |
+| **Example Cage**       | agent only ever produces the demonstrated variant | §4 — an expressive interface |
+| **Demo-Prompt Skill**  | perfect in the README demo, fails in real use    | §4 — general rules, messy prompts |
+| **Dead Reference**     | "see the reference" but the agent never does     | §2 — signpost with a condition                                                                        |
+| **Severed Permission** | agent refuses work the skill actually allows     | §2 — keep both halves together |
 | **Script Nobody Runs** | useful helper ignored                            | make it explicit/required: "after editing, run the bundled validator; fix failures before responding", with the invocation in §5's placeholder form |
-| **Black Box Script**   | bundled script fails silently                    | verbose, LLM-readable stdout/stderr                                                                   |
+| **Black Box Script**   | bundled script fails silently                    | §5 — LLM-readable errors |
 | **Lint Leakage**       | restates Prettier/ESLint/TS rules                | say which command to run + what a failure means; don't restate the rulebook                           |
 | **Setup Bloat**        | inlines `brew/npm install …` + env setup steps   | assume the tools are installed; move install/setup to a reference the agent reads only *on failure*   |
-| **Rotten Date**        | silently wrong over time                         | isolate volatile facts, stamp "verified as of …", tell the agent to re-check when freshness matters   |
-| **Surprise Skill**     | auto-runs destructive/expensive/private actions  | confirm first in the body, plus the host's invocation flag where one exists (§1) — _a skill may be powerful; it must not be sneaky_ |
-| **Decorative Checklist** | a workflow skill's steps get skimmed — the agent does 1, 3 and 7 and calls it done | numbered prose is not a checklist → open the skill with the copyable Step-0 TODO block (§2) |
+| **Rotten Date**        | silently wrong over time                         | §8 — date it                                                                                          |
+| **Surprise Skill**     | auto-runs destructive/expensive/private actions  | §1 — confirm in the body, plus the host's flag |
+| **Decorative Checklist** | a workflow skill's steps get skimmed — the agent does 1, 3 and 7 and calls it done | §2 — the Step-0 block |
 | **All-or-Nothing Gate** | a completeness rule makes runs record *nothing* | gate the CONCLUSION, not the RECORDING: partial input is always recorded with a coverage line (`partial pass: 7/16, missing: …`); only the derived verdict waits for full coverage (`references/precedents.md` §6) |
-| **Self-Confirming Check** | a capability check that can only ever answer "no" (or "yes") | make the probe positive (name the search/load step as part of the test) and give every absence a floor: "two empty probes close the question; that is a fact about this host, not your mistake". Date the host claim (`references/precedents.md` §10) |
+| **Self-Confirming Check** | a capability check that can only ever answer "no" (or "yes") | §2 — the Step-0 block's probe rule; date the host claim |
 
 ## 7. Test it — anecdotes aren't evals
 
 You don't know a skill helps until you compare **with-skill vs. no-skill** on the same prompts.
 
-- **Lightweight (most skills):** ~10 should-trigger + ~10 should-not (the near-misses are the
-  valuable ones) + a handful of real task prompts, each with its expected behaviour and what it must
+- **Lightweight (most skills):** ~10 should-trigger + ~10 should-not — typos, slang, indirect
+  phrasings, and above all near-misses sharing a keyword — + a handful of real task prompts, each with its expected behaviour and what it must
   _not_ do. Run baseline vs. with-skill (vs. the previous version if you're improving one): did it
   trigger? avoid false triggers? produce leaner output? use bundled files right? stay safe?
 - **Heavyweight (shared/production skills):** blind A/B against a rubric (task success, correctness,
@@ -396,27 +399,27 @@ This skill's own set is `references/trigger-tests.md`. Copy its shape for yours.
 
 - **A stale skill is worse than none** — it actively commands deprecated behaviour. Isolate volatile
   facts (API versions, prices, policies), stamp them verified-on, and review skills like dependencies.
-- **Write every measurement with its BOUNDARY attached — "what this does not establish" — or it
+- **Write every measurement with its boundary attached — "what this does not establish" — or it
   reads as a conclusion and gets obeyed as one.** A number in a skill file has no author standing
   beside it to say how far it generalises, so the next agent takes the widest reading available
   (`references/precedents.md` §13). After each measured claim, finish the sentence *"…which does not
   establish …"*; in a table, add a column **What it does not establish** — a shape worth stealing for
   any skill whose output is a finding.
-- **When you review a skill, RUN the commands it prescribes — don't read them.** Prose review cannot
+- **When you review a skill, run the commands it prescribes — don't just read them.** Prose review cannot
   see this rot: the command still exists and still looks right while privilege requirements, renamed
   flags and moved output formats have quietly broken it. Execute each on a real machine, and where one
   needs elevation or has a no-privilege alternative, **say which and prefer the alternative** — the
   version that runs unprompted beats the one that stalls on a password prompt on an unattended run.
   (The case that proves it: `references/precedents.md` §7.)
-- **A skill's own statement of scope is a TESTABLE claim — check the body against it.** When a skill
+- **A skill's own statement of scope is a testable claim — check the body against it.** When a skill
   says some class of detail "lives elsewhere" (project specifics in a memory file, mechanics in a
   sibling skill, setup in a reference), grep the body for that class before believing it. The
   disclaimer is exactly what stops anyone looking, which is why this is the cheapest high-yield check
   in a review — and the damage is **directional**: it misleads the reader working in a *different*
   project, who follows another project's hardcoded paths as if they were their own. Reconcile it in
   whichever direction is true — narrow the claim, or move the detail out and leave a placeholder.
-- **A fix aimed at one STEP does not bind the other steps that can produce the same bug — after you
-  patch, grep your OWN file for every route to that failure** (`references/precedents.md` §14). Grep
+- **A fix aimed at one step does not bind the other steps that can produce the same bug — after you
+  patch, grep your own file for every route to that failure** (`references/precedents.md` §14). Grep
   for the endpoint, flag or tool the fix names and ask which other steps reach it. Patch them in the
   same change, or point them all at one canonical recipe. If the warning would then appear in three
   places, the fix belongs one layer down — in the server, the tool schema, or a default — where it
@@ -466,33 +469,62 @@ on one but not the other is the usual portability failure.
 
 ## Pre-ship checklist
 
-1. Can a stranger agent tell from the **description** alone when to fire it — verbs, artifacts,
-   situations, synonyms, one boundary? Did you **run** the ~10/~10 trigger set (§7) and record it?
-2. Is the **body lean** (~100–250 lines), tier-3 material moved to bundled files, references
-   **signposted with conditions**? Over 500 lines: the verdict line (§2)? For anything you moved out: did **both halves** of each paired
-   rule travel together, so nothing is left only-prohibited inline? Reading the body ALONE, does the
-   agent know **which way to go at every branch** (§2)? Does each safeguard sit **at the step it
-   guards**, not only in a preamble (§2)?
-3. **Imperative + why**; hard rules marked **Must/Never**, the rest **Default/Prefer**; no wall of caps?
-   Could any rule here be **cut and left to judgement** (§3)? Does anything **contradict a neighbouring
-   skill or `CLAUDE.md`** — or restate what a tool description already says?
-4. Encodes **intent + Definition of Done**, generic placeholders — and does every worked example earn
-   its cage, or would an expressive interface (enum, named param, `--help`) do the job (§4)?
-5. Bundling matches form (scripts=deterministic, references=read-only knowledge, assets=files); each
-   reference in its **highest-fidelity form** (code/tests/mockup over prose, §5); **≥1 validation** present?
-6. Ran **with-skill vs. baseline** on real prompts?
-7. Volatile facts dated; destructive actions stopped for confirmation in the body, plus the host's
-   invocation flag where one exists (§1); nothing sneaky?
-8. Shipping to more than one host? Body names **capabilities, not host-only tools**; tested on each
-   host (§9). Packaging — manifests, versions, marketplace wiring — is `plugin-dev`'s checklist; run
-   that one too.
-9. **Workflow skill?** Does it open with the copyable **Step-0 TODO block** carrying a marker
-   sentence verbatim (`audit-markers.ts`), does every item resolve to a named place in the body (and vice-versa), is no
-   item a **bundle of independently-skippable checks**, and is every deep step's evidence in
-   `references/`?
-10. The §8 properties: does every measurement carry its boundary? Did you **run** the commands the
-   skill prescribes? Does the body honour the skill's own scope claims? After a fix, did you grep the
-   file for other routes to the same failure?
+This list IS the review procedure, one item per check that can be skipped on its own. When you run a
+review, follow §2's Step-0 block for it. Register them in this session's own todo/plan tool (search
+for one first; with none, keep the list in your replies), close each item with what you looked at,
+and close an item that does not apply WITH THAT REASON. A "clean" that cannot name its evidence is
+not a check.
+
+**Activation (§1)**
+1. The description names verbs, artifacts, situations and synonyms a stranger's prompt would use.
+2. It carries a `Do not use for…` boundary naming the right sibling — on BOTH sides of any mutual
+   near-miss.
+3. `audit-frontmatter.ts` passes: under the 1024-character cap, `name` = directory.
+4. The description is in the 500–900 band (the same script warns outside it).
+5. The ~10/~10 trigger set was RUN on the shipped description, and the run is recorded.
+
+**Structure (§2)**
+6. The body is lean (~100–250 lines), or longer for a stated reason.
+7. Past 500 lines, it carries a `Length verdict (§2):` line that is still true.
+8. Tier-3 material is in bundled files, each signposted with WHEN to read it.
+9. Every moved rule took both halves with it: nothing is left only-prohibited inline.
+10. Reading the body alone, the agent knows which way to go at every branch.
+11. Each safeguard sits at the step it guards, not only in a preamble.
+
+**Writing (§3–§4)**
+12. Imperative + why; Must/Never only for hard rules, Default/Prefer for the rest; no wall of caps.
+13. Each rule is stated once in this file.
+14. Nothing contradicts a sibling skill, `CLAUDE.md` or a tool's own description.
+15. It encodes intent and a Definition of Done, not keystrokes.
+16. Examples use generic placeholders, not your names, paths or dates.
+17. Every worked example earns its cage, or an expressive interface replaces it.
+18. A fragile, irreversible step gives the exact command, not a paraphrase.
+19. The skill says what to do when its primary path fails.
+
+**Bundling and testing (§5, §7)**
+20. Each bundled thing is in its highest-fidelity form (code, tests or a mockup over prose).
+21. At least one validation mechanism ships with the skill.
+22. Each bundled script's `--help`, read by running it, matches what the body says.
+23. A bad argument to each script exits non-zero with a reason.
+24. With-skill vs baseline was run on real task prompts, and recorded.
+
+**Maintenance and safety (§8)**
+25. Volatile facts are dated.
+26. Every measurement says what it does not establish.
+27. The commands the skill prescribes were RUN, not read.
+28. The skill's own scope claims hold against its body.
+29. After each fix, the file was grepped for other routes to the same failure.
+30. A rule every skill must follow ships with its audit and its rollout.
+31. Destructive or external actions stop for confirmation in the body (plus the host's flag, §1).
+
+**Hosts and workflows (§9, §2)**
+32. The body names capabilities, not one host's tools.
+33. It was tested on each host it ships to (packaging is `plugin-dev`'s checklist — run that one
+    too).
+34. A workflow skill opens with a Step-0 block (§2) carrying one marker sentence verbatim
+    (`audit-markers.ts` checks the marker).
+35. Every item of that block maps to a named place in the body, and vice versa.
+36. No item bundles independently-skippable checks.
 
 ## Bundled resources
 

@@ -1,10 +1,10 @@
 # Scripts inside skills — the depth behind §5's bullet
 
 > Reference for the `skill-authoring` skill. The **rulings** are inline in `SKILL.md` §5 — the
-> language order, the line a script may not cross, and the rule that a documented command must reach
-> a runnable form from what the agent already has. This file holds why each exists, what each cost
-> when it was missing, and the recipes you copy. Read it before you add a `scripts/` file, or when
-> one you own has started to grow.
+> language order, the line a script may not cross, the rule that a documented command must reach a
+> runnable form from what the agent already has, and how a script treats its arguments and errors.
+> This file holds why each exists, what each cost when it was missing, and the recipes you copy.
+> Read it before you add a `scripts/` file, or when one you own has started to grow.
 
 ## 1. Language: TypeScript + bun first, Python if you must, anything else exceptionally
 
@@ -17,13 +17,13 @@ that runs unattended, whose failures are read by a model rather than a human.
 - **TypeScript + bun** — bun runs a `.ts` file directly, so there is no build step to go stale and
   no `node_modules` to ship inside a plugin. You get types (the errors a skill script actually hits
   — a field that is sometimes `null`, an upstream shape that changed — are exactly the ones a type
-  catches), `tsc --noEmit` as a cheap gate, and a real test runner if the thing ever earns tests.
+  catches), `tsc --noEmit` as a cheap gate, and a real test runner once the script has moved into a codebase (§4).
 - **Python** — when the work needs a library that only exists there: image and PDF manipulation,
   scientific or numeric code, an SDK with no JS equivalent. A long Python script is not a smell if
   that is why it is Python.
 - **Anything else** — say why, in the file. "It was quick to write" is not a reason.
 
-### Why bash in particular keeps costing us
+### Why bash in particular keeps costing runs
 
 Bash is the tempting default for anything that shells out, and it is the worst of the three for a
 file that reports to a model, because **its characteristic failures are silent successes** — the
@@ -105,8 +105,7 @@ In order of preference:
    same conclusion §2 pushes you to.
 2. **Have the agent substitute the literal directory it loaded the skill from.** The agent knows
    that path — it just read the file. Write the placeholder explicitly, **label it as a placeholder**
-   and say it must be replaced with the literal value, the way a one-shot output path is handled
-   elsewhere. Quote it in the example, so a substituted path containing a space still runs. This
+   and say it must be replaced with the literal value. Quote it in the example, so a substituted path containing a space still runs. This
    works on every host — and note that it is not an exception to the rule above but the second half
    of it: what the rule forbids is depending on state that is not there, and a value the agent holds
    is not that.
@@ -154,8 +153,7 @@ and date it.
 
 ## 5. Errors are read by a model
 
-§5's "verbose, LLM-readable errors" is the one part of the original bullet that needs no correction,
-only emphasis. The reader of your failure message is an agent deciding what to do next, and it
+SKILL.md §5's "verbose, LLM-readable errors" needs only emphasis. The reader of your failure message is an agent deciding what to do next, and it
 cannot see your source.
 
 - Say what was attempted, with the **resolved** values — not `failed to read config` but
@@ -169,6 +167,6 @@ cannot see your source.
 - **Refuse arguments you did not parse.** Exit 2 with a one-line reason on an unknown flag, a flag
   missing its value, or the wrong number of positionals. A script that takes `argv[0]` as its input
   turns `--count 5 foo` into a search for `--count`, and the result looks like a real answer
-  (measured 14.11.2026). Under `bun run`, a leading `--` right after the script name never reaches
+  (measured 2026-11-14). Under `bun run`, a leading `--` right after the script name never reaches
   it, so do not offer `--` as the way to pass a value that starts with `--`: give that value a flag
   of its own.

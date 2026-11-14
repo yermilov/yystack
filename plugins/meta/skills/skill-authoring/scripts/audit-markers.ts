@@ -5,7 +5,7 @@
 //   2. which skills carry a Step-0 marker sentence — `Register these as todo items` or
 //      `Register them in this session's own todo/plan tool`.
 // Both are matched only OUTSIDE code fences and inline backticks, so a skill that merely QUOTES a
-// marker (the authoring guide itself does) is not counted as carrying it. The marker sentence may
+// marker in code is not counted as carrying it. The marker sentence may
 // wrap across a line break; whitespace is normalised before matching.
 //
 // Usage: bun run audit-markers.ts [marketplace-root] [--json]
@@ -14,7 +14,11 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
 const args = process.argv.slice(2);
-if (args.includes("--help") || args.includes("-h")) {
+// --help wins only when nothing else on the line is wrong: `--bad --help` or two roots must still exit 2.
+const badFlag =
+  args.some((a) => a.startsWith("-") && !["--json", "--help", "-h"].includes(a)) ||
+  args.filter((a) => !a.startsWith("-")).length > 1;
+if ((args.includes("--help") || args.includes("-h")) && !badFlag) {
   console.log(`usage: bun run audit-markers.ts [marketplace-root] [--json]
 
 Scans <root>/plugins/*/skills/*/SKILL.md (default root: the current directory).
@@ -28,11 +32,23 @@ your inventory of workflow skills can turn "no marker" into "missing". A marker 
 inside a code fence or backticks does not count — that is a skill discussing the block, not one
 running it.
 
-Exit codes: 0 clean, 1 a length verdict is missing, 2 the root has no plugins/ directory.`);
+Exit codes: 0 clean, 1 a length verdict is missing, 2 the audit could not run (the root has no
+plugins/ directory, an unknown flag, or more than one root).`);
   process.exit(0);
 }
+// Refuse what we do not parse: a typo'd flag silently ignored would audit the wrong thing and pass.
+const unknown = args.filter((a) => a.startsWith("-") && !["--json", "--help", "-h"].includes(a));
+const positional = args.filter((a) => !a.startsWith("-"));
+if (unknown.length > 0 || positional.length > 1) {
+  console.error(
+    unknown.length > 0
+      ? `audit-markers: unknown flag ${unknown.join(" ")} — the flags are --json and --help.`
+      : `audit-markers: one marketplace root at most, got ${positional.length}: ${positional.join(" ")}`,
+  );
+  process.exit(2);
+}
 const json = args.includes("--json");
-const root = resolve(args.find((a) => !a.startsWith("-")) ?? ".");
+const root = resolve(positional[0] ?? ".");
 const pluginsDir = join(root, "plugins");
 
 function isDir(p: string): boolean {
@@ -46,7 +62,7 @@ function isDir(p: string): boolean {
 if (!isDir(pluginsDir)) {
   console.error(
     `audit-markers: no plugins/ directory under ${root}. Pass the marketplace root (the directory ` +
-      `that holds plugins/<plugin>/skills/<skill>/SKILL.md) as the first argument.`,
+      `that holds plugins/<plugin>/skills/<skill>/SKILL.md) as the first argument; a retry will not help.`,
   );
   process.exit(2);
 }
@@ -113,21 +129,34 @@ function prose(text: string): string {
       if (close && close[1][0] === fence.char && close[1].length >= fence.len) fence = null;
     }
   }
-  return stripCodeSpans(out.join("\n"));
+  // A code span never crosses a blank line (a paragraph break), so strip spans per paragraph: one
+  // stray backtick must not swallow a real verdict line further down.
+  return out.join("\n").split(/\n[ \t]*\n/).map(stripCodeSpans).join("\n\n");
 }
 
 type Row = { path: string; lines: number; verdict: boolean; marker: boolean };
 const rows: Row[] = [];
-for (const plugin of readdirSync(pluginsDir).sort()) {
+function list(dir: string): string[] {
+  try {
+    return readdirSync(dir).sort();
+  } catch (e) {
+    console.error(`audit-markers: cannot read ${dir} (${(e as Error).message}) — the audit did not run (permanent: fix the permissions or the path).`);
+    process.exit(2);
+  }
+}
+for (const plugin of list(pluginsDir)) {
   const skillsDir = join(pluginsDir, plugin, "skills");
   if (!isDir(skillsDir)) continue;
-  for (const skill of readdirSync(skillsDir).sort()) {
+  for (const skill of list(skillsDir)) {
     const file = join(skillsDir, skill, "SKILL.md");
     let text: string;
     try {
       text = readFileSync(file, "utf8");
-    } catch {
-      continue;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "ENOENT") continue; // a skill dir with no SKILL.md
+      // Anything else (permissions, a directory named SKILL.md) would silently shrink the audit.
+      console.error(`audit-markers: cannot read ${file} (${(e as Error).message}) — the audit did not run (permanent: fix the permissions or the path).`);
+      process.exit(2);
     }
     const body = prose(text);
     const flat = body.replace(/\s+/g, " ");

@@ -19,7 +19,7 @@ skimmable prose. Every line of the copyable block exists because a real run fail
 | naming the items **1..N** in the block itself | the runner inventing its own coarser list |
 | "register the **conditional** steps too, completing a moot one with that reason" | a branch quietly dropping items, or skipped steps left open — either way an unfinished list stops meaning unfinished work |
 | "**SEARCH** for the tool first" | a host that defers or renames its planner reading as a host that has none |
-| "**anything that creates items** and marks them in progress/completed IS that tool" | the search running, returning the planner, and the runner not recognising it — measured in 3 of 33 runs after the search line alone shipped |
+| "**anything that creates items** and marks them in progress/completed IS that tool" | the search running, returning the planner, and the runner not recognising it — measured 2026-08-12 in 3 of 33 runs of one workflow on one host, after the search line alone shipped (`precedents.md` §9) |
 | "**two** empty results are a real absence on this host — say so plainly" | the opposite failure: a host that really has no planner, where an agent told only "you searched for the wrong name" can never conclude so, and its honest report reads as not having looked |
 | "the **SESSION's** own planner, never an external tracker" | run bookkeeping written into somebody's real backlog — an outward action nobody asked for |
 | the reply-list **fallback** | the runner improvising "I'll track it inline", which is indistinguishable in the report from tracking nothing |
@@ -41,8 +41,7 @@ show it. Stop there. Below that line the item stays whole and its **close** carr
 reader must be able to audit; the close-verdict protects the rest.
 
 A list split past the point of consequence is the All-Caps Tyrant in list form — when every line is a
-checkpoint, none is. And because this is a property rather than a string, no marker detects it: its
-enforcement is the per-item test in SKILL.md §2 plus checklist item 9.
+checkpoint, none is.
 
 ## 4. Nesting — the wording for both shapes of todo tool
 
@@ -72,8 +71,6 @@ while the numbering lines up.
 
 ## 6. Paying for the steps with `references/`
 
-A heavily-branched task runner honestly runs past 800 lines (and owes SKILL.md §2's Length verdict) — that is a real workflow's size, and the
-reason the per-step budget exists. What does not change is the tier-2 cost: the body stays in context
-all session. So one file per deep step, keeping inline the step, its order, its branch conditions and
+A long workflow still pays tier-2 cost: the body stays in context all session. So one file per deep step, keeping inline the step, its order, its branch conditions and
 its rulings, and moving out the evidence, the long alternate paths and the platform detail —
 signposted by the step that opens it ("Read `references/browser.md` before your first browser call").

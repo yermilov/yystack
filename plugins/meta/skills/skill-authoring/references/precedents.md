@@ -1,7 +1,7 @@
 # Precedents — the measured cases behind the rules
 
-> Reference for the `skill-authoring` skill. Every **ruling** here is already stated inline in
-> `SKILL.md`; this file holds only the **evidence** — what each failure looked like and what it cost.
+> Reference for the `skill-authoring` skill. Every **ruling** here is stated in `SKILL.md` or, for
+> library-wide audits, in `library-maintenance.md`; this file holds only the **evidence** — what each failure looked like and what it cost.
 > Read a section when you need to justify a rule to someone, when you're deciding how hard to apply
 > it, or when a rule seems wrong and you want to know what produced it. You never need this file to
 > know *what to do*.
@@ -13,9 +13,8 @@ hub skill, and the hub's own description named none of them. So a "what should I
 could fire the full **do-the-work** skill instead of its read-only counterpart — mutating state to
 answer a question.
 
-Why the hub is both the likeliest and the worst offender: likeliest because a hub reads as "obviously
-the main one", so nobody thinks it needs a boundary; worst because the classifier already defaults to
-it, and the hub is typically the skill that **changes state** while its siblings only read.
+Why the hub is both the likeliest and the worst offender is ruled in `library-maintenance.md` §2;
+this case is the evidence.
 
 That hub's description was also only a quarter of the character budget — there was no cap pressure to
 discover the gap. The fix was free and had simply never been looked for.
@@ -62,8 +61,7 @@ reference had answered it the whole time — but the agent decides whether to op
 reading it, and it decides from the body. A body that appears not to cover your case reads as a skill
 that is silent on it.
 
-**The test:** for each branch an agent can actually land on, ask *"reading the body ALONE, does it
-know what to do — or does it merely learn that a file exists?"*
+The test that came out of it is SKILL.md §2's branch-condition rule.
 
 ## 6. All-or-nothing gate — 19 hours of coverage destroyed to protect a standard (§6)
 
@@ -89,9 +87,7 @@ An agent hitting a usage dump most naturally concludes the *tool* is missing or 
 the whole step, rather than re-running with `sudo`. Privilege requirements, renamed flags, and moved
 output formats all rot silently this way, and prose review cannot see any of them.
 
-Hence: execute each prescribed command on a real machine, and when one needs elevation or has a
-no-privilege alternative, **say which and prefer the alternative** — the version that runs unprompted
-beats the version that stalls on a password prompt, especially on an unattended run.
+The ruling that came out of it is SKILL.md §8's "run the commands it prescribes".
 
 ## 8. Source for the Claude 5 reversals (§3)
 
@@ -161,8 +157,8 @@ Nothing about the runs looked wrong, which is the cost: with no registered list,
 of seven steps produces the same shape of report as one that did all seven, and the skipped steps are
 invisible to the agent itself, to the reader, and to any later review.
 
-**The sequel, one day after those blocks shipped: the very first observed run dropped the list
-anyway.** A remote-control session opened the task-runner skill, reached the new block, and reported
+**The sequel (recorded 2026-08-10): the very first observed run after those blocks shipped dropped
+the list anyway.** A remote-control session opened the task-runner skill, reached the new block, and reported
 verbatim — *"No TodoWrite tool in this session — I'll track the lifecycle items inline"* — then
 worked without one. The tool was there **that day**. That host exposed the capability under
 **different names** (`TaskCreate` / `TaskUpdate` / `TaskList`) **and deferred them**: absent from the
@@ -177,7 +173,7 @@ every permission mode; setting the vendor's opt-in environment flag and re-runni
 returned **298 including the three handles**. Both names are compiled into the binary either way, so
 inspecting the shipped bundle proves nothing about your session — only the advertised list does. So
 the capability is not merely renamed-and-deferred; on that host it is **gated off by default**, and a
-careful search then returns nothing because there is nothing.
+careful search then returns nothing because there is nothing. (That was the state on 2026-08-23; §10's table is the timeline to trust.)
 
 Which is the trap this precedent creates for its own readers. The finding above was written as a fact
 about a host, and it is the shape §8 warns about — an accurate observation of external state, recorded
@@ -196,8 +192,8 @@ explicitly, because the alternative the runner improvises ("I'll track it inline
 in the report from having tracked nothing at all. A mandate the runner cannot execute does not fail
 loudly; it fails as a polite sentence about tracking things inline.
 
-**The third act, three weeks on: the block was there, was worked in full, and still hid a skipped
-check.** A review workflow had registered all seven of its steps and completed every one. But its
+**The third act (recorded 2026-08-10): the block was there, was worked in full, and still hid a
+skipped check.** A review workflow had registered all seven of its steps and completed every one. But its
 step "review it against both standards" was, in the body, **seven independent checks** — frontmatter,
 truth, executability, contradictions, structure & weight, workflow conformance, safety — and it had
 been registered as **one** item. At least one of the seven, whether the reviewed file carried the
@@ -214,7 +210,7 @@ closed while a named sub-check was never performed?*), and the cheap repair is t
 naming what it checked, so "clean" carries its own evidence.
 
 **And the phrasing kept drifting, which is why §8 now says to fix the marker when you write the
-rule.** Two weeks after the blocks shipped, one marketplace carried **three** rival sentences — 16
+rule.** On 2026-08-11 one marketplace carried **three** rival sentences — 16
 skills with "Register them in this session's own todo/plan tool", 6 with "Register these as TODOs", 4
 with "Register these as todo items now". Of its 36 workflow-shaped skills, 20 carried some
 instruction and the narrow `todo list|todo item` pattern found **15 of those 20**: a 25% miss rate on
@@ -225,11 +221,10 @@ with there being three.
 two forms that read best rather than the two the corpus used — and immediately shipped a mandate that
 the library's own workflow skills did not satisfy, i.e. the §8 rollout gap, created by the change
 that added the rule against it. Re-measuring and adopting the two phrasings already in use took the
-coverage to 20 of 20 with no edits to anyone else's skill. Hence: **choose the marker from what
-conforming skills already say.**
+coverage to 20 of 20 with no edits to anyone else's skill. Hence `library-maintenance.md` §1's marker rule.
 
-**Drift did not stop when the marker was named — it reappeared in a form the marker missed.** Two
-months after the two-form rule shipped, the same library held three skills carrying a fully
+**Drift did not stop when the marker was named — it reappeared in a form the marker missed.** On
+2026-08-30 the same library held three skills carrying a fully
 working Step-0 block in a *fourth* phrasing (`"Register these now, before <X>, in this session's own
 todo/plan tool"` — neither documented sentence as a substring). `grep -L` flagged all three, and it
 was **right to**: once the marker is mandatory, carrying a working block in an undocumented wording
@@ -258,12 +253,11 @@ inside a code fence.
 **A second miss in the same pass came from the standard itself moving.** Several of the rules the
 review was meant to apply had been added to this guide *after* the file under review was written —
 and after its previous review. An agent applying "the standard" from memory applies the rules it
-already knew, and nothing about that looks like a skipped check. Where a review is periodic, make the
-drift mechanical: record which version of the standard each review ran against, and diff the
-standard's history since that version before starting the next one.
+already knew, and nothing about that looks like a skipped check. Hence `library-maintenance.md` §2:
+anchor each periodic review on a commit.
 
 **Measured afterwards, and the number is the point: the block works, and "search for it" was still
-not enough.** Eighty-five completed runs of one task-runner workflow were read from the host's own
+not enough.** Eighty-five completed runs of one task-runner workflow were read on 2026-08-12 from the host's own
 transcripts — tool calls, not self-report; the in-flight run doing the reading is excluded. Before
 the search line shipped, **4 of 52** registered anything. After it, **33 of 33** did, a median 14
 seconds after opening the skill, and 573 of 578 items were closed by the end. That is one workflow
@@ -284,10 +278,8 @@ So the instruction that fails is not *look*, it is *know what you are looking at
 search hands it a result set it has no test for, and the wrong test is the one it arrives with: a
 remembered handle. **Give the recognition rule with the search** — anything that creates items and
 marks them in progress and completed IS the tool, whatever it is called; an empty result for one
-remembered name is evidence about the name only. **But give it a floor too, or you have replaced one
-unfalsifiable belief with another**: name the exact handles as the second search and say that two
-empty results settle it, so an agent on a host where the capability is genuinely gated off can reach
-"there is none" and be believed — by itself as much as by its reader. That keeps §9's "name the capability, not the handle"
+remembered name is evidence about the name only — plus the floor described above (two empty
+probes settle it). That keeps §9's "name the capability, not the handle"
 intact, because a recognition test is not a handle: it is what makes the capability identifiable on a
 host whose handle you cannot know.
 
@@ -296,10 +288,9 @@ A later pass read every skill in the same marketplace instead of only the scan's
 five of the real workflows had never been shortlisted: their steps sat under `## The flow`, a
 non-English "steps" heading, a numbered bold list or plain prose. The marker grep also had a false
 positive. The authoring guide itself quotes both marker sentences, in its template and in prose about
-them, so `grep -L` treated it as conforming although it has no runtime step list at all. Two rules
-follow. **The inventory has to cover every skill, not the scan's output**, or "unlisted" silently
-means "not a workflow". **And a conformance check has to ignore a marker inside a code fence or
-backticks**, or any skill that *discusses* the block passes as one that *has* it.
+them, so `grep -L` treated it as conforming although at the time it had no runtime step list at all.
+Both rules that came out of it — the inventory covers every skill, and the check ignores a quoted
+marker — are in `library-maintenance.md` §1.
 
 ## 10. Two capability checks that could only answer "no", and one that could only answer "yes" (§6)
 
@@ -324,10 +315,8 @@ host that claim has been in three different states, which is the whole argument 
 
 Nothing about the skill changed across those three rows; the host did. A rule written on any one of
 them, undated, is wrong for two-thirds of its life — and each time it is wrong it converts a correct
-agent into one that distrusts its own reading. Hence both halves of the ruling in §6: **make the
-probe positive** (name the load step, and treat only an empty *load* as absence), and **give the
-absence a floor** (two empty probes settle it, and that is a fact about the host, not the agent's
-mistake) — then date the row so the next reader knows to re-measure rather than to obey.
+agent into one that distrusts its own reading. Hence SKILL.md §6's Self-Confirming Check ruling — then date the row so the next reader knows to
+re-measure rather than to obey.
 
 ## 11. Distance to the action — the external measurement behind §2's safeguard rule (§2)
 
@@ -345,14 +334,14 @@ workflow skill does the same for a keep-alive cadence its middle steps would oth
 ## 12. "The doctor will rightsize it" — what the host command actually did (§3)
 
 The vendor post announcing the Claude 5 practices said `/doctor` applies them to skills and memory
-files. Run, it gave an *installation* checkup. What existed was a separate skills view — on Claude Code
-2.1.226 a `/skill-doctor`, "which loaded skills are unused and costing context", already folded into
-the usage screen (checked 2026-08-11). Useful for finding skills nobody triggers; **it does not
-establish** anything about a skill's prose, and it shortened nothing.
+files. Run, it gave an *installation* checkup. What existed (Claude Code 2.1.226, checked
+2026-08-11) was a separate skills report, `/skill-doctor`: "which loaded skills are unused and
+costing context". Useful for finding skills nobody triggers; **it does not establish** anything
+about a skill's prose, and it shortened nothing.
 
 ## 13. Measurements obeyed past their boundary (§8)
 
-Two shapes, both measured in one window:
+Two shapes, both recorded 2026-11-13:
 
 - A session concluded "images do not render on this host at all" from **one** failed page; a later run
   went blind for a whole session on that line.
@@ -363,7 +352,7 @@ Neither claim was false about what was observed; both were read at their widest.
 
 ## 14. A fix that bound one step, and the same 400 from the next (§8)
 
-On a long workflow skill (2026), a step that posts to an API grew a correct, emphatic ⚠️ that one
+On a long workflow skill (recorded 2026-11-13), a step that posts to an API grew a correct, emphatic ⚠️ that one
 request field is mandatory — in **that step only**. A later step in the same file still said "paste the
 contents into a comment" and named neither the field nor the endpoint. Agents kept hitting the
 identical 400 from the second step; the run that finally diagnosed it put the cost plainly: the same
