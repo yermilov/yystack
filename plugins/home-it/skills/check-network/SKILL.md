@@ -56,46 +56,47 @@ account for every item at the end — "I'll track it inline" with no stated list
 failure this block exists to prevent.
 
 1. Classify the symptom as performance, DNS/reachability, or intermittent drop-outs
-2. Ask the owner for an authenticated router session now, or record why no step will need the admin UI
-3. Run the DNS fast path when a host fails to resolve (§ DNS fast path)
+2. Ask the owner for an authenticated router session now, or record why no step will need the admin
+   UI. Asking early lets you keep measuring while they answer; a run that discovers the login only
+   at §3 stops there and waits
+3. When a host fails to resolve: diagnose it on the DNS fast path, steps 1–3. Close naming the
+   system/router/public answers, the negative TTL, and the configured upstream/filter findings
+   **with the pass count of each probe series**, or which of those stayed unreadable
 4. Measure where the problem is: Wi-Fi, at the affected spot (§1)
 5. Measure next to the router: Wi-Fi (§1)
 6. Measure wired into the router over Ethernet (§1). **It is its own item because it is the control,
    and the control is what gets skipped**; one "measure the baseline" item would hide that
-7. Localize the bottleneck to a layer (§2)
-8. On drop-outs: prove or rule out router reboots (§2a)
-9. Inspect the router admin UI (§3)
-10. On a cellular WAN: grade the radio signal and the reconnect rate (§3a)
-11. Repair or recommend (§4)
-12. Verify: re-measure at the affected spot and report before/after (§4)
+7. Localize the bottleneck to a layer (§2). Close naming which layer each gap pointed at
+8. On drop-outs: prove or rule out router reboots (§2a). Close naming the logging span and host, the
+   boots seen, which were confirmed from the client side, which were discarded as handling, the load
+   comparison, and whether the power test was proposed. A logger still running at the end (started
+   only with the owner's OK, on their machine) closes as "logging since <time> on <host>, verdict
+   pending — stop it with <how>"
+9. Inspect the router admin UI (§3). Close naming each setting you actually read: an unenumerated
+   "looked at the router" hides the one setting that was the answer
+10. On a cellular WAN: grade the radio signal and the reconnect rate (§3a). Close naming the RSRP /
+    RSRQ / SINR grade and the reconnects per hour
+11. Repair or recommend (§4; on the DNS branch, the fast path's step 4)
+12. Verify: re-measure at the affected spot and report before/after (§4; on the DNS branch, the fast
+    path's step 5). On the DNS branch, close naming the end-to-end control on the affected device and
+    each per-device override restored and read back (or none set)
 
 Items 4–6 are one item per **position**, not per metric. Each closes naming the four measurements §1
 asks for at that spot (throughput+bufferbloat · loss+latency · link quality/rate · client sanity), or
 which one you skipped and why; "measured the desk" without that list is a row of the table you cannot
-fill. On the DNS branch, close item 3 naming the system/router/public answers, the negative TTL, the
-configured upstream/filter findings **with the pass count of each probe series**, the end-to-end
-control on the affected device, and each per-device override restored and read back (or none set),
-or which of those remained unreadable. Close item 7 naming which
-layer each gap pointed at, and item 9 naming the router settings you actually read: an unenumerated
-"looked at the router" hides the one setting that was the answer. Close item 8 naming the logging
-span and host, the boots seen, which were confirmed from the client side, which were discarded as
-handling, the load comparison, and whether the power test was proposed; a logger still running at the
-end of the session (started only with the owner's OK, on their machine) closes as "logging since
-<time> on <host>, verdict pending — stop it with <how>". Close item 10 naming
-the RSRP / RSRQ / SINR grade and the reconnects per hour.
+fill.
 
 **No access to the network at all** (a chat-only question such as "should I buy a mesh?", or you are
 on another machine): the answer is the measurement plan (§1's three positions and what each outcome
-means) plus the §4 ladder, and items 2–12 close with that reason.
+means), and item 11 closes with the §4 ladder applied to that plan; items 2–10 and 12 close with
+that reason.
 
 A step a branch makes moot (no admin access to the router, no drop-outs reported, a wired WAN rather
 than a cellular one, a DNS-only fault with no speed complaint) is completed with that reason, not
-left open.
-
-**Why ask for the router session at item 2:** read-only diagnosis and the login request are
-independent, so the request goes out early and you keep measuring while it is answered. A run that
-discovers the admin login only at §3 stops there and waits for an answer it could have had at the
-start. The owner signs in; you never type, extract or store their router password.
+left open. **No device that can take a cable** (a phone-only home, a laptop with no port or adapter)
+closes item 6 with that reason, and says what stays unproven: Wi-Fi versus upstream. Read the
+router's own WAN status (link speed, the line's sync rate) and any line test the ISP offers instead,
+and report a slow upstream as an **inference**, not a measurement.
 
 ## DNS fast path
 
@@ -114,32 +115,49 @@ or block page. Without Bun, the OS tools are in `references/measurement-commands
 
 1. **Compare paths.** Query the exact hostname through the operating system's normal resolver, the
    LAN gateway explicitly, and two public recursive resolvers. Record status, answer, TTL and
-   timestamp. The comparison separates client state from the router/upstream path.
+   timestamp. The comparison separates client state from the router/upstream path:
+   - **public resolvers fail too** → ask the domain's own authoritative servers (walk from the root
+     through a public resolver, since a home gateway can refuse the root query; the commands are in
+     `references/measurement-commands.md` § DNS queries), and resolve once from OFF the home network
+     (mobile data). Stop only on a **definitive** negative: the authoritative servers
+     answer `NXDOMAIN` (or no record) AND the off-network lookup agrees. Then the name is broken at
+     its source, not at home, and no router step applies. Anything else (an authoritative answer,
+     a timeout or `SERVFAIL` from home, an off-network success) keeps the home path under
+     suspicion of intercepting or blocking outbound DNS (a router filter, the ISP): continue with
+     steps 2–3;
+   - **only the system path fails** → client cache or a per-device override; clear or read back the
+     client (step 4's cache commands, step 5's override read-back) and skip the router;
+   - **the gateway fails, the public resolvers answer** → steps 2–3.
 2. **Read the negative-cache TTL.** Query the zone's SOA: the negative TTL is at most its minimum
    field, and exactly the SOA TTL in the authority section of an NXDOMAIN answer. If the
    router/public disagreement disappears within that window, report a stale negative answer as an
    **inference**, not a proven filter. A recovered cache is not evidence that a configuration write
    occurred.
-3. **Localize.** If the gateway still fails while both public controls work, read the router UI for
+3. **Localize.** If the gateway still fails while both public controls work, or step 1 kept the
+   home path under suspicion after the public controls failed too, read the router UI for
    its WAN DNS servers, DNS proxy/cache, parental controls, security filtering and custom blocklists.
    Query each configured upstream directly: failing there localizes the defect upstream; passing there
-   localizes it to the router/filter/cache. **Probe each upstream as a series of ~20 and report the
+   localizes it to the router/filter/cache. On the public-fail branch those queries leave home by
+   the same path that may be intercepted, so a failure there does not convict the upstream until the
+   same upstream also fails from off the home network (or answers there while failing from home,
+   which convicts the home path instead). **Probe each upstream as a series of ~20 and report the
    pass count (`19/20`), never a single-probe verdict**: an intermittent upstream is exactly the fault
    one probe cannot see, in either direction (📖 `references/precedents.md`).
-4. **Repair, one change.** Clear the client's cache first (the commands are in
+4. **Repair, one change (Step-0 item 11).** Clear the client's cache first (the commands are in
    `references/measurement-commands.md`; some need the owner's admin rights). Clearing the
    **router's** cache often means a reboot that cuts every device. If the configured upstream is the
    defect, set a public resolver pair the owner agrees to. **Every router change here is a router
-   write: owner's OK, one change, re-test before a second.** Let the router settle after the write, then re-test as a
-   series. A failure in the first seconds is the router re-establishing its upstreams, not the change
-   failing, so probe again before reverting.
+   write: owner's OK, one change, re-test before a second.** Let the router settle after the write,
+   then re-test as a series. A failure in the first seconds can be the router re-establishing its
+   upstreams rather than the change failing, so judge from the series, not the first probe, before
+   reverting.
 
    **If the fault has already stopped reproducing,** do not rewrite DNS blindly. The job changes from
    repair to **capturing the configuration** (WAN DNS servers, the WAN mode, filters, cache settings):
    that record is what makes the next occurrence diagnosable. On a static-IP WAN the DNS servers are
    typed values that persist across reboots; on DHCP they come with the lease and can change.
-5. **Verify end to end.** Check both DNS and the real service from the affected client (for example,
-   an HTTPS request to the hostname). Then prove the device is testing the path you fixed: its Wi-Fi
+5. **Verify end to end (Step-0 item 12).** Check both DNS and the real service from the affected
+   client (for example, an HTTPS request to the hostname). Then prove the device is testing the path you fixed: its Wi-Fi
    address is in the router's LAN subnet, and its DNS server IS the gateway. A phone resolving over
    mobile data, or through a resolver it still has pinned, passes while proving nothing about the
    router. Only then remove temporary per-device DNS overrides and repeat the same controls on each
@@ -159,18 +177,20 @@ over Ethernet**.
 The wired run is not optional. Standing next to the router is *still Wi-Fi*, so those two positions
 only tell you how much distance costs; neither can separate "the router or the line is slow" from
 "Wi-Fi is slow". Only the cable can. **If wired is at or near plan speed, every remaining fix lives in
-the Wi-Fi path**: no plan upgrade and no new modem will move it. **If wired is also slow, stop
-diagnosing Wi-Fi**: go to §2's router bullet (the WAN/LAN port's negotiated speed and the cable) and
-§3, because it is the router, the WAN link or the ISP, once the table's third row has ruled out
-the test path.
+the Wi-Fi path**: no plan upgrade and no new modem will move it. **If wired is also slow, first rule
+out the wired test path itself** (the ⚠️ under the table below: adapter, port, cable). Only a slow
+result that survives that means **stop diagnosing Wi-Fi**: go to §2's router bullet (the WAN/LAN
+port's negotiated speed and the cable) and §3, because it is the router, the WAN link or the ISP.
 
 The commands differ per OS (macOS / Windows / Linux), and each is in
 `references/measurement-commands.md`. The four measurements are the same everywhere:
 
 - **Throughput + bufferbloat.** What matters is whether latency **spikes under load**, not raw Mbps:
   a big idle-vs-loaded latency jump wrecks calls and browsing even when Mbps looks fine.
-- **Packet loss & latency**, 100 pings each to the gateway and to a public IP. **Any loss to your own
-  gateway is a Wi-Fi/local problem**, not the ISP.
+- **Packet loss & latency**, 100 pings each to the gateway and to a public IP, run **at the same
+  time**. **Loss to your own gateway that lines up in time with loss to the public IP is local**,
+  not the ISP; the wired position then tells Wi-Fi from the rest of the LAN. Loss to the gateway
+  alone can be the router rate-limiting pings to itself while traffic flows.
 - **Link quality.** On Wi-Fi: signal (RSSI better than −60 dBm is good, worse than −67 weak; on
   Windows's % scale >70% is good) and whether the negotiated rate sits far below the AP's max. A Wi-Fi
   6 client stuck at a low rate means distance or interference, not a dead plan. On the wired run:
@@ -190,8 +210,9 @@ Record numbers for each spot. **The gaps between the three positions are the dia
 ⚠️ **The third row is the one that misleads.** Before blaming the router, WAN link or ISP, rule out
 the wired test path itself: the USB adapter or dock, the client's Ethernet port, and the patch cable.
 A **USB 2.0** Ethernet adapter tops out around 300 Mbps, which on a gigabit plan alone reads as "wired
-is also slow", so confirm the adapter and the port both negotiated 1 Gbps. Re-run from a **different machine with known-good wired hardware**, or into a different router port
-with a different cable. Only a slow result that survives that is genuinely upstream.
+is also slow", so confirm the adapter and the port both negotiated 1 Gbps. Re-run from a **different
+machine with known-good wired hardware**, or into a different router port with a different cable.
+Only a slow result that survives that is genuinely upstream.
 
 ## 2. Localize the bottleneck
 
@@ -243,15 +264,18 @@ portal in §2. Without a session, everything in this list can still be read back
 
 Read these (reads only; any change is a router write: owner's OK, one at a time, re-measured):
 
-- **QoS / bandwidth control**: off, or not throttling the device? A stray cap here explains a lot.
+- **QoS / bandwidth control**: is a per-device cap throttling the device? A stray cap explains a
+  lot. The exception is a smart queue (SQM, Smart Queue, adaptive QoS): that one is the bufferbloat
+  fix (§4), so note whether the router offers it and whether it is on.
 - **Band steering / Smart Connect**: on by default; toggling rarely helps much, but it is worth an
   A/B.
 - **Channel & width**: Auto is usually fine; a fixed clear channel occasionally helps in RF-dense
   areas, but test it, since it often makes no measurable difference.
 - **Mesh / EasyMesh**: note every satellite node, its IP, how many clients hang off it, and **whether
   its backhaul is wireless or wired**. Wireless backhaul is the top suspect.
-- **MTU / NAT boost / hardware acceleration**: MTU should be 1500 (unless PPPoE) and hardware
-  acceleration on.
+- **MTU / NAT boost / hardware acceleration**: MTU should be 1500 (1492 on PPPoE). Hardware
+  acceleration is normally on, but on many routers a smart queue only works with it off: read which
+  applies to this firmware before judging it.
 
 **Prefer the router's own API over clicking through the UI**: a log you can grep beats a screenshot.
 Only with a session or token the owner hands you. Read `references/router-api-and-cellular.md` § Reading
@@ -273,7 +297,8 @@ Rank fixes by leverage, not by novelty:
 1. **Wired backhaul (almost always first).** Run an Ethernet cable (Cat5e/Cat6) from the router to
    the room and put the extender in **Access Point mode** on that cable (reconfiguring it drops its
    clients: owner's OK, as for a router write), or wire the client directly.
-   It removes the halving wireless hop for the price of a cable, often with hardware already owned.
+   It removes the halving wireless hop for the price of a cable, often with hardware already owned
+   (a worked case: `references/precedents.md` § A worked shape).
    Expected on a healthy cable: near the wired figure from §1, single-digit-ms latency, 0% loss —
    the wired row of your own table is the target, not a generic number.
 2. **Relocate / reposition.** Move the AP or the client to cut distance and walls; raise or reorient
@@ -287,6 +312,19 @@ Rank fixes by leverage, not by novelty:
    and more latency. When asked "should I add another extender?", steer to wired backhaul first; only
    a **wired** or tri-band-dedicated-backhaul node is worth adding.
 
+Two faults sit outside the Wi-Fi ladder:
+
+- **Bufferbloat** (throughput fine, latency jumps under load in §1): turn on the router's smart queue
+  (SQM / Smart Queue / adaptive QoS) with its limits at roughly 85–95% of the measured wired rate,
+  then re-measure loaded latency. It can require hardware acceleration off and costs some peak
+  throughput; that trade is the owner's call. A router write: owner's OK, one change, re-measure.
+  No smart queue on the router means the fix is a router that has one.
+- **Wired is slow and the test path is ruled out** (§1): fix what §2 found on the wired side (a
+  100 Mbps port or a cable short of four pairs: replace the cable, move to a gigabit port). If the
+  router's own WAN is slow, open a ticket with the ISP carrying the wired numbers, the times of day,
+  and loss to the gateway versus a public IP. Do not recommend a faster plan until the provider has
+  answered.
+
 When hardware is needed, name the specific kind of cable, adapter or switch, give its price as an
 estimate (or check a current local price; prices vary by country and month), give the expected before/after numbers, and confirm the person's appetite: many are
 happy to stop at "good enough", and that is a valid place to stop.
@@ -294,15 +332,11 @@ happy to stop at "good enough", and that is a valid place to stop.
 **Verify (item 12).** After any change, re-run §1 at the affected spot (and the DNS series, on the DNS
 branch) and report before/after numbers side by side. A fix you did not re-measure is a guess.
 
-## Anti-patterns
-
-Two worth repeating:
-- Adding a **wireless** extender/mesh node to "extend range": it usually makes throughput worse
-  (§4 item 5; a worked case is in `references/precedents.md` § A worked shape).
-- Trusting a single speed-test number instead of comparing **idle vs loaded** latency, **desk vs
-  router** position, and **packet loss to the gateway** (§1).
-
 ## Validation
+
+Length: ~340 lines, over the ~250 aim because this workflow has four branches (DNS, performance,
+drop-outs, cellular) whose rulings and branch conditions must sit in the body; the per-OS commands,
+the logger, the API and cellular depth, and the measured cases live in `references/`.
 
 `references/trigger-tests.md` holds the prompts that should and should not load this skill, and its
 run record. Re-run them after any change to the description. The scripts print `--help` and exit 2 on

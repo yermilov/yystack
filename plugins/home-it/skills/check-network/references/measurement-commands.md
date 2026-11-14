@@ -21,8 +21,6 @@ it rather than assume it.
 - *Windows:* the adapter Status dialog → Speed, or `Get-NetAdapter | Format-Table Name,LinkSpeed`.
 - *Linux:* `ethtool <iface>` → `Speed:` (install `ethtool` if absent).
 
-A link at 100 Mbps instead of 1000 explains the whole result.
-
 ## Throughput + bufferbloat
 
 - *macOS:* `networkQuality -v` → uplink/downlink capacity, idle latency and **Responsiveness** (RPM;
@@ -33,7 +31,14 @@ A link at 100 Mbps instead of 1000 explains the whole result.
 
 ## Packet loss & latency
 
-*macOS / Linux:* `ping -c 100 <gateway>` and `ping -c 100 1.1.1.1`. *Windows:* `ping -n 100 …`.
+Run the two series at the same time, so a gap in one can be matched against the other:
+*macOS / Linux:* `ping -c 100 <gateway> > gw.txt & ping -c 100 1.1.1.1 > pub.txt; wait`. Both send
+one probe a second from the same start, so equal `icmp_seq` numbers are the same second; a sequence
+number missing from both files is shared loss. *Windows* prints no sequence number, so stamp each
+line with the time and match failures (`Request timed out.`) by second; in two PowerShell windows
+started together (written from the documented cmdlets, not yet run on Windows):
+`ping -n 100 <gateway> | ForEach-Object { "$(Get-Date -Format o) $_" } > gw.txt` and the same with
+`1.1.1.1 … > pub.txt`.
 
 ## Wi-Fi link quality (signal + negotiated rate)
 
@@ -58,15 +63,22 @@ SOA TTL is the exact negative-cache TTL.
 - *macOS / Linux:* `dig <host> @<resolver>` (status, answer, TTL); `dig <host> @<resolver> +norecurse`
   to see whether a cache already holds it; `dig SOA <zone> @<resolver>`. The system path:
   `dscacheutil -q host -a name <host>` on macOS, `getent hosts <host>` on Linux.
+- *The authoritative answer* (DNS fast path, step 1, when the public resolvers fail too): `dig
+  +trace <host> @1.1.1.1` walks from the root through a public resolver (a home gateway can refuse
+  the root query); on Windows, `Resolve-DnsName <zone> -Type NS`, then `Resolve-DnsName <host>
+  -Server <one of those NS>`. Read the final status: `NXDOMAIN` from the zone's own server is the
+  definitive negative.
 - *Windows:* `Resolve-DnsName <host> -Server <resolver> -DnsOnly`; `Resolve-DnsName <zone> -Type SOA`.
   The system path is `Resolve-DnsName <host>` without `-Server`. Clear the client cache with
   `Clear-DnsClientCache`; on macOS use `sudo dscacheutil -flushcache; sudo killall -HUP
-  mDNSResponder` (needs the owner's sudo).
+  mDNSResponder` (needs the owner's sudo); on Linux with systemd-resolved, `resolvectl
+  flush-caches` (`resolvectl status` shows whether it is in use; without it and without a local
+  cache such as `nscd` or `dnsmasq`, the client keeps no DNS cache to clear).
 
 ## Reading back a per-device DNS override
 
-Record the original mode when you set an override, and read it back after the restore. "Automatic"
-is a mode, not an empty value, so restoring the wrong one leaves the workaround in place.
+The rule (record the original mode, read the restore back) is in SKILL.md's DNS fast path, step 5.
+These are the keys per platform.
 
 - *Android* (Private DNS, over ADB): `adb shell settings get global private_dns_mode` (`off`,
   `opportunistic`, which the UI calls Automatic, or `hostname`) and `adb shell settings get global

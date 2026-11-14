@@ -32,6 +32,12 @@ photo's timestamp was the clock that explained it: the plug had been touched. Th
 list is read only after discarding boots that line up with physical handling, and why such a boot
 still points at a loose power plug.
 
+## A gateway that refused the root query (DNS fast path, step 1)
+
+`dig +trace` sent through a home gateway came back with a 28-byte answer and no referral (measured
+2026-11-14); the same trace sent through a public resolver walked to the zone's own servers. That is
+why the step walks from the root through a public resolver.
+
 ## A worked shape (generic, SKILL.md §4)
 
 A gigabit plan, a Wi-Fi 5 (AC1200) main router, and a **wirelessly-backhauled** Wi-Fi 6 extender near

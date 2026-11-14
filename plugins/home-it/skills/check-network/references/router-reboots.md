@@ -4,7 +4,7 @@ Read this when the owner reports drop-outs and you are about to log the router's
 
 ## Uptime without the admin password (UPnP)
 
-Most consumer routers run miniupnpd, and UPnP answers an unauthenticated query from the LAN.
+Many consumer routers run miniupnpd (as of 2026-11), and UPnP answers an unauthenticated query from the LAN.
 `bun run "<skill dir>/scripts/upnp-uptime.ts" [--json]` does steps 1–4 in one read-only shot; the steps are here for a host without Bun or a router the script does not understand:
 
 1. SSDP-discover `urn:schemas-upnp-org:service:WANIPConnection:1`.
@@ -41,11 +41,14 @@ Caveats, each of which has produced a wrong verdict:
   echo "ping logger PID $!"     # repeat this line with a public IP for the second ping log
   ```
 
-  On Windows (PowerShell), the same two loggers; stop each with `Stop-Job`:
+  On Windows (PowerShell), the same two loggers; stop each with `Stop-Job`. A background job does
+  not start in your current directory on Windows PowerShell 5.1, so give it absolute log paths
+  (written from the documented `Start-Job` / `$using:` behaviour; not yet run on a Windows host):
 
   ```powershell
-  Start-Job { while ($true) { bun run "<skill dir>/scripts/upnp-uptime.ts" --json >> uptime.log; Start-Sleep 20 } }
-  Start-Job { ping -t <gateway> | ForEach-Object { "$(Get-Date -Format o) $_" } >> ping-gw.log }   # Windows ping: works in PowerShell 5.1 and 7
+  $up = Join-Path $PWD 'uptime.log'; $gw = Join-Path $PWD 'ping-gw.log'
+  Start-Job { while ($true) { bun run "<skill dir>/scripts/upnp-uptime.ts" --json >> $using:up; Start-Sleep 20 } }
+  Start-Job { ping -t <gateway> | ForEach-Object { "$(Get-Date -Format o) $_" } >> $using:gw }
   ```
 - Keep the logging host awake and on power. A sleeping laptop is a blind spot, never a quiet period:
   cross-check its sleep/wake log before reading any gap.
@@ -55,8 +58,8 @@ Caveats, each of which has produced a wrong verdict:
 ## Reading the boot list
 
 1. **Drop the boots someone's hands caused.** Match each boot against when anyone touched the kit
-   (re-plugging, moving it, photographing the cabling: a photo's capture time is a usable clock, once
-   you know whether it is local time or UTC). A boot within minutes of handling is not evidence of a
+   (re-plugging, moving it, working on the cabling: any timestamped record of the handling, such as
+   a photo's capture time, is a usable clock once you know whether it is local time or UTC). A boot within minutes of handling is not evidence of a
    fault, though it does point at a loose power plug (📖 `precedents.md`).
 2. **Rule out load:** compare WAN Mbit/s in the 5 min before each boot with the busiest windows that had
    no boot.
