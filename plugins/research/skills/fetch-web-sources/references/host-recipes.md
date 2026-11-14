@@ -3,7 +3,8 @@
 Per-host recipes for the material a link points at: a vendor blog, a docs page, a repo, a model
 release, a demo, a form, a filing. Read only the section for the host in front of you. Most were
 measured while reading the material behind a social post (`read-twitter` sends its links here), so
-"the tweet" in the text means the post that linked the page. Each section keeps its evidence and its
+"the tweet" in the text means the post that linked the page — the recipes hold for any link to that
+host. Each section keeps its evidence and its
 date; hosts change, so re-check a recipe that has stopped matching.
 
 **Index**
@@ -43,7 +44,7 @@ standby pod taking the lease in ~30s — i.e. Kubernetes, plainly. The summary w
 PROSE and blind to the pictures.
 
 **So take the bytes yourself** — with `--fail-with-body`, never a bare `-sL`:
-`curl -sSL --fail-with-body -A "Mozilla/5.0" -o post.html "<url>"`. ⚠️ A bare `-sL` **exits 0 on an
+`curl -sSL --fail-with-body -A "Mozilla/5.0" -o "<scratch>/post.html" "<url>"`. ⚠️ A bare `-sL` **exits 0 on an
 error page and writes it to the file**, so a block or a dead slug strips into plausible-looking
 prose and you summarise the wrong document without ever reaching the fallback below. Measured
 2026-09-20 on a nonexistent slug of this same host: `-sL` → **exit 0 and 75 KB** of error page;
@@ -65,7 +66,7 @@ site's css, js and gsap bundles — then subtract the site chrome and the social
 figures:
 
 ```bash
-grep -oE 'https://cdn\.prod\.website-files\.com/[^"?]+\.(png|jpe?g|webp)' post.html \
+grep -oE 'https://cdn\.prod\.website-files\.com/[^"?]+\.(png|jpe?g|webp)' "<scratch>/post.html" \
   | sort -u | grep -vE '_(placeholder|og)_|favicon|apple-touch-icon'
 ```
 
@@ -85,7 +86,8 @@ elements, so take the **longest**, and walk `h1..h4, p, li, pre` `textContent` r
 
 ## Google developer docs (`mapsplatform.google.com`, `developers.google.com`)
 
-A page-text read returns the whole article in one call — no DOM walk needed.
+A page-text read returns the whole article in one call — no DOM walk needed (an observation from the
+original notes, undated: re-check before relying on it).
 
 ---
 
@@ -105,7 +107,7 @@ page.** The page's `<head>` carries
 that JSON is keyed by route and holds each page's `h1`/`h2`/`h3`/`p` arrays. Measured 2026-09-19 on one
 startup's launch site: 122 KB, covering its manifesto, team and blog pages and the launch post in
 one fetch. Grep the URL out of any page you already have:
-`grep -o 'https://framerusercontent.com/sites/[^"]*searchIndex-[^"]*\.json' page.html | head -1`.
+`grep -o 'https://framerusercontent.com/sites/[^"]*searchIndex-[^"]*\.json' "<scratch>/page.html" | head -1`.
 
 ⚠️ **Accordion / FAQ ANSWERS are in NEITHER the static HTML NOR the search index** — same run: six
 FAQ questions present in both, not one answer in either; a Framer accordion renders the answer only
@@ -135,7 +137,7 @@ first, append `.md`, then re-add them only if the target actually needs them.
 
 The GENERAL form of this — `.md` vs `Accept: text/markdown`, `llms.txt`/`llms-full.txt` as the
 index when a docs path 404s, and why an empty fetch usually means a wrong URL rather than a
-client-rendered page — is `research:fetch-web-sources` §1. Keep per-SITE measurements here; put
+client-rendered page — is SKILL.md §1. Keep per-SITE measurements here; put
 rules that hold across sites there.
 
 ---
@@ -303,8 +305,10 @@ All verified on those runs.
   window.__X = {repo, sha, tree, file}        // park it; locals die with the call
   if (tree.truncated) throw new Error('tree truncated — paths are INCOMPLETE, walk subtrees')
   // reversible sentinels — one host's classifier blocks the WHOLE result on a bare ? & =,
-  // and stripping them would corrupt the source you came to read. Undo on your side.
-  const sf = t => t.replace(/\?/g,'«Q»').replace(/&/g,'«A»').replace(/=/g,'«E»')
+  // and stripping them would corrupt the source you came to read. « is escaped first, so text
+  // that already contains a sentinel survives. Undo on your side, in this order:
+  //   .replace(/«Q»/g,'?').replace(/«A»/g,'&').replace(/«E»/g,'=').replace(/«L»/g,'«')
+  const sf = t => t.replace(/«/g,'«L»').replace(/\?/g,'«Q»').replace(/&/g,'«A»').replace(/=/g,'«E»')
   return {sha, n: tree.tree.length, head: sf(file.slice(0, 600))}   // a bounded projection
   ```
 
@@ -321,17 +325,17 @@ All verified on those runs.
   fails the call with *«exceeds maximum allowed tokens»*, spilling the lot into a file — the output
   cap of the bullet above, in another host's spelling.
   **Defang whatever you do return**, or one host's classifier drops the **entire** result as
-  `[BLOCKED: Cookie/query string data]`. Which defang depends on what you are returning, and
-  `read-twitter`'s `references/browser-traps.md` has both: for prose or URLs the blunt `.replace(/[?&=]/g,' ')`; for SOURCE
-  CODE the allowlist filter there instead, which strips `?` and `&` but deliberately KEEPS `=` — a
-  blanket `=` strip turns assignments and comparisons into different or invalid code, which is the
-  one thing you came here to read accurately.
-- 🔴 **A tweet linking `…/issues/<n>#issuecomment-<id>` points at ONE community comment, and a
+  `[BLOCKED: Cookie/query string data]` — a bare `?`, `&` or `=` alone trips it. Use the reversible
+  sentinels in the snippet above (`«`→`«L»` first, then `?`→`«Q»`, `&`→`«A»`, `=`→`«E»`) and undo
+  them on your side in the order its comment gives (round-trip checked on 200 000 random strings,
+  2026-11-14): they keep source code exact, where stripping `=` turns assignments and comparisons into different code.
+  This is the canonical defang for source code in both this file and `read-twitter`.
+- 🔴 **A link to `…/issues/<n>#issuecomment-<id>` points at ONE community comment, and a
   web-fetch tool cannot reach it — fetch it by id instead.** Measured 2026-09-20 on an issue with
   **203 comments**: a web-fetch tool on the anchored URL returned the issue body plus the earliest
   comments and reported outright that "the specific comment with that ID is not included" — twice,
   with the anchor and without. That reads exactly like "the comment does not exist", and that
-  comment is the material the tweet is about. One call settles it —
+  comment is the material the post is about. One call settles it —
   `https://api.github.com/repos/<o>/<r>/issues/comments/<id>` through the browser `fetch` above (a
   web-fetch tool on `api.github.com` is 403 as well) — returning `body`, `user.login`, `created_at`
   and `html_url`. **Assume the anchor, not the issue, is the subject.**
@@ -464,8 +468,8 @@ only fetcher is a page-rendering wrapper may get summaries for some tasks):
 
 🔴 **A web-fetch tool is NOT a freshness source on GitHub — it answers 200 with a plausible,
 internally consistent, badly STALE snapshot, and nothing in the response reveals it.** Measured
-2026-09-12 on `fruitflydev/flycoinrh`, minutes apart: the web fetch said **0 stars / 0 forks / 5
-commits** and a root listing missing `roam.py`, `voice.py`, `mushroom.py` and `site/`, while the
+2026-09-12 on one small public repository, minutes apart: the web fetch said **0 stars / 0 forks / 5
+commits** and a root listing missing three source files and a `site/` folder, while the
 browser showed **124 / 34 / 30** and 39 entries. On 2026-09-11 it likewise reported 252.6k stars
 against the API's 259 003, and twice insisted a CHANGELOG's newest version was `1.0.1` while
 `plugin.json` in the same commit said `1.2.3`. Use it to learn what a file is ABOUT; never for a
@@ -473,8 +477,8 @@ number, a version, or "is this file there".
 
 **The positive control that settles who is lying, and it is mandatory before writing "the repo
 doesn't contain X":** `raw`-fetch two files you are confident exist AND the one you think is
-missing. On that run raw returned 200 for `roam.py`/`voice.py`/`mushroom.py` and 404 for
-`test_rhwallet.py` — i.e. the live tree matched the browser and the web-fetch snapshot was ~25
+missing. On that run raw returned 200 for the three files the snapshot lacked and 404 for one the
+snapshot listed — i.e. the live tree matched the browser and the web-fetch snapshot was ~25
 commits behind. Without it the natural write-up is a flatly false claim about someone's code.
 
 **NEITHER channel (REST API or HTML page) is authoritative alone; cross-check both for any fact
@@ -518,7 +522,7 @@ report-worthy fact about a repo needs agreement from both, not just one.**
 **Do not hardcode `main`** — plenty of repos are on `master`, `develop` or a product name, and
 `/commits/main` 404s on them, which reads as "the repo is gone" rather than "wrong ref". Ask the
 repo what its default is: `api.github.com/repos/<owner>/<repo>` → `.default_branch`, then
-`api.github.com/repos/<owner>/<repo>/commits/<default_branch>` → `.sha`. If the tweet's URL already
+`api.github.com/repos/<owner>/<repo>/commits/<default_branch>` → `.sha`. If the post's URL already
 names a branch or a tag, that ref wins — it is what the author was pointing at.
 
 ### A web-fetch wrapper on GitHub — two more failure modes
@@ -552,19 +556,19 @@ wrapper-vs-`curl` freshness rule above:
 `api.github.com` from a page script (CORS is allowed there) — e.g. `git/trees/<sha>?recursive=1`
 for a listing with file sizes (still check `truncated`). **Trap on top of the trap:** returning a
 large chunk of raw code from a page script gets silently redacted by the host's content classifier
-(`[BLOCKED: Cookie/query string data]`). Return narrowly — counts, names, or a
-character-filtered `slice()` (`.replace(/[^A-Za-z0-9 ,.:=(){}[\]<>+*/_-]/g,' ')` — this strips
-punctuation the classifier reacts to, it does not redact secrets, so still keep tokens/keys/cookies
-out of what you return) — and for reading a whole text file, navigate to the raw URL and do a
-page-text read instead.
+(`[BLOCKED: Cookie/query string data]`). Return narrowly — counts, names, or a `slice()` defanged
+with the sentinels in § The browser ladder (a defang does not redact secrets, so still keep
+tokens/keys/cookies out of what you return) — and for reading a whole text file, navigate to the raw
+URL and do a page-text read instead.
 
 ---
 
 ## Medium (`*.medium.com`)
 
 **Medium 403s a plain `curl`** (HTTP 403, ~5 KB anti-bot body — measured 2026-09-19 on both a
-cloud-sandbox host and a local host) while a web-fetch tool reads it fine (three
-posts by one author). And the content trap on top of it: a Medium post by an author who
+cloud-sandbox host and a local host; again 2026-11-14). A web-fetch tool returned the posts (three by
+one author), but as SKILL.md §1.2 says, its output can be a summary: use it to orient, and take any
+text you will quote or summarise from the browser's page-text read. And the content trap on top of it: a Medium post by an author who
 also self-hosts is often a **teaser** that says the essay continues on their own site. Check the
 author's own domain for the full text before summarising the Medium excerpt as the essay — on the
 measured post the Medium copy carried only the setup; the full ~20 KB essay was on the author's own
@@ -607,7 +611,7 @@ their entire substance is the inline `<script>`, which the browser can read and 
 
 ## AI-built app demos — the deployed bundle
 
-**A tweet demoing an AI-BUILT APP: the DEPLOYED BUNDLE is the primary source, not the video.** When
+**A post demoing an AI-BUILT APP: the DEPLOYED BUNDLE is the primary source, not the video.** When
 the post shows a generated app and a self-reply links it ("try it here"), the video shows what the
 author chose to show, while the shipped JS carries the whole dataset and the real rendering
 technique — and the two routinely disagree. Measured 2026-09-20 on one post demoing a
@@ -642,7 +646,7 @@ model-built 3D bookshelf app from a photo of a real shelf (live on a hosted-app 
 - **Check the RENDERING claim against the bundle.** The author replied "just three.js"; the shipped
   app has **0 `<canvas>`, no `window.THREE`, no WebGL string**, and the shelf is CSS 3D
   (`perspective:1200px`, `transform-style:preserve-3d`, `rotateY(...)` in the stylesheet). Report
-  what the artifact does and attribute the other claim to the tweet — do not merge them.
+  what the artifact does and attribute the other claim to the post — do not merge them.
 - **Check the FEATURE claim against the DOM.** "Just snap a photo and get a 3D bookshelf" — the
   deployed app has **`input[type=file]` count 0**: one hardcoded shelf, no upload. The pipeline ran
   once, inside the model; it is not a feature of the thing you can open. This is the single most
@@ -677,7 +681,7 @@ model-built 3D bookshelf app from a photo of a real shelf (live on a hosted-app 
 
 ## Model releases (HuggingFace)
 
-**A tweet announcing a MODEL RELEASE: the HuggingFace repo is the artifact, and its FILE SIZES are
+**A post or page announcing a MODEL RELEASE: the HuggingFace repo is the artifact, and its FILE SIZES are
 the one number the marketing cannot round.** Same family as «AI-built app demos» above.
 `https://huggingface.co/api/models/<org>/<repo>?blobs=true` returns every file with its exact
 `size`, plus `downloads`, `likes`, `lastModified`, `tags` and `cardData.license`;
@@ -712,17 +716,17 @@ say the ceiling was not measured.
 repo (the usual case for GGUF), it cannot tell you which one people actually pull. Only variants
 published as separate repos are comparable that way.
 
-Measured 2026-09-22 on `prism-ml/Ternary-Bonsai-2-27B-gguf` where the tweet said «works on anything
+Measured 2026-09-22 on `prism-ml/Ternary-Bonsai-2-27B-gguf` where the post said «works on anything
 with 8 Gb RAM»:
 
 - the advertised **5.9 GB** is `Ternary-Bonsai-2-27B-PTQ1_0.gguf` at **5.95 GB** — the LANGUAGE
   MODEL ALONE. The vision tower is a **separate** `mmproj` file (0.63 GB Q8_0 / 0.93 GB BF16), so
   multimodal use is ~6.6 GB before any KV cache. The card says so outright («These sizes describe
-  the language model alone»); the tweet does not.
+  the language model alone»); the post does not.
 - a second pack, `PQ2_0`, is **7.21 GB**, and it is the one the vendor's own Apple row measures.
   **A repo usually ships several packings — name WHICH file your number is**, or you are quoting the
   smallest and describing the default.
-- **Grep the vendor's own prose for the tweet's headline number before attributing it to the
+- **Grep the vendor's own prose for the post's headline number before attributing it to the
   vendor.** Neither the blog post nor the model card contained the string `8 GB` anywhere: the
   figure was the TWEETER's gloss, not the release's claim. That is the retelling-attribution rule
   one level out — see `read-twitter`'s `references/conditional-dives.md`, «When the linked material is itself a RETELLING, not
@@ -752,7 +756,7 @@ vendor's blog, the model card or the API, never to the aggregator that repeated 
 
 ## Models named in a post — registries
 
-**A model named in a tweet — resolve it WITHOUT the browser, and note that the OpenRouter endpoint
+**A model named in a post — resolve it WITHOUT the browser, and note that the OpenRouter endpoint
 keeps answering after the model is delisted from OpenRouter's own catalogue.** Two `curl`-able
 registries answer «what is this model, who makes it, what does it cost» faster and more reliably
 than any vendor page — neither is a retention guarantee across the board, so treat "still answers"
@@ -928,7 +932,9 @@ an exhaustive event history.**
 
 **`curl`, not a web-fetch or web-search tool.** Measured 2026-10-26 on one company's S-1 announcement tweet.
 Find the filing by company name (EDGAR wants a `User-Agent` with a contact,
-`-A "<name email>"`):
+`-A "<client name> <contact>"` — a contact token is required: a name alone got 403, name plus an
+address-shaped contact got 200, measured 2026-11-14. Ask the user which contact to send; never their
+details by default):
 `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=<name>&type=S-1&owner=include&count=40&output=atom`
 → 200, each `<entry>` has `filing-href` (the `…-index.htm` page, 200, lists the documents) and
 `file-number`. The main document is one big HTML (14 MB for that S-1): download it into your own

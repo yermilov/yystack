@@ -64,13 +64,13 @@ A sandboxed cloud host answered the same endpoint with a `403` whose body said t
 its configured repositories — the host's egress proxy, not GitHub. A browser tab on github.com reached
 the same API.
 
-## §2.2b — an SPA's catch-all 200 (20.09.2026)
+## Cautions for every rung — an SPA's catch-all 200 (20.09.2026)
 
 A model-hosting site answered **200** for an invented model URL exactly as for the real one. What
 separated them was page-specific content: the real page's title named the model with its price and the
 term occurred 199 times; the invented page had none of those markers.
 
-## §2.2b — why there is no safe probe for an API route
+## Cautions for every rung — why there is no safe probe for an API route
 
 - Where auth runs ahead of routing, an invented path also `401`s, and a real route can `404` an
   unauthorized caller — a code means nothing without a same-method nonsense-path control.

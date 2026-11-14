@@ -1,21 +1,24 @@
 ---
 name: fetch-web-sources
 description: >-
-  Reach a public web source your fetcher cannot see, before reaching for the browser. Use when a web
-  fetch or curl returns an empty body, a 404 or only navigation chrome on a docs site; when you want
-  a docs page as clean markdown (`.md`, `llms.txt`); when you must find a literal string in public
-  repositories without a GitHub token; when you must find what people have BUILT with a new product;
-  or when a login gates a host whose product is open-source — «сторінка не читається», «знайти рядок
-  у репозиторії», "code search 401", "client-rendered docs". Do not use for an ordinary web search
-  that already works, for checking whether a batch of links is still alive (link-rot-checker), nor
-  for reading an X/Twitter post itself (that's read-twitter — X pages need a logged-in browser).
+  Reach a public web source your fetcher cannot see. Use when a web fetch or curl returns an empty
+  body, a 404 or only navigation chrome on a docs site; when you want a docs page as clean markdown;
+  when you must search public GitHub code for a literal string without a token; when you must find
+  what people have BUILT with a new product; when a login gates a host whose product is open-source;
+  or before fetching a host with a known recipe (vendor blogs, OpenAI, Medium, Hugging Face,
+  Typeform, Luma, SEC filings) — «сторінка не читається», «знайти рядок у репозиторії», "code search
+  401", "client-rendered docs". Do not use for an ordinary web search or fetch that already works,
+  for checking whether a batch of links is still alive (link-rot-checker), for reading an X/Twitter
+  post itself (read-twitter — X pages need a logged-in browser), nor for a video's content, YouTube
+  included (watch-video).
 ---
 
 # Fetching a source the fetcher can't see
 
 Three ladders, each rung cheaper than the one below it, plus a note (§4) for when the browser rung is
-reached anyway. Every recipe is a plain HTTP request with no credentials; the browser is the last rung
-of all three and usually unnecessary.
+reached anyway, and per-host recipes (§5). The ladders are plain HTTP requests that need no credentials;
+the browser is their last rung and usually unnecessary. Some host recipes in §5 do need a browser —
+each says so.
 
 Numbers below are facts about somebody else's live site: each carries its date, and the measured
 cases behind each ruling are in `references/precedents.md` — read a section there when you need to
@@ -73,8 +76,11 @@ any docs host that serves it. Limits:
 
 - **`.md` does not conjure a missing page** — a 404 on both spellings means the path is wrong (§1.1).
 - **Append `.md` to the PATH**, before any `?query` or `#fragment`.
-- **Non-docs pages often have no twin** (news/announcement pages) and may 403 a plain `curl` — use
-  your web-fetch tool there.
+- **Non-docs pages often have no twin** (news/announcement pages). Take the bytes with
+  `curl -sSL --fail-with-body` first; on a 403, use the browser — a page-text read, or the DOM walk
+  the host's recipe names (§5). A web-fetch tool on such a page can return a generated SUMMARY, not
+  the page — use it for orientation only, never for a number, a quote or an attribution
+  (`references/host-recipes.md` § Vendor blogs).
 
 ### §1.3 Only then, the browser
 
@@ -131,6 +137,9 @@ bun run "SKILLDIR/scripts/gh-repos.ts" '<product> <vendor>'
 The script exits 1 when GitHub flags `incomplete_results` — a 200 with a plausible page after an
 internal timeout. Narrow and re-run; never cite that page.
 
+On a sandboxed host, a `403` from `api.github.com` may be the host's egress proxy rather than GitHub
+— read the body. A browser tab on github.com can reach the same API; say which channel you used.
+
 ⚠️ **This is candidate discovery, not a census.** It errs both ways: a top-ranked row can be an
 unaffiliated reimplementation, and an integration that never names the product in its metadata is
 invisible. Read and classify every row you cite (built-on / reimplementation / merely mentions).
@@ -142,29 +151,17 @@ dates at `https://registry.npmjs.org/<pkg>` → `.time` and `https://pypi.org/py
 `.releases`. ⚠️ **Downloads are a proxy, never "N users"** — CI, mirrors and transitive installs count.
 Use them for shape, with comparable windows, and say which window and date.
 
-⚠️ **A 200 from a JS app is not proof a page exists** — an SPA's catch-all answers 200 for an invented
-URL. Settle it on page-specific content measured against a nonsense URL of the same shape; report the
-pair, never the 200.
-
-⚠️ **There is no safe general probe for an API route.** A status code alone does not locate a route
-(auth can run ahead of routing), cannot tell you what the route serves, and the probe itself can be the
-side effect — `{}` is the entire valid payload of a trigger or run-now route. Settle a route from its
-documentation, the provider's source, or third-party code that calls it; with none of those, report it
-as unverified.
-
-On a sandboxed host, a `403` from these endpoints may be the host's egress proxy rather than GitHub —
-read the body. A browser tab on github.com can reach the same API; say which channel you used.
-
 ### §2.3 Two reads that need no search
 
 - **A file's contents:** `https://raw.githubusercontent.com/<owner>/<repo>/<sha>/<path>` — **pinned to
   a commit SHA, not a branch** (resolve `api.github.com/repos/<o>/<r>` → `.default_branch`, then
   `…/commits/<branch>` → `.sha`). A multi-file read off a moving branch can splice two commits; quote
   the SHA.
-- **Version / release date:** `https://api.github.com/repos/<owner>/<repo>/releases/latest` — **never**
-  the HTML releases page, which is served stale. ⚠️ `/releases/latest` skips prereleases and drafts;
-  for "the newest version" read `/releases?per_page=10` (check `prerelease` / `draft` /
-  `published_at`), or `/tags` where releases aren't used.
+- **Version / release date:** `https://api.github.com/repos/<owner>/<repo>/releases/latest` first. Both
+  it and the HTML releases page have been seen stale, so a version or date going into a report needs
+  the two to agree (`references/host-recipes.md` § GitHub → Freshness). ⚠️ `/releases/latest` skips
+  prereleases and drafts; for "the newest version" read `/releases?per_page=10` (check `prerelease`
+  / `draft` / `published_at`), or `/tags` where releases aren't used.
 
 ## §3. A login on the host is not the end of the dive
 
@@ -193,12 +190,27 @@ A site behind Cloudflare often answers the first navigation of a fresh session w
 
 ## §5. A known host — check its recipe first
 
-Some hosts have a measured recipe that beats both a fetch and the browser: vendor blogs (a fetch tool
-returns a summary, not the page — take the bytes), OpenAI's `.md` twins and chart datasets, Framer's
-search-index JSON, GitHub's sandbox gate and freshness traps, Hugging Face file sizes (a FLOOR on
-memory, never a confirmation), model registries, WebGL demos, Typeform (never click through: it saves
-partial answers in the user's name), Luma, SEC/EDGAR filings. Before fetching one of these, read its
-section in `references/host-recipes.md`; a recipe there overrides the general ladder above.
+**Before fetching any host listed here, read its section in `references/host-recipes.md`**; a recipe
+there overrides the ladders above. The hosts: vendor blogs (a web-fetch returns a summary, not the
+page — take the bytes), Google developer docs, bot-blocked hosts (which 403/202 answers are about the
+fetcher), Framer sites (the search-index JSON), OpenAI docs (`.md` twins) and announcements (chart
+datasets), GitHub (the sandbox gate, the browser ladder, freshness: no channel is authoritative
+alone), Medium (the `curl` 403 and the teaser trap), the Vercel Security Checkpoint 429, AI-built app
+demos (read the deployed bundle), Hugging Face model releases (file sizes are a FLOOR on memory,
+never a confirmation), model registries, WebGL / three.js demos, Typeform (never click through: it
+saves partial answers in the user's name), Luma (the public calendar JSON), SEC / EDGAR filings.
+
+## Cautions for every rung
+
+⚠️ **A 200 from a JS app is not proof a page exists** — an SPA's catch-all answers 200 for an invented
+URL. Settle it on page-specific content measured against a nonsense URL of the same shape; report the
+pair, never the 200.
+
+⚠️ **There is no safe general probe for an API route.** A status code alone does not locate a route
+(auth can run ahead of routing), cannot tell you what the route serves, and the probe itself can be the
+side effect — `{}` is the entire valid payload of a trigger or run-now route. Settle a route from its
+documentation, the provider's source, or third-party code that calls it; with none of those, report it
+as unverified.
 
 ## Bonus: a `claude.ai` artifact link
 
@@ -212,6 +224,8 @@ shell. Read the iframe's `src` (`<uuid>.frame.claudeusercontent.com/_f/<slug>/`)
   `GITHUB_TOKEN` if set (never prints it).
 - `references/precedents.md` — the measured case behind each ruling, dated.
 - `references/host-recipes.md` — per-host recipes (§5). Read the section for the host in front of you.
+- `references/trigger-tests.md` — should-fire / should-not prompts and their run record; re-run them
+  after any edit to the `description`.
 
 ⚠️ `SKILLDIR` in the commands above is a placeholder: substitute the **literal** directory you loaded
 this `SKILL.md` from — it is not a shell variable.

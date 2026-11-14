@@ -5,7 +5,8 @@
  *
  *   bun run "SKILLDIR/scripts/sg-search.ts" '<literal string>' [--count 20] [--filters 'repo:… lang:…']
  *
- * Prints one `<repository> <path>` line per match, then `matchCount: N` and every `skipped:` reason.
+ * Prints one `<repository> <path>` line per matching FILE, then `matchCount: N` (Sourcegraph counts
+ * matching LINES, so it can exceed the file lines) and every `skipped:` reason.
  * A `skipped: shard-match-limit` / "result limit hit" line means matchCount is a FLOOR ("at least N"),
  * capped by --count — never quote it as a total. `repository-fork` / `excluded-archive` mean forks and
  * archived repos were not searched; add `fork:yes` / `archived:yes` to --filters if they matter.

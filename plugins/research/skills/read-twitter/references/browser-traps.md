@@ -26,11 +26,11 @@ believed from an instrument that never moved.
     Measured 3× while reading fetched source, where a single line `const MEDIA_PROXY =
     "/api/media?u="` was enough to lose the whole return. **The dot-defang does NOT help here** —
     strip the punctuation instead: `.replace(/[?&=]/g,' ')`, and `.replace(/https?:\/\/\S+/g,'[url]')`
-    if URLs are riding along. The allowlist filter in `fetch-web-sources`' `references/host-recipes.md` § GitHub,
-    `.replace(/[^A-Za-z0-9 ,.:=(){}[\]<>+*/_-]/g,' ')`, is **not** a drop-in substitute here: it
-    strips `?` and `&` but deliberately **keeps `=`** (verified — `a?b=c&d /` → `a b=c d /`),
-    because code is unreadable without it. Use it for source listings; use the `[?&=]` strip when
-    `=` alone is what is tripping the redactor.
+    if URLs are riding along. For SOURCE CODE, where stripping `=` would change its meaning, use the
+    reversible sentinels in `fetch-web-sources`' `references/host-recipes.md` § GitHub → The browser
+    ladder (`«`→`«L»` first, then `?`→`«Q»`, `&`→`«A»`, `=`→`«E»`; undone on your side in the
+    order given there) — the canonical form for both
+    skills. An allowlist filter that keeps `=` still trips the redactor.
 - ⚠️ **Collapsed `<details>` content is absent from `innerText`, and opening them on the live DOM
   does not fix it — reparse the raw HTML instead.** Measured 2026-09-06 on one public wiki-style page, where
   every substantive section (both appendices, all the "Key facts" disclosures) sat in `<details>`:
