@@ -1,20 +1,18 @@
 # Router JSON APIs and cellular (4G/LTE) WANs — the depth behind §3 and §3a
 
-Read the first section when the router UI draws its pages from a JSON API you could query instead;
-read the second when the WAN is a cellular modem.
+Read § Reading the router's own API when the router UI draws its pages from a JSON API you could
+query instead; read § Cellular WAN when the WAN is a cellular modem.
 
 ## Reading the router's own API
 
 Many routers expose the data their UI draws as JSON, and a log you can grep beats any screenshot.
-Keenetic's RCI is one documented example: `/auth` answers 401 with a realm and a challenge; the client
-logs in with `sha256(challenge + md5("login:realm:password"))` and keeps the cookie; after that
-`POST /rci/` takes `[{"show":{"log":{"max-lines":3000}}}]`, and `show interface rrd` returns traffic
-history at several resolutions. Other vendors have equivalents (often a `/cgi-bin/…` or `/api/…`
-endpoint the UI already calls — the browser's network panel shows it).
+The UI already calls those endpoints, and the browser's network panel shows which ones, with their
+request bodies. Replay the read requests the owner's own signed-in session already makes (the system
+log, interface status, traffic history) with that session's cookie or token.
 
 **Credentials stay the owner's.** Use this only with a session or token the owner provides, or have
-them run the login step themselves. Never type, derive or store their admin password — the hash recipe
-above is how *their* client authenticates, not a licence for yours.
+them run the login step themselves. Never type, derive or store their admin password. Whatever login
+handshake the UI performs is how *their* client authenticates, not a licence for yours.
 
 Two things to watch: a log's first lines can carry a pre-NTP date, and a log only goes back to the last
 reboot.
@@ -29,15 +27,17 @@ reboot.
 | RSRQ | > −10 dB | −10…−15 | < −15 |
 | SINR/CINR | > 10 dB | 0…10 | < 0 (noise louder than signal) |
 
-Then count `connection lost` / `Internet access lost` lines in the log. Several reconnects an hour on
-bad SINR means the radio link itself is the cause.
+Then count the lines your firmware writes when the WAN goes down and comes back (find their wording
+from one known drop first). Several reconnects an hour on bad SINR means the radio link itself is the
+cause.
 
 **Reading the log:**
 
 - Find the mobile interface by its type, not by a guessed name.
 - A down→up pair while the modem device stays attached is a reconnect. The modem itself detaching and
   re-attaching is a restart — or a crash, a power dip or a loose connection.
-- Read the ping-check ("connection monitor") state from the router itself rather than inferring it. A
+- Read the recovery probe's state (vendors call it a ping-check, connection monitor or WAN
+  watchdog) from the router itself rather than inferring it. A
   detach that lines up with the probe's fail counter reaching its limit is probably the probe acting;
   one with no such change is not.
 
@@ -52,10 +52,10 @@ bad SINR means the radio link itself is the cause.
 **Configuring the probe is a router write:** get the owner's OK first, change only the probe, and
 re-measure (§3's one-change rule). Then:
 
-- Read the config back — on some firmware, setting a probe host REPLACES the existing list rather than
-  adding to it.
-- Watch the next few minutes of log and probe state: some firmware restarts the modem once before the
-  probe settles. Call that a one-off only after the probe reports success and the connection holds.
+- Read the config back. Firmware differs on whether setting a probe host adds to the existing list or
+  replaces it, so check yours rather than assuming.
+- Watch the next few minutes of log and probe state: a modem restart right after the probe is enabled
+  can be the probe settling rather than a fault. Call that a one-off only after the probe reports success and the connection holds.
 
 **Privacy:** the modem's status payload usually carries the SIM's IMSI/ICCID, the IMEI and the
 subscriber number. Copy only the signal fields you need; never forward or log the whole object.
