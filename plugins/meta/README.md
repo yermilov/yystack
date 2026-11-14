@@ -29,7 +29,9 @@ itself. It ships six skills and a session-start hook:
   quotes inside code).
 - **marketplace-health** — diagnose an already-installed marketplace on **Claude Code or Codex**: is
   the latest published version of each plugin actually installed (vs a stale cached copy), and is
-  auto-update active so it stays current? Trigger on "am I on the latest?", "why didn't my new skill
+  auto-update active so it stays current? Ships `scripts/check-health.ts`, a read-only check that
+  verifies installed versions against the remote without refreshing anything; it refreshes or
+  updates only on an explicit request. Trigger on "am I on the latest?", "why didn't my new skill
   show up after I pushed?", or "are plugin auto-updates on?".
 - **enable-autoupdate** — the action counterpart to marketplace-health, on **both hosts**: on Claude
   Code set `extraKnownMarketplaces.<name>.autoUpdate = true` (or the `/plugin` UI toggle); on Codex

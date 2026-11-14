@@ -7,7 +7,7 @@ description: >-
   "make <marketplace> auto-update", "set autoUpdate in extraKnownMarketplaces", "switch my Codex
   marketplace from local to git", or right after marketplace-health reports auto-update OFF —
   «увімкни авто-апдейт маркетплейсу», «хай плагіни оновлюються самі», «плагіни не оновлюються». Do
-  not use it to check status (that's marketplace-health, which only diagnoses), nor to author or
+  not use it to check status (that's marketplace-health, which also brings a stale install current), nor to author or
   version a marketplace (that's plugin-dev). Covers the Claude Code setting, its global env
   override, and the Codex git-vs-local source fix.
 ---
