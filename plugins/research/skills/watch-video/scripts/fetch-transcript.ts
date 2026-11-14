@@ -28,7 +28,8 @@
  * Exit 0 = transcript written, 2 = no captions in the wanted language(s) (fall back to local
  * transcription or to Gemini alone), 1 = yt-dlp missing or failed (its stderr is printed), 3 = bad
  * arguments (an unknown or repeated flag, a flag without its value, two inputs, or an input that is
- * neither a YouTube URL — checked by its exact host — nor an 11-character video id; 2 is taken by "no
+ * neither a YouTube video URL — checked by its exact host — nor an 11-character video id; yt-dlp is
+ * only ever given the canonical watch URL built from that id; 2 is taken by "no
  * captions", so usage errors are 3), 4 = a --vtt file with text but no cue it could read (never
  * reported as an empty transcript).
  */
@@ -69,18 +70,31 @@ const url = positionals[0]
 const vttFile = opt('--vtt', '')
 if (url && vttFile) usage('give a YouTube URL or --vtt <file>, not both')
 if (!url && !vttFile) usage('give a YouTube URL or video id')
-// A YouTube URL is checked by parsing it and matching the host exactly; a bare 11-character id is
-// also accepted. Anything else would reach yt-dlp, which fetches almost any site.
+// A YouTube URL is parsed and its host matched exactly; then only the 11-character video id is kept,
+// and yt-dlp is handed a canonical URL built from it — never the raw string, which yt-dlp's own parser
+// could read differently (a backslash or `@` trick), and which its generic extractor would follow to
+// almost any site. A bare id is accepted too.
 const YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be',
   'youtube-nocookie.com', 'www.youtube-nocookie.com'])
-if (url && !/^[A-Za-z0-9_-]{11}$/.test(url)) {
-  let host = ''
-  try {
-    const u = new URL(url)
-    if (u.protocol === 'https:' || u.protocol === 'http:') host = u.hostname.toLowerCase()
-  } catch {}
-  if (!YOUTUBE_HOSTS.has(host)) usage(`not a YouTube URL or video id: ${url}`)
+const ID_RE = /^[A-Za-z0-9_-]{11}$/
+function videoIdOf(input: string): string | undefined {
+  if (ID_RE.test(input)) return input
+  if (/[\\@\s\x00-\x1f]/.test(input)) return undefined
+  let u: URL
+  try { u = new URL(input) } catch { return undefined }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return undefined
+  const host = u.hostname.toLowerCase()
+  if (!YOUTUBE_HOSTS.has(host)) return undefined
+  const parts = u.pathname.split('/').filter(Boolean)
+  const id = host === 'youtu.be' ? parts[0]
+    : parts[0] === 'watch' ? u.searchParams.get('v') ?? undefined
+    : ['shorts', 'embed', 'live', 'v'].includes(parts[0] ?? '') ? parts[1]
+    : undefined
+  return id && ID_RE.test(id) ? id : undefined
 }
+const videoId = url ? videoIdOf(url) : undefined
+if (url && !videoId) usage(`not a YouTube video URL or video id: ${url}`)
+const canonicalUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : undefined
 const withTimestamps = flag('--with-timestamps')
 const output = opt('--output', '-')
 const subLang = opt('--sub-lang', '')
@@ -233,7 +247,7 @@ function pickTrack(meta: Record<string, any>): Track | undefined {
 function run(work: string): number {
   // 1. Metadata only — one request, which also lists every caption track.
   const info = Bun.spawnSync([ytDlp, '--skip-download', '--write-info-json', '--no-playlist', '--no-warnings',
-    '-o', '%(id)s.%(ext)s', url!], { cwd: work })
+    '-o', '%(id)s.%(ext)s', '--', canonicalUrl!], { cwd: work })
   const infoFile = readdirSync(work).find((f) => f.endsWith('.info.json'))
   if (info.exitCode !== 0 || !infoFile) {
     console.error(`fetch-transcript: yt-dlp failed: ${info.stderr.toString().trim() || 'no info.json'}`)
@@ -262,7 +276,7 @@ function run(work: string): number {
   const out = {
     id: meta.id, title: meta.title, channel: meta.uploader ?? meta.channel,
     duration_seconds: meta.duration, duration_string: meta.duration_string,
-    url: meta.webpage_url ?? url,
+    url: meta.webpage_url ?? canonicalUrl,
     language: track.key.replace(/-orig$/, ''),
     caption_source: `${track.kind}:${track.key}`, transcript: body, word_count: body.split(/\s+/).filter(Boolean).length,
   }
