@@ -17,7 +17,8 @@ plugins/<name>/
 
 Adding a plugin or a skill has a **version-bump discipline** the marketplace auto-update depends on —
 the `plugin-dev` skill spells it out. In short: bump a plugin's `version` in **both** its manifests on
-any change, and bump the Claude marketplace's `metadata.version` whenever the plugin **list** changes.
+any change, and bump the Claude marketplace's `metadata.version` whenever the plugin **list** changes
+or an entry in that manifest is edited.
 
 ## This repo is the canonical source of the `meta` plugin
 

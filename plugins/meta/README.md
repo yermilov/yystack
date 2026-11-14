@@ -12,8 +12,9 @@ itself. It ships six skills and a session-start hook:
   actually worth installing. Ships `scripts/check-manifests.ts`, which runs the mechanical half of its
   pre-ship checklist (both marketplaces agree, manifests in lockstep, versions bumped vs a base ref).
   Trigger when setting up or growing a plugin marketplace, adding a plugin,
-  deciding which plugin a skill goes in, packaging a skill for Claude and/or Codex, or debugging why an
-  install doesn't show a new plugin/skill.
+  deciding which plugin a skill goes in, packaging a skill for Claude and/or Codex, or fixing a change
+  that never reached clients because a version wasn't bumped (diagnosing an install is
+  marketplace-health).
 - **skill-authoring** — how to write, structure, and review great Agent Skills (SKILL.md files): the
   description/frontmatter that decides triggering, progressive-disclosure structure and length,
   writing style for an LLM reader, when to bundle scripts/references/assets, named anti-patterns,
@@ -55,7 +56,8 @@ itself. It ships six skills and a session-start hook:
 The plugin also ships a **cross-host `SessionStart` hook** (`hooks/hooks.json` →
 `hooks/scripts/marketplace-health-check.sh`) that runs on **both Claude Code and Codex** (both
 auto-discover `hooks/hooks.json` and set `CLAUDE_PLUGIN_ROOT`; the script emits the cross-host
-`{"hookSpecificOutput":{…}}` JSON both accept). The entry point is a **thin shell wrapper**: it
+`{"hookSpecificOutput":{…}}` JSON both accept). On Codex it runs only with `hooks = true` under
+`[features]` in the config, and after you trust the hook when Codex asks. The entry point is a **thin shell wrapper**: it
 detects whether **Bun** is installed and, if so, `exec`s the real check —
 `marketplace-health-check.ts` (Bun + TypeScript, per the repo's script rule); if Bun is missing it
 emits a one-line nudge to run the `install-bun` skill instead of erroring. On session start the check

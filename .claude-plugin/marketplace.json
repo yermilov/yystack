@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "Yaroslav Yermilov's public showcase of AI-agent skills — an installable Claude Code / Codex plugin marketplace.",
-    "version": "0.3.0"
+    "version": "0.3.1"
   },
   "plugins": [
     {
       "name": "meta",
       "source": "./plugins/meta",
-      "description": "How to build a great skills marketplace and the plugins that live in it (plugin-dev): the repo layout, the Claude + Codex dual-manifest packaging, version discipline, and what makes a plugin/skill actually worth installing."
+      "description": "The marketplace's own tooling: building and packaging a skills marketplace (plugin-dev), writing skills that trigger and stay lean (skill-authoring), checking and enabling auto-update of an installed marketplace (marketplace-health, enable-autoupdate), bootstrapping a new marketplace from this one (clone-marketplace), and installing the Bun runtime its scripts need (install-bun)."
     },
     {
       "name": "home-it",

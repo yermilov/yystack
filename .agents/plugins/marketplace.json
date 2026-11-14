@@ -15,7 +15,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity",
-      "description": "How to build a great skills marketplace and its plugins (plugin-dev): repo layout, the Claude + Codex dual-manifest packaging, version discipline, and what makes a plugin/skill worth installing. The same SKILL.md files back the Claude Code plugin."
+      "description": "The marketplace's own tooling: building and packaging a skills marketplace (plugin-dev), writing skills that trigger and stay lean (skill-authoring), checking and enabling auto-update of an installed marketplace (marketplace-health, enable-autoupdate), bootstrapping a new marketplace from this one (clone-marketplace), and installing the Bun runtime its scripts need (install-bun)."
     },
     {
       "name": "home-it",
