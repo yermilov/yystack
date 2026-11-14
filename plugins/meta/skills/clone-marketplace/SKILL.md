@@ -36,14 +36,15 @@ this run follows:
 
 **`--new`:** 1. Check `bun` is installed, else run install-bun (§ The script)   2. Ask the user for
 the marketplace name and the owner's name + email (§ 1)   3. Run `--new` (§ 1)   4. Run
-`check-manifests.ts` over the result (§ After running)   5. Commit the scaffold on the user's yes,
-or hand it to them (§ 1)   6. Hand the user the human follow-ups:
-create the GitHub repo, push, add plugins (§ 1)
+`check-manifests.ts` over the result (§ After running)   5. Check LICENSE and the manifest carry no
+`Your Name` / `you@example.com`, then commit the scaffold on the user's yes, or hand it to them
+(§ 1)   6. Hand the user the human follow-ups: create the GitHub repo, push, add plugins (§ 1)
 
-**`--update`:** 1. Check `bun` is installed, else run install-bun (§ The script)
-2. Preview with `--update --dry-run` (§ 2)   3. If a guard refused: resolve it, or get the
-user's explicit yes for `--force` (§ 2)   4. Run `--update` (§ 2)   5. Review `git status` + `git diff` (§ 2)   6. Run `check-manifests.ts` (§ After
-running)   7. Commit on the user's yes, or hand it to them; pushing is theirs (§ 2)
+**`--update`:** 1. Check `bun` is installed, else run install-bun (§ The script)   2. Preview with
+`--update --dry-run` (§ 2)   3. If a guard refused: resolve it, or get the user's explicit yes for
+`--force` (§ 2)   4. Run `--update` (§ 2)   5. Review `git status` + `git diff` (§ 2)   6. Run
+`check-manifests.ts` (§ After running)   7. Commit on the user's yes, or hand it to them; pushing
+is theirs (§ 2)
 
 Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
 left open — an unfinished list at the end must mean something really is unfinished.
@@ -57,7 +58,7 @@ replies — state it once, name each item as you start it, account for every one
 
 ## The script
 
-Written in Bun + TypeScript (per the repo's script rule), so it needs **Bun** — if `bun` is missing,
+Written in Bun + TypeScript, so it needs **Bun** — if `bun` is missing,
 run the **install-bun** skill first. It also needs `git`.
 
 ```
@@ -70,8 +71,7 @@ bun run "SKILLDIR/scripts/clone-marketplace.ts" --update <target-dir> [--source 
 `SKILLDIR` is a placeholder: substitute the **literal** directory you loaded this `SKILL.md` from (it
 is not a shell variable — a command built from an unset one resolves to `/scripts/…` and fails).
 
-`--source` defaults to the canonical marketplace this meta plugin is published from (`--help` prints
-the URL); override it to seed from a different one. The script **never** creates the GitHub repo or
+`--help` prints the default `--source` URL. The script **never** creates the GitHub repo or
 pushes — that stays a human step (auth, naming, visibility).
 
 ## 1. Create a NEW marketplace
@@ -96,8 +96,8 @@ It produces, at `./my-skills`, a ready-to-push marketplace:
 - `git init` + an initial stage.
 
 Then the **human follow-ups** (the script prints them):
-1. Create the GitHub repo (e.g. `gh repo create <owner>/my-skills --public`) — the owner/repo the
-   README's install lines reference.
+1. Create the GitHub repo, with the visibility they choose (e.g. `gh repo create <owner>/my-skills`)
+   — the owner/repo the README's install lines reference.
 2. Commit the scaffold (you may, on their yes) and `git push` (theirs).
 3. Add your own plugins/skills with **plugin-dev** + **skill-authoring**.
 
@@ -110,8 +110,7 @@ bun run "SKILLDIR/scripts/clone-marketplace.ts" --update ./my-skills
 
 It replaces `plugins/meta/` with upstream's latest — new meta skills, hook and doc fixes, and the
 version bump that ships with them — and leaves your other plugins and your `marketplace.json`
-untouched. It retargets the copied health hook to your marketplace (only the hook's self-identity:
-the `MARKETPLACE` const and the `[<name>]` prefix of its Bun-missing nudge), and adds `CLAUDE.md` and
+untouched. It retargets the copied health hook to your marketplace, and adds `CLAUDE.md` and
 the `AGENTS.md` symlink **only if missing** — a `CLAUDE.md` you customised is never touched.
 
 **Because it deletes `plugins/meta/` first, it refuses (exit 1) when** that directory holds
@@ -122,17 +121,17 @@ edited directly). `--force` skips all three, and any local files under `plugins/
 
 After it runs:
 1. `git -C <dir> status && git -C <dir> diff` — review exactly what changed.
-2. Commit on the user's yes (pushing stays theirs). The meta plugin's version bump travels with the copied files, so installed clients re-pull
-   meta on their next update. The Claude manifest's `metadata.version` needs no bump — unless you
+2. Commit on the user's yes (pushing stays theirs). The meta plugin's version bump travels with the
+   copied files, so installed clients re-pull meta on their next update. The Claude manifest's `metadata.version` needs no bump — unless you
    also edit the meta entry in `marketplace.json` (its description, say), which per plugin-dev's
    **Version discipline** does need one.
 
 ## After running
 
-- Run plugin-dev's `check-manifests.ts` over the result
-  (`bun run "<meta>/skills/plugin-dev/scripts/check-manifests.ts" <dir>`, where `<meta>` is the
-  `plugins/meta` you just copied). Exit 0 means both manifests and every plugin agree. When you go on
-  to add plugins, plugin-dev's full **Pre-ship checklist** applies.
+- Run plugin-dev's `check-manifests.ts` over the result:
+  `bun run "<dir>/plugins/meta/skills/plugin-dev/scripts/check-manifests.ts" "<dir>"`. Exit 0 means
+  both manifests and every plugin agree. When you go on to add plugins, plugin-dev's full
+  **Pre-ship checklist** applies.
 - **Don't promise a same-tick install.** A freshly pushed marketplace or plugin can take a client
   reconnect before it appears (plugin-dev, **Version discipline**).
 
