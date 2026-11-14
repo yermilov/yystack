@@ -61,12 +61,27 @@ const headers: Record<string, string> = { Accept: 'application/vnd.github+json',
 if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`
 
 const res = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) }).catch((e) => {
-  console.log(`request failed: ${(e as Error).message}`)
+  console.log(`request failed: ${(e as Error).message} — transient: retry in ~60 s`)
   process.exit(1)
 })
 const body = await res.text()
 if (res.status !== 200) {
-  console.log(`HTTP ${res.status} — not a result. Body: ${body.slice(0, 300)}`)
+  // A GitHub rate limit says so in its headers; any other 403 (a sandbox proxy, an access block) will
+  // not clear by waiting.
+  // Primary limit: x-ratelimit-remaining 0. Secondary limit: a 403/429 whose body says so, often with
+  // retry-after.
+  const retryAfter = Number(res.headers.get('retry-after') ?? 0)
+  const rateLimited = res.status === 429 || res.headers.get('x-ratelimit-remaining') === '0' || retryAfter > 0 ||
+    /rate limit/i.test(body)
+  const reset = Number(res.headers.get('x-ratelimit-reset') ?? 0)
+  const hint = rateLimited
+    ? `rate limit — retry after ${retryAfter ? `${retryAfter} s`
+        : res.headers.get('x-ratelimit-remaining') === '0' && reset ? new Date(reset * 1000).toISOString()
+        : 'at least 60 s (a secondary limit)'}`
+    : res.status === 403
+      ? 'not a rate limit: likely a sandbox proxy or an access block — read the body; if it is not GitHub\'s, use the browser route (SKILL.md §2.2b), do not retry on a timer'
+      : res.status >= 500 ? 'transient — retry in ~60 s' : 'likely a query error — check it'
+  console.log(`HTTP ${res.status} — not a result (${hint}). Body: ${body.slice(0, 300)}`)
   process.exit(1)
 }
 let d: { incomplete_results?: boolean; total_count?: number; items?: any[] }

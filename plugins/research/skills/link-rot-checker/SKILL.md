@@ -128,10 +128,10 @@ return without them); don't search unasked. Then, by kind:
 - **A dead listing** (an ad, a sale or event page) → search the same site for fresh items matching
   the criteria the original implies (location, price range, the must-haves the user named), and hand
   back 2–3 links with a one-line summary each.
-- **A dead article, doc page or citation** → look for an archived copy:
-  `curl -s 'https://archive.org/wayback/available?url=<url>'` returns the closest snapshot, or an
-  empty `archived_snapshots` (the endpoint answered both ways as of 2026-11). Also check whether the
-  page simply moved — the site's own search for its title.
+- **A dead article, doc page or citation** → look for an archived copy with `fetch-web-sources`'
+  archive step (§1.4, its `wayback.ts`): a bare `archive.org/wayback/available` lookup can answer
+  an empty result that is really a failed lookup, and only that script tells the two apart. Also
+  check whether the page simply moved — the site's own search for its title.
 
 Never substitute a replacement into the original draft without approval — the user's preferences
 may have shifted since it was written.

@@ -24,10 +24,14 @@ Numbers below are facts about somebody else's live site: each carries its date, 
 cases behind each ruling are in `references/precedents.md` — read a section there when you need to
 justify a ruling or re-check a number. Re-measure before quoting one.
 
+**A host with web fetch but no shell:** take §1.1–§1.2 through the fetch tool, then the browser; if
+neither reads the page, report it unread.
+
 Write fetched files to a scratch directory of your own (shown as `<scratch>` below), never a fixed
 shared path — a sibling run writing the same name turns its numbers into yours. `SKILLDIR` in the
 commands is a placeholder too: substitute the **literal** directory you loaded this `SKILL.md` from —
-it is not a shell variable.
+it is not a shell variable. The scripts run on Bun: `command not found: bun` → the `install-bun`
+skill. Meanwhile §1.1–§1.2 and §2.2–§2.3 have `curl` forms; the other scripted rungs need Bun.
 
 ## §1. A documentation page that comes back empty, 404, or 95% navigation
 
@@ -94,20 +98,20 @@ an error page and writes it to disk, where it reads like a short article. Limits
   `<final url>` is the `final=` from the status check above: after a redirect, the original URL
   resolves relative links against the wrong base.
 
-  On a 403, follow the table at the top of §1. A web-fetch tool on such a page can return a generated
-  SUMMARY, not the page — use it for orientation only, never for a number, a quote or an attribution
-  (`references/host-recipes.md` § Vendor blogs).
+  On a 403, follow the table at the top of §1. A web-fetch tool's output here can be a summary, not
+  the page («Cautions for every rung»).
 
 ### §1.3 Only then, the browser
 
 A real 200, a genuinely empty body, and neither `.md` nor `llms.txt` → the content is drawn by
 scripts: open it in the browser. No browser → an archived copy (§1.4); none there either → report the
-page unread rather than the read as done.
+page unread, never as read.
 
 ### §1.4 No browser, or it is blocked too — an archived copy
 
 A page that 403s every fetcher can still exist in the Internet Archive. The script finds the closest
-capture (falling back to the capture index when the lookup errors) and saves the plain capture:
+capture (asking the capture index too when the lookup errors or finds nothing) and saves the plain
+capture:
 
 ```bash
 bun run "SKILLDIR/scripts/wayback.ts" '<url>' --out <scratch>/snap.html [--timestamp YYYYMMDD]
@@ -122,12 +126,15 @@ block, login or paywall page captured in its place, before you quote it; give it
 and say the live page could not be read, so whoever relies on the quote knows to check the current
 text. Two branches before you give up:
 
-- **The capture is not the article** → `wayback.ts '<url>' --list` prints the newest 300 captures;
+- **The capture is not the article** → `bun run "SKILLDIR/scripts/wayback.ts" '<url>' --list` prints
+  the newest 300 captures;
   take another with `--timestamp` (also the way to reach an older one).
 - **Exit 4** → the article may live under another slug: look for it on the site's own index or
   search page (or its archived copy), then run the steps above on the real URL.
 
-Nothing found after both → report the page unread, never paraphrased from memory.
+Nothing found after both → report the page unread, never paraphrased from memory, and never via a
+reader proxy or mirror («Cautions for every rung»). An archived capture shows what the publisher
+served publicly on that date; do not use the archive to read content the publisher paywalls.
 
 ## §2. Finding things inside public repositories, with no token
 
@@ -139,7 +146,8 @@ the body before you retry, and never read it as a permissions answer about the r
 
 ### §2.1 A literal string in code — Sourcegraph
 
-Run the bundled script; it refuses to report a result unless the stream finished, because a
+Run the bundled script (Sourcegraph's stream answered without a token, verified 2026-11-14); it
+refuses to report a result unless the stream finished, because a
 truncated or bot-checked stream otherwise reads exactly like "this string is nowhere":
 
 ```bash
@@ -147,8 +155,8 @@ bun run "SKILLDIR/scripts/sg-search.ts" '<literal string>' [--count 20] [--filte
 ```
 
 ⚠️ **A capped count is a floor, never a total** — the script prints `matchCount: >=N (a FLOOR …)`
-when the result limit was hit; quote it that way. Each `skipped:` line names repos that were never
-searched (`--help` says how to include them).
+when the result limit was hit or part of the index was skipped; quote it that way. A `skipped:`
+line for forks or archived repos names repos excluded by default (`--help` says how to include them).
 
 ### §2.2 Issues and PRs — GitHub issue search (works unauthenticated)
 
@@ -201,8 +209,8 @@ Use them for shape, with comparable windows, and say which window and date.
   the SHA.
 - **Version / release date:** `https://api.github.com/repos/<owner>/<repo>/releases/latest` first, by
   a direct `curl`. The HTML releases page has been seen stale, and so has the API read through a
-  web-fetch wrapper (a direct call has not), so a version or date going into a report needs the two
-  to agree (`references/host-recipes.md` § GitHub → Freshness). `/releases/latest` skips
+  web-fetch wrapper, so a version or date going into a report needs the direct API call and the HTML
+  releases page to agree (`references/host-recipes.md` § GitHub → Freshness). `/releases/latest` skips
   prereleases and drafts; for "the newest version" read `/releases?per_page=10` (check `prerelease`
   / `draft` / `published_at`), or `/tags` where releases aren't used.
 
@@ -238,25 +246,38 @@ there overrides the rungs it names.
 
 - **Vendor blogs and announcement pages** — take the bytes (§1.2); read the figures too.
 - **Bot-blocked hosts** — a 403 or short 202 may be the fetcher: confirm in the browser; closed
-  there too = the site's own policy.
+  there too = the site's own policy, not your fetcher → an archived copy (§1.4).
 - **Framer sites** — read the one search-index JSON that holds every page's text.
 - **OpenAI docs** — `.md` twins; **OpenAI announcements** — the chart datasets sit in the page.
 - **GitHub** — when the shell is gated, climb the recipe's browser ladder; and confirm a version or
   date on two channels (no channel is authoritative alone).
-- **Medium** — a `curl` 403 is the fetcher; a short post may be a teaser whose essay continues on
-  the author's own site — check there before summarising.
-- **Vercel Security Checkpoint** — a 429 bot challenge, not a rate limit: do not back off, use the browser.
+- **Medium** — a 403 to `curl` and to web fetch (2026-11-14) is a block on fetchers, not a dead
+  post — never route round it through a mirror («Cautions»); a short post may be a teaser whose essay
+  continues on the author's own site — check there before summarising.
+- **Vercel Security Checkpoint** — a 429 bot challenge, not a rate limit (2026-09-20): do not back
+  off, use the browser.
 - **AI-built app demos** — read the deployed bundle, every chunk; never send a request to a route just
   to learn what it does (see «Cautions for every rung»).
 - **Hugging Face model releases** — file sizes are a FLOOR on memory, never a confirmation.
-- **Model registries** — resolve a model named in a post without the browser.
+- **Model registries** — when a page names a model whose maker, size, price or availability you must
+  report, resolve it through the registries' APIs, no browser.
 - **WebGL / three.js demos** — a frame-coupled scene cannot be waited into a later state.
 - **Typeform** — never click through: it saves partial answers in the user's name.
-- **Luma** — read the public calendar JSON; a 429 there (even on the first call) is the API's
-  limit, never "no events".
+- **Luma** — read the public calendar JSON; a 429 there (even on the first call, seen again
+  2026-11-14) is the API's limit, never "no events".
 - **SEC / EDGAR filings** — EDGAR needs a contact in the User-Agent: ask the user which one to send.
 
 ## Cautions for every rung
+
+**Never route a page through a third-party reader proxy or a paywall-bypass mirror** (a "reader"
+URL prefix, a Medium mirror, an archive-on-demand service that fetches the page for you). They send
+the URL to someone else, some exist to get round a paywall, and what comes back is their rendering,
+not the page. The rungs are the publisher's own forms (§1.1–§1.2), the browser, and the Internet
+Archive's existing captures (§1.4). (The case behind this rule: `references/trigger-tests.md`,
+re-run 2026-11-14.)
+
+**A web-fetch tool can return a generated SUMMARY, not the page** — use its output for orientation
+only, never for a number, a quote or an attribution (`references/host-recipes.md` § Vendor blogs).
 
 **A 200 from a JS app is not proof a page exists** — an SPA's catch-all answers 200 for an invented
 URL. Settle it on page-specific content measured against a nonsense URL of the same shape; report the
@@ -277,10 +298,11 @@ as unverified.
   plain capture saved, `--list` for the newest 300 captures; exit 4 alone means "no capture".
 - `scripts/html-to-text.ts` — a saved HTML page as readable text (§1.2, and the recipes that read a
   blog post or a filing); `--links` lists its outbound links, `--grep` finds a section in a big one.
-- `references/precedents.md` — the measured case behind each ruling, dated.
+- `references/precedents.md` — the longer measured cases, dated; short ones sit beside their recipe
+  in `host-recipes.md`.
 - `references/host-recipes.md` — per-host recipes (§5). Read the section for the host in front of you.
 - `references/trigger-tests.md` — should-fire / should-not prompts and their run record; re-run them
   after any edit to the `description`.
 
-Length: ~285 lines, over the ~250 aim because each of the three ladders keeps its branch conditions
+Length: over the ~250-line aim because each of the three ladders keeps its branch conditions
 and safeguards at the rung; per-host recipes and the measured cases live in `references/`.

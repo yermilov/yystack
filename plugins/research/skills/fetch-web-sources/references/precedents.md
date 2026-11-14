@@ -112,23 +112,23 @@ technologies are named" when the article's own figures showed `kubectl rollout r
 deployment/[listener]`, pods at 395/412 GiB against a ~660 GiB limit, and a standby pod taking the
 lease in ~30 s. On a nonexistent slug of the same host, `curl -sL` exited 0 with 75 KB of error page;
 `--fail-with-body` exited 22 («The requested URL returned error: 404»); the real article was 541 KB,
-and one strip pass gave 19 KB of article text. The figure filter without its exclusions returned 9
-URLs (an `apple-touch-icon.png` and a `…_og_<slug>.jpg` social card among them); with them, the
-seven figures — a CI-volume chart, a memory chart with the pod limit and the last OOMKill, a backlog
+and one strip pass gave 19 KB of article text. Of the post's images, an icon and a social card were
+chrome and seven were figures — a CI-volume chart, a memory chart with the pod limit and the last OOMKill, a backlog
 chart with its peak and the redesign dates, and a screenshot of an internal chat thread, none of it
-in the prose.
+in the prose. On 2026-11-14 a post on the same site served 21 images from `assets.claude.com` under
+content-hash names; the current list-every-image step was not measured beyond that count.
 
 ## GitHub sandbox gate — the bodies (2026-09-10 to 2026-09-20)
 
 One cloud-sandbox host, five sessions:
 - `api.github.com/repos/<owner>/<repo>` → 403, `{"message":"GitHub access to this repository is not
   enabled for this session. Use add_repo to request access…"}` — no `add_repo` tool existed in those
-  sessions. A control on an unrelated public repo gave the identical 403 (17.09).
+  sessions. A control on an unrelated public repo gave the identical 403 (2026-09-17).
 - `api.github.com/rate_limit` → 502 `builtin injection failed (github)`; `search/repositories` → 403
   `This GitHub API path is not available: sessions are bound to their configured repositories…`.
-- `raw.githubusercontent.com` → 200 on 10.09, 12.09, 13.09, 17.09 and 20.09; `connect_rejected` /
-  HTTP 000 on 11.09. On 20.09 the two negative controls (a bad ref, a bad path) each 404'd in the
-  same minute, which is what showed the channel could fail. On 17.09 a `main`-ref read 404'd on a
+- `raw.githubusercontent.com` → 200 on 2026-09-10, 2026-09-12, 2026-09-13, 2026-09-17 and 2026-09-20; `connect_rejected` /
+  HTTP 000 on 2026-09-11. On 2026-09-20 the two negative controls (a bad ref, a bad path) each 404'd in the
+  same minute, which is what showed the channel could fail. On 2026-09-17 a `main`-ref read 404'd on a
   repo that lives on `master` — the wrong-ref trap.
 - `github.com/user-attachments/assets/<uuid>` → 403 with a third body, while
   `cdn.syndication.twimg.com` and `video.twimg.com` answered 200 in the same minute.
@@ -137,16 +137,16 @@ One cloud-sandbox host, five sessions:
 
 ## GitHub freshness — stale channels, measured (2026-08-29 to 2026-09-12)
 
-- 12.09, one small public repo, minutes apart: a web-fetch tool said 0 stars / 0 forks / 5 commits
+- 2026-09-12, one small public repo, minutes apart: a web-fetch tool said 0 stars / 0 forks / 5 commits
   and a root listing missing three source files and a folder; the browser showed 124 / 34 / 30 and 39
   entries. Raw returned 200 for the files the snapshot lacked and 404 for one it listed — ~25 commits
-  behind. On 11.09 the same tool reported 252.6k stars against the API's 259 003, and twice gave a
+  behind. On 2026-09-11 the same tool reported 252.6k stars against the API's 259 003, and twice gave a
   CHANGELOG's newest version as `1.0.1` while `plugin.json` in the same commit said `1.2.3`.
-- 29.08, one popular public repo, same moment: the REST API through a web-fetch wrapper gave 36 061
+- 2026-08-29, one popular public repo, same moment: the REST API through a web-fetch wrapper gave 36 061
   stars, 5 987 forks, `pushed_at` three months old and an older description; the HTML page gave
   49 078, 7 550, a fresh latest commit and the current description.
 - An earlier case had the HTML Releases page as the stale side (see § 2.3 above).
-- 28.08, one skills-collection repo: the HTML page said 123, the README via raw said 75, the
+- 2026-08-28, one skills-collection repo: the HTML page said 123, the README via raw said 75, the
   SHA-pinned tree listing counted 130 `SKILL.md` files.
 
 ## AI-built app demos — one bundle read (2026-09-20)
@@ -176,8 +176,7 @@ A secondary write-up headlined the size as 8.6 GB.
 With no browser in the run, a Medium post and an OpenAI announcement both answered 403 to `curl` and
 to a web-fetch tool. Runs with this skill loaded (before §1.4 existed, so this shows the model's own
 reach for the archive, not the skill's instruction) found Internet Archive snapshots and quoted from
-them with the snapshot date; the same prompts without the skill used all ten turns and returned
-nothing. The Medium run tried the closest snapshot (2022) first and quoted from an older one (2021);
+them with the snapshot date (the without-skill side is in `trigger-tests.md`). The Medium run tried the closest snapshot (2022) first and quoted from an older one (2021);
 why it switched is not recorded, so do not assume the closest capture is the usable one. The
 announcement URL as given had no snapshot at all; the article lived under a different slug.
 

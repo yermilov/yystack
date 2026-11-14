@@ -37,7 +37,12 @@ const valueOf = (name: string): string | undefined => {
 const known = new Set(['--links', '--base', '--grep'])
 const flagValues = new Set([valueOf('--base'), valueOf('--grep')].filter((v) => v !== undefined))
 const positional = args.filter((a, i) => !a.startsWith('--') && !(flagValues.has(a) && known.has(args[i - 1])))
-const unknown = args.filter((a) => a.startsWith('--') && !known.has(a))
+const unknown = args.filter((a, i) => a.startsWith('-') && !known.has(a) && !(flagValues.has(a) && known.has(args[i - 1])))
+const repeated = [...known].filter((f) => args.filter((a) => a === f).length > 1)
+if (repeated.length) {
+  console.log(`given twice: ${repeated.join(' ')}`)
+  process.exit(2)
+}
 if (unknown.length || positional.length !== 1) {
   console.log(unknown.length ? `unknown flag: ${unknown.join(' ')}` : 'give exactly one HTML file')
   process.exit(2)

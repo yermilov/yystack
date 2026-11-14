@@ -34,7 +34,9 @@ this marketplace alone would see.
 | 2026-11-14 | Claude Code · claude-fable-5-2 | isolated | same description; + a vendor-blog row, the Luma row on a live calendar | 19/19 | 11/11 | |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | full, installed `research@yystack` disabled | same | 18/19 | 11/11 | the Hugging Face memory prompt was answered from memory once; alone ×3 it fired 2/3 (the harness gives the session no fetch tool, which invites a from-memory answer) |
 
-What these runs do not establish: Codex routing (not run — Codex routes from the INSTALLED copy, so
+What these runs do not establish: should-not rows whose right answer is "just fetch it" were run
+with web fetch disallowed, so they measure the description alone, not the competition with a
+working fetch; Codex routing (not run — Codex routes from the INSTALLED copy, so
 a run counts for this description only once the installed text matches the working tree), other
 models, repeat stability (each prompt ran once per row), or anything past the routing decision.
 
@@ -56,8 +58,26 @@ Reading: where the plain route works, the bare model already knows it, and the s
 the guards (a completeness statement, the floor-not-total count); the second prompt is correctly
 outside the skill and measures nothing about it. Where the plain fetch FAILS, the skill turned two
 dead ends into dated, caveated answers within the turn budget. Both with-skill runs reached for the
-Internet Archive on their own; that rung is now §1.4 in SKILL.md and `scripts/wayback.ts`, which
-no with/without pair has measured as written (open as of 2026-11-14).
+Internet Archive on their own; that rung is now §1.4 in SKILL.md and `scripts/wayback.ts`.
+**Still open (2026-11-14):** no with/without pair has run `wayback.ts`, `gh-repos.ts` or
+`html-to-text.ts` as written (a shell needs an OS sandbox for that pair).
+
+**Re-run 2026-11-14 on the current body, web fetch only** (no shell, so `wayback.ts` itself was not
+measured; this host's web-fetch tool cannot reach `web.archive.org` at all, so §1.4 could not be
+exercised either):
+
+| Prompt | With the skill | Without it |
+| --- | --- | --- |
+| the OpenAI announcement quote (real slug `/index/hello-gpt-4o/`) | 403 live, archive unreachable; then **quoted the text via a third-party reader proxy** | 403 live, archive unreachable; declined to quote, asked for the text |
+| the Medium paragraph | 403 on both Medium hosts; **tried a reader proxy and two Medium mirrors, one a paywall-bypass service**; quoted only a fragment | 403; **explicitly declined mirrors as working around the block** |
+
+Reading: on a host where neither the shell nor the archive is reachable, the skill's framing pushed
+the agent to third-party proxies the bare model refused. SKILL.md «Cautions for every rung» now
+forbids them. Re-run with that rule, same day, with-skill side only: both runs tried the live page and
+the Internet Archive, touched no third-party proxy or mirror, and reported the page unread — the
+same end state as the runs without the skill. On a host with neither a shell nor archive access the
+skill now adds nothing over the bare model; its value there is only that it no longer makes things
+worse.
 
 ## Should fire
 

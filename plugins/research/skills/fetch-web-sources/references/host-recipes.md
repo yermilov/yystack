@@ -1,9 +1,8 @@
 # fetch-web-sources — host recipes (depth)
 
 Per-host recipes for the material a link points at: a vendor blog, a docs page, a repo, a model
-release, a demo, a form, a filing. Read only the section for the host in front of you. Many were
-first measured on pages a social post linked to, and where a recipe says "the post" it means
-whatever page sent you here; the recipes hold for any link to that host. Each section states its
+release, a demo, a form, a filing. Read only the section for the host in front of you. A recipe that
+says "the post" means whatever page sent you here; the recipes hold for any link to that host. Each section states its
 ruling and its command. The longer measured cases are in `precedents.md` under a matching heading;
 a short one stays beside its recipe, dated. Hosts change, so re-check a recipe that has stopped
 matching.
@@ -17,13 +16,14 @@ matching.
 - **Framer sites** — the search-index JSON; reading accordion answers.
 - **OpenAI docs** — the `.md` twin and its limits.
 - **OpenAI announcements** (`openai.com/index/*`) — prose plus the full chart datasets.
-- **GitHub** — the sandbox gate, the browser ladder, freshness, fetch-wrapper failure modes (SHA-pinned
+- **GitHub** — the sandbox gate, the browser ladder, SVG attachments, reading the code with `curl`, a
+  host with only a page-rendering fetch wrapper, freshness, fetch-wrapper failure modes (SHA-pinned
   reads are in SKILL.md §2.3).
 - **Medium** — the `curl` 403 and the teaser trap.
 - **Vercel Security Checkpoint** — recognising the 429 bot challenge.
 - **AI-built app demos** — reading the deployed bundle.
 - **Model releases (HuggingFace)** — file sizes, and what they can and cannot prove.
-- **Models named in a post** — resolving a model in registries.
+- **Models named on a page** — resolving a model in registries.
 - **WebGL / three.js demos** — why waiting does not advance a frame-coupled scene.
 - **Typeform** — reading a form's questions without submitting anything.
 - **Luma** — the public calendar JSON, and its rate limit.
@@ -64,22 +64,22 @@ reading), never as the source of a number, a quote or an attribution you will pu
 
 **And read the figures.** A blog post's diagrams are routinely where the load-bearing specifics live
 — the exact command, the real limit, the dated timeline, a screenshot of an internal thread — none
-of which is in the prose. On webflow-hosted Anthropic posts, match the CDN host AND an image
-extension (a bare host match also drags in the site's css and js bundles), then drop the site chrome
-and the social card, which are not figures:
+of which is in the prose. List the post's images from the saved bytes, then keep the ones in the
+article body (their `alt` text and position in the page, not their file names, tell figures from
+site chrome):
 
 ```bash
-grep -oE 'https://cdn\.prod\.website-files\.com/[^"?]+\.(png|jpe?g|webp)' "<scratch>/post.html" \
-  | sort -u | grep -vE '_(placeholder|og)_|favicon|apple-touch-icon'
+grep -oE 'https://[a-z0-9.-]+/[^"? ]+\.(png|jpe?g|webp|svg)' "<scratch>/post.html" | sort -u
 ```
 
-The social card's marker is `_og_` mid-filename, so a `/og_` pattern silently misses it. `curl` each
-figure and read it.
+The host and naming change with each site rebuild: on 2026-09-20 Anthropic posts served figures
+from `cdn.prod.website-files.com` (a social card marked `_og_`); on 2026-11-14 from
+`assets.claude.com` with content-hash names (21 images on one post). `curl` each figure and read it.
 
-**Fallback if `curl` is blocked:** a DOM walk of the post's text elements — on 2026-11-14 an `anthropic.com/research` post carried them as
-`.post-text` / `.post-heading` / `.post-section` (CSS-module-prefixed; `.blog_post_layout` was gone) — there are **several** such
-elements, so take the **longest**, and walk `h1..h4, p, li, pre` `textContent` rather than trusting
-`innerText`.
+**Fallback if `curl` is blocked:** a DOM walk of the post's text elements — on 2026-11-14 an
+`anthropic.com/research` post carried them as `.post-text` / `.post-heading` / `.post-section`
+(CSS-module-prefixed; `.blog_post_layout` was gone). Walk `h1..h4, p, li, pre` `textContent` inside
+them rather than trusting `innerText`.
 
 ---
 
@@ -189,9 +189,8 @@ just the status. Measured on one cloud-sandbox host across five sessions (2026-0
 bodies verbatim in `precedents.md` § GitHub sandbox gate):
 
 - `api.github.com` answers **403** with a body that is not GitHub's — it names the session's
-  configured repositories and suggests a tool (`add_repo`) that the session does not have. That is
-  the session's egress proxy, not a permissions problem on the repo, and it covers every repo the
-  session is not bound to (a negative control on an unrelated public repo gave the identical 403).
+  configured repositories. That is the session's egress proxy, not a permissions problem on the
+  repo, and it covers every repo the session is not bound to (a negative control on an unrelated public repo gave the identical 403).
   Other API paths on the same host gave a 502 and a second 403 wording: several bodies, one gate.
   A repo the session IS bound to may still answer, so keep the probe rather than skipping the shell.
 - `raw.githubusercontent.com` **varied between sessions** on that host (200 on some days,
@@ -204,10 +203,8 @@ bodies verbatim in `precedents.md` § GitHub sandbox gate):
   run other hosts answered 200 in the same minute — and read the attachment in the **browser**
   (check «SVG attachments» below before reaching for a screenshot).
 - The gate is not GitHub-specific: unrelated hosts gave `connect_rejected` on some runs. Where the
-  host exposes a proxy status endpoint (that one did, at `$HTTPS_PROXY/__agentproxy/status`, listing
-  `noProxy` and `recentRelayFailures[]`), read it before diagnosing a dead host — it is the cheap way
-  to tell "the proxy refused" from "the host returned 403". **Where there is no such endpoint**, the
-  same distinction comes from a control pair: one URL on a host you know is reachable, one on the
+  host exposes a proxy status endpoint (that one did; `precedents.md` names it), read it before
+  diagnosing a dead host. **Otherwise** the same distinction comes from a control pair: one URL on a host you know is reachable, one on the
   target. Both fail → the egress is closed; only the target fails → it is the target.
 
 When the shell is gated, the browser still reaches both `api.github.com` (from a `github.com` tab)
@@ -235,7 +232,7 @@ All verified on those runs.
   **Output cap:** fetched by a page script, the tree meets the cap of the bullet above (a 6,610-blob
   tree, measured on one). Reduce to AGGREGATES inside the page before returning anything: per-top-level-directory counts, an
   extension histogram, a filtered path list — never the raw tree. A `window` accumulator holding
-  intermediate results does **not** survive the next navigate (`read-twitter`'s `references/browser-traps.md`, «`window`
+  intermediate results does **not** survive the next navigate (the `read-twitter` skill's browser traps: «`window`
   accumulators do not survive a navigate or a reload»); `sessionStorage` does survive a same-origin
   navigation or reload in the same tab, and reappears if you come back to `github.com` later in that
   tab — but it is **inaccessible** the whole time you're on a **different** origin
@@ -299,7 +296,7 @@ All verified on those runs.
   with the anchor and without. That reads exactly like "the comment does not exist", and that
   comment is the material the post is about. One call settles it —
   `https://api.github.com/repos/<o>/<r>/issues/comments/<id>` through the browser `fetch` above (a
-  web-fetch tool on `api.github.com` is 403 as well) — returning `body`, `user.login`, `created_at`
+  web-fetch tool on `api.github.com` was 403 as well on that host, 2026-09-20) — returning `body`, `user.login`, `created_at`
   and `html_url`. **Assume the anchor, not the issue, is the subject.**
 - **README, when `curl` cannot reach `/repos/:o/:r/readme`** — make the same `/readme?ref=<sha>` call
   (§ Reading the code with `curl` → README) from a `github.com` tab; its `path` is the answer. Only if that route fails
@@ -376,14 +373,14 @@ other image.
 - `https://api.github.com/repos/<owner>/<repo>/git/trees/<sha>?recursive=1` — a plain `curl`
   returns the **full JSON file tree** (every path, type and sha) for a public repo. There is no need
   to guess file names when this call is available: read the listing. **Redirect it to a scratch file
-  in a fresh `mktemp -d` dir (`curl -o "$workdir/tree.json" ...`) and inspect with `jq`/`grep`**
+  in your scratch directory (`curl -o "<scratch>/tree.json" ...`) and inspect with `jq`/`grep`**
   rather than reading the raw response through tool stdout, and rather than writing into the current
   directory — a large tree can exceed a tool's own output cap (which would read as truncation even
   on a repo well under GitHub's own limit), and a plain filename can collide with something already
   in the workspace. A bad ref 404s with a real, non-empty JSON body (`{"message":"Not Found",...}`)
   and status 404 — clearly distinguishable from success, not empty. ⚠️ On a very large repo
   (**100,000 entries or 7 MB**, GitHub's documented limit as of 2026-09) the response is still `200` but carries
-  `"truncated": true` in the saved JSON — check that field (`jq .truncated "$workdir/tree.json"`)
+  `"truncated": true` in the saved JSON — check that field (`jq .truncated "<scratch>/tree.json"`)
   before treating the listing as complete; a truncated tree needs per-subtree calls to fill the
   gaps.
 - `https://raw.githubusercontent.com/<owner>/<repo>/<sha>/<path>` — returns the file verbatim. A
@@ -504,9 +501,8 @@ when it happens.
 **Tell — read the HEADERS, not the body**: `x-vercel-mitigated: challenge` plus an
 `x-vercel-challenge-token`, with HTTP **429**. That beats grepping the body, because the challenge
 is a well-formed 32 KB HTML document of plausible size: a bare `wc -c` or a `grep` for a string that
-happens to be absent reads as "the site is empty" rather than "I was bounced" — and a bare
-`curl -sL` exits **0** while writing it to the file, exactly as in «Vendor blogs» above. Use
-`--fail-with-body` and check the status.
+happens to be absent reads as "the site is empty" rather than "I was bounced" — and a bare `curl
+-sL` writes it with exit 0 («Vendor blogs» above).
 
 **A User-Agent does not help** — verified: the same request with a full Chrome UA string returned
 429 and the same checkpoint page. **The fix is the browser**: open the page and read it from there
@@ -607,12 +603,12 @@ vendor's blog, the model card or the API, never to the aggregator that repeated 
 
 ---
 
-## Models named in a post — registries
+## Models named on a page — registries
 
-**A model named in a post — resolve it WITHOUT the browser, and note that the OpenRouter endpoint
-keeps answering after the model is delisted from OpenRouter's own catalogue.** Two `curl`-able
-registries answer «what is this model, who makes it, what does it cost» faster and more reliably
-than any vendor page — neither is a retention guarantee across the board, so treat "still answers"
+**A model named on a page — resolve it WITHOUT the browser. In the one case measured (2026-09-19) the
+OpenRouter endpoint kept answering after the model was delisted from OpenRouter's own catalogue.** Two `curl`-able
+registries answered «what is this model, who makes it, what does it cost» faster than the vendor
+page in that case — which does not establish they always will, and neither is a retention guarantee, so treat "still answers"
 as measured per-registry, not assumed:
 
 - **`https://openrouter.ai/api/v1/models/<slug>/endpoints`** — returns `name`, `description`,
@@ -623,9 +619,11 @@ as measured per-registry, not assumed:
   another host or slug), and for a stealth listing the `description` is rewritten in place at the
   reveal — measured 2026-09-19 on one stealth listing whose catalogue entry was gone while this call
   still returned «… **was** a stealth model,…». The API's own `description` was TRUNCATED
-  mid-sentence there; the rendered page (`https://openrouter.ai/<slug>`, via a web-fetch tool)
-  carried the full line naming the real model and provider. So: API for the specs and the endpoint
-  count, page for the full description.
+  mid-sentence there; the rendered page (`https://openrouter.ai/<slug>`) carried the full line naming
+  the real model and provider. Read that page's bytes (`curl` + `html-to-text.ts`) or in the browser
+  before you attribute the model: a web-fetch summary of it is orientation only («Cautions for
+  every rung» in SKILL.md). So: API for the specs and the endpoint count, the page for the full
+  description.
 - **`https://models.dev/api.json`** — Anomaly's (opencode's) registry: ~4.7 MB and 222 providers in 2026-09, one
   JSON with per-model `limit.context`/`limit.output`, `cost.input`/`output`/`cache_read`,
   modalities, `tool_call`, `reasoning`, `release_date`, **and which providers carry it**. `curl` it
@@ -634,9 +632,7 @@ as measured per-registry, not assumed:
   reach it», and its one-line `description` is often blunter than the vendor's marketing line.
 
 **Both are registries, not the vendor.** When the two disagree with the vendor's own page, say so
-and quote both — on the one case measured (date not recorded) the vendor's own subprocessor list and a third party's reading
-of an unmerged release note named **different** underlying model pools, and neither was confirmable
-from the other.
+and quote both.
 
 ---
 
@@ -688,9 +684,9 @@ than implying they were.
 Reading the FORM's questions without submitting anything.
 
 ⚠️ **Never click through the form.** The obvious alternative to this recipe — clicking through the
-form screen by screen — is destructive, not just slower. Typeform saves **partial** responses as you
-click forward, so "just click through the questions" silently leaves an unfinished response
-submitted in the user's name. This recipe reads the form without touching it.
+form screen by screen — is destructive, not just slower. Typeform can save **partial** responses as you
+click forward — a setting the form owner turns on, which you cannot see from outside — so "just
+click through the questions" can leave an unfinished response submitted in the user's name. This recipe reads the form without touching it.
 
 **What doesn't work** (both measured 2026-08-30, both cost a call): a web-fetch tool on
 `https://form.typeform.com/to/<id>` returns only `<title>` + og-tags + one image — no questions,
@@ -769,7 +765,7 @@ alike, while the calendar page itself answered 200. That is a rate limit on the 
 calendar: read the events from the calendar page in the browser and say the API was unavailable (a
 retry minutes later failed too in the measured case). Never report "no events" from a 429.
 
-When it answers, the response ran ~82k characters (date not recorded) — a web-fetch tool will not return that inline; it
+When it answers, the response runs to tens of thousands of characters (~82k on one measured call) — a web-fetch tool will not return that inline; it
 spills to a file and reports the path. **That is normal operation, not an error** — grep the spilled
 file, and if the shell cannot see it, try the host's own file-search tool before concluding the file
 is gone.
@@ -790,13 +786,13 @@ one call as an exhaustive event history.**
 1. Find the filing by company name:
    `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=<name>&type=S-1&owner=include&count=40&output=atom`
    → each `<entry>` has `filing-href` (the `…-index.htm` page that lists the documents) and
-   `file-number`. The full-text search endpoint (`efts.sec.gov`) gave 403 once (one observation, date not recorded) —
-   prefer the atom feed.
-2. The main document is one big HTML (14 MB for the measured S-1, date not recorded). Download it with
+   `file-number`. The atom feed (200 on 2026-11-14) returns each filing's own index page, so start
+   there.
+2. The main document is one big HTML (an S-1 runs to megabytes — 14 MB on one measured filing). Download it with
    `curl -sSL --fail-with-body`, then find the sections before reading anything:
    `bun run "SKILLDIR/scripts/html-to-text.ts" <file> --grep 'prospectus summary|risk factors summary|overview'`.
    «Prospectus Summary», «Summary Consolidated Financial and Other Data», «Risk Factors Summary» and
    the MD&A «Overview» carry most of it; do not read 1.5M characters.
-3. **Check dates on the primary:** a web-search tool (one case, date not recorded) conflated a company's earlier CONFIDENTIAL
-   submission with its public S-1. And figures left blank (`$           `) before pricing are «not
+3. **Check dates on the primary** — a confidential draft submission and the public S-1 are different
+   filings. And figures left blank (`$           `) before pricing are «not
    disclosed in this filing», not a parse failure — do not fill them in.

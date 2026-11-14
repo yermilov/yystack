@@ -9,7 +9,8 @@
  * the newest), and, when that lookup errors or times out, falls back to the CDX capture index. Then
  * downloads the PLAIN capture (the page inside the archive's toolbar: the raw `id_/` form has
  * answered HTTP 429 to the same request, measured 2026-11-14) into --out and prints one JSON line:
- *   {"timestamp", "capture_url", "http", "bytes", "lookup": "available" | "cdx"}
+ *   {"timestamp" (of the capture actually saved, after the archive's redirect), "requested",
+ *    "capture_url", "http", "bytes", "lookup": "available" | "cdx"}
  * --list prints the newest 300 200-status captures, oldest of them first, one
  * `<timestamp> <original url>` per line — for when the closest capture turns out to be a block,
  * login or paywall page, not the article. For an older one, use --timestamp.
@@ -152,10 +153,12 @@ function epoch(t: string): number {
     lookupError = (e as Error).message
     return undefined
   })) as
-    | { archived_snapshots?: { closest?: { timestamp?: string; available?: boolean } }; error?: unknown }
+    | { archived_snapshots?: { closest?: { timestamp?: string; available?: boolean; status?: string } }; error?: unknown }
     | undefined
   const closest = j?.archived_snapshots?.closest
-  if (j && j.error === undefined && closest?.available && closest.timestamp) chosen = closest.timestamp
+  // Only a 200 capture counts, as on the index path (filter=statuscode:200); a redirect or error
+  // capture falls through to the index.
+  if (j && j.error === undefined && closest?.available && closest.timestamp && closest.status === '200') chosen = closest.timestamp
   else if (lookupError || j?.error !== undefined)
     console.error(`wayback: availability lookup failed (${lookupError || JSON.stringify(j?.error)}); trying the capture index`)
   if (lookupError || j?.error !== undefined) lookupFailed = true
@@ -186,4 +189,8 @@ try {
 const html = await res.text()
 if (!res.ok) failed(`the capture answered HTTP ${res.status}: ${html.slice(0, 200).replace(/\s+/g, ' ')}`)
 await Bun.write(out!, html)
-console.log(JSON.stringify({ timestamp: chosen, capture_url: res.url || captureUrl, http: res.status, bytes: html.length, lookup }))
+// The archive redirects /web/<ts>/ to the nearest real capture, so the snapshot that was saved is the
+// one in the final URL — report that date, not the one asked for.
+const finalUrl = res.url || captureUrl
+const saved = finalUrl.match(/\/web\/(\d{14})/)?.[1] ?? chosen
+console.log(JSON.stringify({ timestamp: saved, requested: chosen, capture_url: finalUrl, http: res.status, bytes: html.length, lookup }))

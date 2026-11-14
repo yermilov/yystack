@@ -62,12 +62,12 @@ let res: Response
 try {
   res = await fetch(url, { headers: { Accept: 'text/event-stream' }, signal: AbortSignal.timeout(45_000) })
 } catch (e) {
-  console.log(`INCOMPLETE — request failed (${(e as Error).message}). This is NOT a zero-result answer.`)
+  console.log(`INCOMPLETE — request failed (${(e as Error).message}). This is NOT a zero-result answer; transient — retry in ~60 s.`)
   process.exit(1)
 }
 const raw = await res.text().catch(() => '')
 if (res.status !== 200) {
-  console.log(`INCOMPLETE — HTTP ${res.status} (a bot check or rate limit reads like zero matches). This is NOT a zero-result answer.`)
+  console.log(`INCOMPLETE — HTTP ${res.status} (a bot check or rate limit reads like zero matches). This is NOT a zero-result answer; ${res.status === 429 || res.status >= 500 ? 'transient — retry in ~60 s' : res.status === 401 || res.status === 403 ? 'an access block (a bot check or this IP), not a query error — retry later or from another network; never read it as "nowhere"' : 'likely a query error — check the term and --filters'}.`)
   process.exit(1)
 }
 const frames: [string, any][] = []
@@ -76,13 +76,16 @@ for (const m of raw.matchAll(/event: (\w+)\ndata: (.*)/g)) {
 }
 const final = frames.find(([e, d]) => e === 'progress' && d?.done)?.[1]
 if (!final) {
-  console.log('INCOMPLETE STREAM — no done:true frame. The search did not finish; this is NOT a zero-result answer.')
+  console.log('INCOMPLETE STREAM — no done:true frame. The search did not finish; this is NOT a zero-result answer. Retry once; if it recurs, narrow --filters.')
   process.exit(1)
 }
 for (const [e, d] of frames) if (e === 'matches') for (const m of d) console.log(`${m.repository} ${m.path}`)
 const skipped: { reason: string; title: string }[] = final.skipped ?? []
 const capped = skipped.some((s) => s.reason === 'shard-match-limit' || /result limit/i.test(s.title ?? ''))
-console.log(capped
-  ? `matchCount: >=${final.matchCount} (a FLOOR: the result limit was hit; raise --count for more, never quote it as a total)`
+// Forks and archived repos are excluded by choice (add fork:yes / archived:yes); any other skip — a
+// timed-out shard, a document or repository limit — means part of the index was not searched.
+const partial = skipped.some((s) => !['repository-fork', 'excluded-archive', 'shard-match-limit'].includes(s.reason))
+console.log(capped || partial
+  ? `matchCount: >=${final.matchCount} (a FLOOR: ${capped ? 'the result limit was hit; raise --count for more' : 'part of the index was skipped (see below); narrow --filters and re-run'} — never quote it as a total)`
   : `matchCount: ${final.matchCount} (complete for what was searched)`)
 for (const s of skipped) console.log(`  skipped: ${s.reason} | ${s.title}`)
