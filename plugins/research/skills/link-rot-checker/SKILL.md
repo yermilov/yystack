@@ -22,9 +22,11 @@ a blocked shell or a wrong id for a verdict. One link is not worth this skill �
 Register these as todo items now, before doing anything else, in whatever todo/plan tool this host
 gives you — and while work remains keep exactly one in progress:
 1. Fetch pass — the script over the whole batch (§ 1)   2. Markers per site — one item per site:
-dead marker, alive marker, and the made-up-id control when it is required (§ 2)   3. Browser pass —
-one item per link the script left BLOCKED, NEEDS-BROWSER, REDIRECTED or CHECK (§ 3)   4. Classify —
-one item per link (§ 4)   5. Replacements — only if the user wants them (§ 5)   6. Report (§ 6)
+dead marker and alive marker (§ 2)   3. Made-up-id control — one item per site, closed with its
+result or "skipped: real 404/410" (§ 2)   4. Marker re-run — the script with `--dead`/`--alive`, one
+item per site (§ 1)   5. Browser pass — one item per link still BLOCKED, NEEDS-BROWSER, REDIRECTED
+or CHECK (§ 3)   6. Classify — one item per link (§ 4)   7. Replacements — only if wanted (§ 5)
+8. Report (§ 6)
 Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
 left open — an unfinished list at the end must mean something really is unfinished.
 No such tool? SEARCH for one first — on hosts with deferred tools it exists but is not loaded, and
@@ -45,17 +47,20 @@ bun run "SKILLDIR/scripts/check-links.ts" <url> <url> …        # or --file url
 ```
 
 `SKILLDIR` is a placeholder: substitute the **literal** directory you loaded this `SKILL.md` from. No
-Bun? Install it (`install-bun`), or do the same by hand with `curl -sL -m 20 -A '<a browser
-user-agent>'` per link, plus one fetch of each site's homepage.
+Bun? Install it (`install-bun`), or do the same by hand per link —
+`curl -sL -m 20 -A '<a browser user-agent>' -o page.html -w '%{http_code} %{url_effective}\n' '<url>'`
+— plus one fetch of each site's homepage.
 
 It fetches each link with a browser user-agent and, **once per site, the homepage as a control**: a
 refused homepage means the refusals are about this shell, not the links. Each link gets one state —
 `DEAD` (404/410 while the homepage answers, or your `--dead` regex matched), `ALIVE` (your `--alive`
 regex matched), and pointers to the next step: `BLOCKED` (401/403/429/451/503, or the homepage is
-refused too), `NEEDS-BROWSER` (a bot-check page or a near-empty shell), `REDIRECTED` (ended on a
-shallower page — often a category or search page, a likely dead sign), `CHECK` (a page, no marker
+refused too), `NEEDS-BROWSER` (a bot-check page, or under 100 characters of visible text),
+`REDIRECTED` (ended on another site, or on a shallower page — often a category or search page, a
+likely dead sign), `CHECK` (a page, no marker
 yet), `UNKNOWN` (network error, timeout, other 5xx). Re-run it with `--dead` / `--alive` once § 2
-gives you the markers — one site per run (`--site <host>` when the batch spans several; the markers
+gives you the markers (`--alive` is matched against the page title only, so a "related items" block
+cannot pass for the item; compare each ALIVE title with the item the link should be) — one site per run (`--site <host>` when the batch spans several; the markers
 then apply only there). Markers are never read on a bot-check page, and a homepage that is itself a
 bot check counts as refused.
 
@@ -75,7 +80,8 @@ page:
   dead marker is a 200 page, or when the ids came from OCR or hand-typing. If the made-up id gets the
   same "removed" page, your dead marker cannot tell *removed* from *never existed*: report those
   links "dead or wrong id". If it gets a real-looking page, a page alone proves nothing — a made-up
-  product id has resolved to an unrelated live product. Skip it, with that reason, for links whose
+  product id has resolved to an unrelated live product — so the alive marker must be this item's
+  own title or id, not just "a product page". Skip it, with that reason, for links whose
   dead signal is a real 404/410.
 
 Example of the shape (one classifieds site, verified 2026-10): a removed ad and a made-up id both
@@ -91,14 +97,16 @@ empty searches are a real absence. **No browser** → those links stay `UNKNOWN 
 
 ## 4. Classify each link
 
-A verdict needs a positive marker: `DEAD` or `ALIVE`, each naming its marker; anything else is
-`UNKNOWN`, never a guess. A link still unknown after a re-read: screenshot it and ask — or, when
+A verdict needs a positive marker: `DEAD` or `ALIVE`, each naming its marker, or `DEAD OR WRONG ID`
+when the dead marker also appears for a made-up id (§ 2); anything else is `UNKNOWN`, never a
+guess. A link still unknown after a re-read: screenshot it and ask — or, when
 another skill called you, return it as `UNKNOWN` with the reason instead of stopping its run. A false
 "dead" erodes trust faster than an honest "couldn't tell".
 
 ## 5. Replacements — only on request
 
-Ask whether the user wants replacements; don't search unasked. Then, by kind:
+Ask whether the user wants replacements — or, when another skill called you, ask that caller (or
+return without them); don't search unasked. Then, by kind:
 
 - **A dead listing** (an ad, a sale or event page) → search the same site for fresh items matching
   the criteria the original implies (location, price range, the must-haves the user named), and hand
@@ -122,7 +130,7 @@ may have shifted since it was written.
 ## 6. Report
 
 ```
-1. <url> — DEAD (removal page "Ad removed by the author", 200; made-up id: same page → or wrong id)
+1. <url> — DEAD (removal page "Ad removed by the author", 200; a made-up id got a different page)
 2. <url> — ALIVE (<title>, <price>)
 3. <url> — DEAD (HTTP 404, homepage answers)
 4. <url> — UNKNOWN (bot check, twice)

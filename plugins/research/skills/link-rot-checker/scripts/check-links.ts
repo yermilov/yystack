@@ -12,15 +12,19 @@
  *
  *   DEAD            404/410 while the homepage answers, or the --dead regex matched the page
  *   ALIVE           the --alive regex matched the page (and --dead did not)
- *   REDIRECTED      ended on a different, shallower page (often a category or search page) — check it
+ *   REDIRECTED      ended on another site, or on a shallower page of this one (often a category or
+ *                   search page) — check it
  *   BLOCKED         401/403/429/451/503, or the homepage is refused too — open it in a browser
- *   NEEDS-BROWSER   200 but a bot-check page or a near-empty shell — open it in a browser
+ *   NEEDS-BROWSER   200 but a bot-check page or a near-empty shell (under 100 characters of visible
+ *                   text once scripts and tags are stripped) — open it in a browser
  *   CHECK           200 with content but no marker given or matched — read it and classify
  *   UNKNOWN         network error, timeout, or another 5xx
  *
  * Only DEAD and ALIVE are verdicts, and only because a status or a marker you supplied said so; every
- * other state is a pointer to the next step. The regexes are matched case-insensitively against the
- * page's <title> and visible-ish text (tags stripped), never on a bot-check page. Markers belong to
+ * other state is a pointer to the next step. Both regexes are case-insensitive and never read on a
+ * bot-check page. --dead is matched against the title and the visible text; --alive against the
+ * <title> ONLY — the place a page names its own item, where a "related items" block cannot reach.
+ * ALIVE prints the title: still compare it with the item the link should be. Markers belong to
  * ONE site: with several sites in the batch, --site <host> says whose they are, and links on other
  * hosts are checked without them. It only reads; it never posts or logs in.
  *
@@ -73,7 +77,7 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 const BOT_CHECK = /just a moment|cf-chl|captcha|robot check|are you a robot|verify you are human|enable javascript to continue|access denied/i
 const BLOCK_STATUS = new Set([401, 403, 429, 451, 503])
 
-type Got = { status: number; finalUrl: string; title: string; text: string; bytes: number } | { error: string }
+type Got = { status: number; finalUrl: string; title: string; text: string; visible: number } | { error: string }
 
 async function get(url: string): Promise<Got> {
   try {
@@ -84,8 +88,9 @@ async function get(url: string): Promise<Got> {
     })
     const html = await r.text()
     const title = (html.match(/<title[^>]*>([^<]*)/i)?.[1] ?? '').replace(/\s+/g, ' ').trim()
-    const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ')
-    return { status: r.status, finalUrl: r.url, title, text: `${title} ${text}`, bytes: html.length }
+    const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    return { status: r.status, finalUrl: r.url, title, text: `${title} ${text}`, visible: text.length }
   } catch (e) {
     return { error: (e as Error).name === 'TimeoutError' ? `timeout after ${timeoutMs / 1000}s` : (e as Error).message }
   }
@@ -96,7 +101,9 @@ const rootOf = (u: URL) => {
   if (!roots.has(u.origin)) roots.set(u.origin, get(`${u.origin}/`))
   return roots.get(u.origin)!
 }
-const challenged = (g: Got) => !('error' in g) && (BOT_CHECK.test(g.text) || g.bytes < 2000)
+// Visible text, not bytes: a small static page (example.com: 171 chars) is real content, while a
+// client-rendered shell carries almost none (26 chars measured on one, 2026-11).
+const challenged = (g: Got) => !('error' in g) && (BOT_CHECK.test(g.text) || g.visible < 100)
 // A homepage "answers" only with real content: a 200 bot check or an empty shell is a refusal too.
 const refused = (g: Got) => 'error' in g || g.status >= 400 || challenged(g)
 
@@ -124,7 +131,7 @@ async function check(raw: string): Promise<Row> {
   if (g.status >= 400) return { ...base, state: 'UNKNOWN', why: `HTTP ${g.status}` }
   // A challenge page can contain any words ("not found", the item's title), so no marker is read on one.
   if (challenged(g)) {
-    return { ...base, state: 'NEEDS-BROWSER', why: BOT_CHECK.test(g.text) ? 'bot-check page' : `near-empty page (${g.bytes} bytes)` }
+    return { ...base, state: 'NEEDS-BROWSER', why: BOT_CHECK.test(g.text) ? 'bot-check page' : `near-empty page (${g.visible} chars of text)` }
   }
   if (to.href !== from.href && depth(to.pathname) < depth(from.pathname)) {
     return { ...base, state: 'REDIRECTED', why: `ended on ${g.finalUrl}` }
@@ -132,7 +139,7 @@ async function check(raw: string): Promise<Row> {
   // Markers are read only on the intended site: both where the link points and where it ended up.
   const scoped = markersApply(raw) && markersApply(g.finalUrl)
   if (scoped && deadRe?.test(g.text)) return { ...base, state: 'DEAD', why: `dead marker matched (HTTP ${g.status})` }
-  if (scoped && aliveRe?.test(g.text)) {
+  if (scoped && aliveRe?.test(g.title)) {
     return { ...base, state: 'ALIVE', why: `alive marker matched${g.title ? `: ${g.title.slice(0, 80)}` : ''}` }
   }
   return { ...base, state: 'CHECK', why: `HTTP ${g.status}${g.title ? `, title "${g.title.slice(0, 80)}"` : ', no title'}` }
