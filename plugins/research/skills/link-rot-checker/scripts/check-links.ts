@@ -19,7 +19,8 @@
  *   NEEDS-BROWSER   200 but a bot-check page or a near-empty shell (under 100 characters of visible
  *                   text once scripts and tags are stripped) — open it in a browser
  *   CHECK           200 with content but no marker given or matched — read it and classify
- *   UNKNOWN         network error, timeout, or another 5xx
+ *   DEAD            also: the link's domain does not resolve while a control domain does
+ *   UNKNOWN         network error, timeout, another 5xx, or not an http(s) link
  *
  * Only DEAD and ALIVE are verdicts, and only because a status or a marker you supplied said so; every
  * other state is a pointer to the next step. Both regexes are case-insensitive and never read on a
@@ -29,9 +30,12 @@
  * ONE site: with several sites in the batch, --site <host> says whose they are, and links on other
  * hosts are checked without them. It only reads; it never posts or logs in.
  *
+ * The same URL twice (ignoring a #fragment) is fetched once and reported on every line it appears.
+ *
  * Exit 0 = the pass ran (whatever it found), 2 = bad arguments or no URLs.
  */
 import { readFileSync } from 'node:fs'
+import { lookup } from 'node:dns/promises'
 
 const args = process.argv.slice(2)
 if (args.includes('--help') || args.includes('-h')) {
@@ -43,6 +47,11 @@ const opt = (n: string) => {
   return i >= 0 ? args[i + 1] : undefined
 }
 const VALUED = ['--file', '--dead', '--alive', '--site', '--timeout']
+// A valued flag with nothing after it would otherwise read as "not given" and be silently ignored.
+for (const n of VALUED) {
+  const i = args.indexOf(n)
+  if (i >= 0 && (i + 1 >= args.length || args[i + 1].startsWith('--'))) { console.error(`check-links: ${n} needs a value`); process.exit(2) }
+}
 const urls: string[] = []
 for (let i = 0; i < args.length; i++) {
   if (VALUED.includes(args[i])) { i++; continue }
@@ -51,7 +60,10 @@ for (let i = 0; i < args.length; i++) {
 }
 const fromLines = (t: string) => t.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
 const file = opt('--file')
-if (file) urls.push(...fromLines(readFileSync(file, 'utf8')))
+if (file) {
+  try { urls.push(...fromLines(readFileSync(file, 'utf8'))) }
+  catch (e) { console.error(`check-links: cannot read --file ${file} (${(e as NodeJS.ErrnoException).code ?? (e as Error).message})`); process.exit(2) }
+}
 if (!urls.length && !process.stdin.isTTY) urls.push(...fromLines(await Bun.stdin.text()))
 if (!urls.length) { console.error('check-links: no URLs (pass them as arguments, --file, or on stdin)'); process.exit(2) }
 
@@ -64,13 +76,31 @@ const deadRe = regex('--dead')
 const aliveRe = regex('--alive')
 // One notion of "the same site" everywhere: the host, ignoring case, the scheme and a leading "www.".
 const normHost = (h: string) => h.toLowerCase().replace(/^www\./, '')
-const site = opt('--site') !== undefined ? normHost(opt('--site')!) : undefined
+// --site accepts a bare host or a full URL ("https://example.com/x" → example.com).
+const siteArg = opt('--site')
+let site: string | undefined
+if (siteArg !== undefined) {
+  // A bare host goes through URL too, so "not a host" fails here instead of matching nothing later.
+  try { site = normHost(new URL(siteArg.includes('://') ? siteArg : `http://${siteArg}`).hostname) }
+  catch { site = '' }
+  if (!site || !/^[a-z0-9.-]+$/i.test(site) || !site.includes('.')) {
+    console.error(`check-links: --site '${siteArg}' is neither a host nor a URL`)
+    process.exit(2)
+  }
+}
 const hostOf = (u: string) => { try { return normHost(new URL(u).hostname) } catch { return '' } }
 if ((deadRe || aliveRe) && !site && new Set(urls.map(hostOf).filter(Boolean)).size > 1) {
   console.error('check-links: --dead/--alive are one site\'s markers, and this batch spans several sites — add --site <host>')
   process.exit(2)
 }
-const markersApply = (u: string) => !site || hostOf(u) === site || hostOf(u).endsWith(`.${site}`)
+// Exact host, as everywhere else here: docs.example.com is not www.example.com's site, and its
+// pages would match another site's markers (a false DEAD).
+const markersApply = (u: string) => !site || hostOf(u) === site
+if (site && (deadRe || aliveRe) && !urls.some((u) => hostOf(u) === site)) {
+  const hosts = [...new Set(urls.map(hostOf).filter(Boolean))].join(', ')
+  console.error(`check-links: --site ${site} matches no link, so the markers apply to none — hosts in this batch: ${hosts}`)
+  process.exit(2)
+}
 const timeoutMs = Number(opt('--timeout') ?? 20) * 1000
 if (!(timeoutMs > 0)) { console.error('check-links: --timeout must be a positive number of seconds'); process.exit(2) }
 
@@ -108,13 +138,29 @@ const challenged = (g: Got) => !('error' in g) && (BOT_CHECK.test(g.text) || g.v
 // A homepage "answers" only with real content: a 200 bot check or an empty shell is a refusal too.
 const refused = (g: Got) => 'error' in g || g.status >= 400 || challenged(g)
 
+// A lapsed domain is the commonest rot for old citations, and fetch reports it as a bare network
+// error. Resolve the host: NXDOMAIN while a control domain resolves is a verdict; when the control
+// fails too, this shell has no DNS and nothing can be said.
+const CONTROL_HOST = 'example.com'
+let controlDns: Promise<boolean> | undefined
+const resolves = (h: string) => lookup(h).then(() => true, (e) => (e?.code === 'ENOTFOUND' ? false : true))
+async function domainGone(host: string): Promise<boolean> {
+  if (await resolves(host)) return false
+  controlDns ??= resolves(CONTROL_HOST)
+  return controlDns
+}
+
 type Row = { url: string; state: string; why: string; finalUrl?: string; title?: string; status?: number }
 
 async function check(raw: string): Promise<Row> {
   let u: URL
-  try { u = new URL(raw) } catch { return { url: raw, state: 'UNKNOWN', why: 'not a URL' } }
+  try { u = new URL(raw) } catch { return { url: raw, state: 'UNKNOWN', why: 'not a URL (a relative link? resolve it against its page first)' } }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return { url: raw, state: 'UNKNOWN', why: `not an http(s) link (${u.protocol})` }
   const [g, root] = await Promise.all([get(raw), rootOf(u)])
-  if ('error' in g) return { url: raw, state: 'UNKNOWN', why: g.error }
+  if ('error' in g) {
+    if (await domainGone(u.hostname)) return { url: raw, state: 'DEAD', why: `domain ${u.hostname} does not resolve (control ${CONTROL_HOST} does)` }
+    return { url: raw, state: 'UNKNOWN', why: g.error }
+  }
   const base = { url: raw, finalUrl: g.finalUrl, title: g.title, status: g.status }
   // Ending on another site: whatever status or page came back is THAT site's, never this link's verdict.
   const from = new URL(raw), to = new URL(g.finalUrl)
@@ -147,14 +193,17 @@ async function check(raw: string): Promise<Row> {
 }
 
 // A few at a time: a batch from one site fired all at once is what gets a shell rate-limited.
-const rows: Row[] = new Array(urls.length)
+const keyOf = (u: string) => u.replace(/#.*$/, '')
+const unique = [...new Set(urls.map(keyOf))]
+const byKey = new Map<string, Row>()
 let next = 0
-await Promise.all(Array.from({ length: Math.min(4, urls.length) }, async () => {
-  while (next < urls.length) {
-    const i = next++
-    rows[i] = await check(urls[i])
+await Promise.all(Array.from({ length: Math.min(4, unique.length) }, async () => {
+  while (next < unique.length) {
+    const k = unique[next++]
+    byKey.set(k, await check(k))
   }
 }))
+const rows: Row[] = urls.map((u) => ({ ...byKey.get(keyOf(u))!, url: u }))
 
 if (args.includes('--json')) console.log(JSON.stringify(rows, null, 2))
 else rows.forEach((r, i) => console.log(`${i + 1}. ${r.url} — ${r.state} (${r.why})`))

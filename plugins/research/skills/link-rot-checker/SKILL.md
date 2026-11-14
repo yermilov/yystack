@@ -1,14 +1,15 @@
 ---
 name: link-rot-checker
 description: >-
-  Check whether a batch of URLs is still alive and offer replacements for the dead ones. Use when the
-  user wants to verify links before reusing or forwarding them — "check these links", "are these
-  still working", "find the dead/broken links", "which of these listings are gone", "validate my
-  bookmarks / reading list / citations", «перевір посилання», «чи живі» — or when a saved message,
-  draft or old chat holds URLs that may have expired (classified ads, listings, sale and event pages,
-  articles) and another skill hands them over. Do not use for a single link (just open it), for
-  crawling a whole site or repo for broken links (a link-checker tool in CI does that), nor for
-  reading a page's content when the fetcher returns nothing (that's fetch-web-sources).
+  Check whether a LIST of URLs you were given (two or more) is still alive and offer replacements for
+  the dead ones. Use when the user wants to verify links before reusing or forwarding them — "check
+  these links", "are these still working", "find the dead/broken links", "which of these listings
+  are gone", "validate my bookmarks / reading list / citations", «перевір посилання», «чи живі» — or
+  when a saved message, draft or old chat holds URLs that may have expired (classified ads, listings,
+  sale and event pages, articles) and another skill hands them over. Do NOT use for ONE link (just
+  open it and say), for crawling a site you own to discover its broken links (a crawler such as
+  lychee or linkchecker does that), nor for reading a page's content when the fetcher returns
+  nothing (that's fetch-web-sources).
 ---
 
 # Link Rot Checker
@@ -22,13 +23,15 @@ a blocked shell or a wrong id for a verdict. One link is not worth this skill �
 Register these as todo items now, before doing anything else, in whatever todo/plan tool this host
 gives you — and while work remains keep exactly one in progress:
 1. Fetch pass — the script over the whole batch (§ 1)   2. Markers per site — one item per site:
-dead marker, alive marker, and the dead marker checked absent on one known-live item (§ 2)
-3. Made-up-id control — one item per site, closed with its result or "skipped: copied ids with a
-real 404/410" (§ 2)   4. Marker re-run — the script with `--dead`/`--alive`, one item per site;
-a site the shell cannot read closes it "markers taken in the browser" (§ 1)   5. Browser pass — one
-item per link still BLOCKED, NEEDS-BROWSER, REDIRECTED, CHECK or UNKNOWN (§ 3)   6. Classify — one
-item per link (§ 4)   7. Ask about replacements (§ 5)   8. Replacement search — one item per dead
-link, only after a yes (§ 5)   9. Report (§ 6)
+dead marker and alive marker (§ 2)   3. Live-item check — one item per site: the dead marker checked
+absent on one known-live item, so a "no results" sidebar cannot turn live links dead (§ 2)
+4. Made-up-id control — one item per site, closed with its result or "skipped: copied ids with a
+real 404/410" (§ 2)   5. Marker re-run — the script with `--dead`/`--alive`, one item per site; a
+site the shell cannot read closes it "markers taken in the browser" (§ 1)   6. Browser pass — one
+item per link still BLOCKED, NEEDS-BROWSER, REDIRECTED, CHECK or UNKNOWN (§ 3)   7. Classify — one
+item per link (§ 4)   8. Ask about replacements (§ 5)   9. Replacement search — one item per dead
+link, only after a yes (§ 5)   10. Report (§ 6). For a site the shell cannot read, items 2–5 are
+done in the browser pass and close with "taken in the browser".
 Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
 left open — an unfinished list at the end must mean something really is unfinished.
 No such tool? SEARCH for one first — on hosts with deferred tools it exists but is not loaded, and
@@ -48,10 +51,17 @@ until your report is back; report to it, not straight to the user.
 bun run "SKILLDIR/scripts/check-links.ts" <url> <url> …        # or --file urls.txt, or on stdin
 ```
 
+Give it absolute `http(s)` URLs: resolve a relative link against the page or document it came from
+first. A `mailto:` or other scheme comes back `UNKNOWN (not an http(s) link)` — there is no page to
+check.
+
 `SKILLDIR` is a placeholder: substitute the **literal** directory you loaded this `SKILL.md` from. No
 Bun? Install it (`install-bun`), or do the same by hand per link —
-`curl -sL -m 20 -A '<a browser user-agent>' -o page.html -w '%{http_code} %{url_effective}\n' '<url>'`
-— plus one fetch of each site's homepage.
+`curl -sL -m 20 -A '<a browser user-agent>' -o 'page-<n>.html' -w '%{http_code} %{url_effective}\n' '<url>'`
+(`<n>` = the link's number, one file per link) — plus one fetch of each site's homepage, and the two checks the script makes
+for you: a bot-check page, and under ~100 characters of visible text, both mean `NEEDS-BROWSER`. A
+host that does not resolve (`curl` exit 6) is dead only if a known domain still resolves from the
+same shell.
 
 It fetches each link with a browser user-agent and, **once per site, the homepage as a control**: a
 refused homepage means a 404 is about this shell, not the link. States: `DEAD` and `ALIVE` are
@@ -77,7 +87,8 @@ page:
   saying "no results found" would otherwise turn live links dead.
 - **Alive marker** — something only a live item has: for a listing, its title in the page title plus
   a price or a seller block; for an article or a doc page, its own headline and body text (not a
-  site-wide "page not found" with a 200). A page with neither marker — a bot check, or an empty
+  site-wide "page not found" with a 200). The script's `--alive` reads the `<title>` only, so an
+  article whose title is generic stays `CHECK` there: confirm its headline and body yourself. A page with neither marker — a bot check, or an empty
   client-rendered shell — is **unknown** until a re-read shows one.
 - **The made-up-id control** — open the same URL shape with an id you invented. **Required** when the
   dead marker is a 200 page, or when the ids came from OCR or hand-typing. If the made-up id gets the
@@ -102,10 +113,12 @@ empty searches are a real absence. **No browser** → those links stay `UNKNOWN 
 ## 4. Classify each link
 
 A verdict needs a positive marker: `DEAD` or `ALIVE`, each naming its marker, or `DEAD OR WRONG ID`
-when the dead marker also appears for a made-up id (§ 2); anything else is `UNKNOWN`, never a
-guess. A link still unknown after a re-read: screenshot it and ask — or, when
-another skill called you, return it as `UNKNOWN` with the reason instead of stopping its run. A false
-"dead" erodes trust faster than an honest "couldn't tell".
+when the dead marker also appears for a made-up id (§ 2). A domain that no longer resolves, while a
+control domain does, is a dead marker on its own (the script reports it); anything else is
+`UNKNOWN`, never a guess. A link still unknown after a re-read: screenshot it and ask (with no
+browser: report it `UNKNOWN (no browser)` and ask) — or, when another skill called you, return it as
+`UNKNOWN` with the reason instead of stopping its run. A false "dead" erodes trust faster than an
+honest "couldn't tell".
 
 ## 5. Replacements — only on request
 
