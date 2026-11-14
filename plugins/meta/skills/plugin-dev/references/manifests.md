@@ -64,6 +64,26 @@ host's validator complains about something not shown here, trust the validator a
 }
 ```
 
+## Skill — `agents/openai.yaml` (Codex, optional)
+
+Beside a skill's `SKILL.md`, only when you need one of these (shape as Codex's own bundled skills
+ship it, checked 2026-11):
+
+```yaml
+interface:
+  display_name: "<Skill Name>"
+  short_description: "<one line>"
+  default_prompt: "Use $<skill-name> to …"
+```
+
+Add a `policy` block **only** to stop Codex invoking the skill on its own (the nearest to Claude's
+`user-invocable: false`); without it the default stays as it is:
+
+```yaml
+policy:
+  allow_implicit_invocation: false
+```
+
 `interface` drives the Codex Directory card; `capabilities` and `defaultPrompt` are what that card
 shows. `policy.installation` / `policy.authentication` take host-defined enum values — `AVAILABLE` /
 `ON_INSTALL` are the common defaults; check the host's docs for the others before using them.

@@ -2,12 +2,12 @@
 name: plugin-dev
 description: >-
   Package a skills marketplace and its plugins: repo layout, Claude + Codex dual manifests, the
-  version bumps auto-update keys off, and which plugin a skill belongs in (split, move, merge). Use
+  version bumps auto-update keys off, and where a skill belongs. Use
   when laying out a marketplace repo, adding/removing a plugin or skill, editing a marketplace.json
-  or plugin.json, or fixing a change that never reached clients because a version wasn't bumped —
-  "add a plugin", "package this skill for Claude and Codex", "which version do I bump", "which
-  plugin should this skill go in", "update the plugins table in the README", «додай плагін у
-  маркетплейс». Do not use for the SKILL.md prose (skill-authoring), to diagnose an INSTALLED
+  or plugin.json, releasing a plugin, or fixing a change that never reached clients because a
+  version wasn't bumped — "add a plugin", "package this skill for Claude and Codex", "which version
+  do I bump", "which plugin should this skill go in", "where do hooks go in a plugin", "update the
+  plugins table in the README", «додай плагін у маркетплейс». Do not use for the SKILL.md prose (skill-authoring), to diagnose an INSTALLED
   marketplace (marketplace-health) or turn its auto-update on (enable-autoupdate), to bootstrap one
   from the canonical marketplace (clone-marketplace), nor to write hook scripts, commands, agents or
   MCP servers (the host's docs).
@@ -64,9 +64,8 @@ reach installed clients). Anything that doesn't serve it is noise — cut it.
 - **Rule:** one skill = one directory with a `SKILL.md`. One plugin = a directory under `plugins/`
   with **two** manifests and a `skills/` folder. One marketplace = the repo, with **two** top-level
   marketplace manifests.
-- **Prefer** several small, single-purpose plugins over one giant plugin — installers add only what
-  they want, and a focused plugin description reads better in the Directory. Which skills go
-  together, and when to split, move or merge, is section 8.
+- **Prefer** focused, single-purpose plugins over one giant plugin — installers add only what they
+  want. Which skills go together, and when to split, move or merge, is section 8.
 
 ## 2. The two marketplace manifests
 
@@ -74,8 +73,10 @@ Each host reads its own file: `.claude-plugin/marketplace.json` (Claude) and
 `.agents/plugins/marketplace.json` (Codex). **Keep both listing the same plugins.** Differences that
 bite (verified as of 2026-11):
 
-- Claude's plugin `source` is a **string path**; Codex's is an **object**
-  (`{ "source": "local", "path": … }`), and each Codex entry also carries `policy` + `category`.
+- For a plugin inside this repo, Claude's `source` is a **string path** and Codex's an **object**
+  (`{ "source": "local", "path": … }`); each Codex entry also carries `policy` + `category`. A Claude
+  entry can instead name a remote source (an object pointing at another repo); this skill's layout
+  and script cover in-repo plugins.
 - Only the Claude marketplace manifest has a `metadata.version` (§4 says when to bump it).
 
 ## 3. A plugin = two manifests in lockstep
@@ -94,8 +95,13 @@ for its commands, so one file serves both. Codex runs plugin hooks only with `ho
 only path to anything that matters, and its script's output must be JSON both hosts accept (the
 repo's own rules may say more).
 
+**Codex per-skill settings** sit in an optional `agents/openai.yaml` beside a skill's `SKILL.md`:
+its `interface` block names the skill in Codex's UI, and `policy.allow_implicit_invocation: false` is
+Codex's nearest equivalent of Claude's `user-invocable: false` (skill-authoring §1 says when to use
+it). Ship one only when you need one of those.
+
 Read `references/manifests.md` when you create a marketplace or plugin from scratch, or a host rejects
-a manifest — it has a copyable template for all four files.
+a manifest — it has a copyable template for all four manifests and for `agents/openai.yaml`.
 
 ## 4. Version discipline — the gotcha that hides your work
 
@@ -109,20 +115,17 @@ and edits silently never reach anyone.
   only one manifest leaves the other host stale.
 - **Must:** when the marketplace's plugin **list** changes (a plugin ADDED or REMOVED), also bump
   `metadata.version` in `.claude-plugin/marketplace.json` — Claude caches the marketplace manifest
-  keyed on that version, so without the bump `Check for updates` reports "no change" and the new
+  keyed on that version (documented behaviour, not measured here), so without the bump `Check for updates` reports "no change" and the new
   plugin never appears in the Directory. (Per-plugin bumps re-pull a plugin's *contents*; the
   marketplace `metadata.version` is what makes clients re-pull the *manifest* and discover new
-  plugins.) Bump it too when you edit an existing entry (description, source, category): the
+  plugins.) Bump it too when you edit an existing entry in `.claude-plugin/marketplace.json`
+  (description, source, category): the
   manifest changed, an extra bump costs nothing, and without one clients may keep the cached copy.
-  The Codex marketplace manifest has no version field, so only Claude needs this.
 - **Default:** semver-ish — patch for skill edits, minor for a new skill, and treat a new plugin as a
   marketplace minor bump too.
-- **Never** assume "deployed = visible in this session." A newly-added plugin/skill/tool can stay
-  invisible to a running agent until its client reconnects / refreshes its plugin snapshot. Don't
-  promise a same-tick dogfood — and don't make another skill HAND WORK to a just-shipped skill
-  without a capability gate and a named fallback: until the client re-pulls, that step leads nowhere
-  (`marketplace-health` diagnoses it). A *Do not use for…* boundary that merely names it is
-  different: it sends the agent away and nothing breaks if the target is missing (§8).
+- **Avoid** assuming "deployed = visible in this session": a newly added plugin, skill or tool can
+  stay invisible to a running agent until its client re-pulls its plugin snapshot, so don't promise a
+  same-session dogfood (`marketplace-health` diagnoses it).
 
 ## 5. What makes a plugin/skill worth installing
 
@@ -133,8 +136,7 @@ and edits silently never reach anyone.
 - **No secrets in the repo** — a public one is world-readable, and even a private one is cloned to
   every machine that installs it. Skills take config via flags/args and read tokens from
   the environment, never hard-coded.
-- **A README per plugin** listing its skills + one-line triggers, so a human browsing the repo knows
-  what they're getting.
+- **A README per plugin** (§7).
 
 ## 6. Adding to the marketplace — the flows
 
@@ -144,22 +146,44 @@ the root README.
 
 **Add a skill to an existing plugin:** create `plugins/<plugin>/skills/<skill>/SKILL.md`; **bump that
 plugin's `version` in both manifests**; add its bullet to the plugin README and its gist to the
-plugin's root Plugins-table row (§7). (No marketplace `metadata.version` bump — the plugin list
-didn't change.)
+plugin's root Plugins-table row (§7). **If a plugin or marketplace description names the plugin's
+skills, add the new one there too** (both plugin manifests, both marketplace entries) and then bump
+`metadata.version`, because the entry changed. Otherwise no `metadata.version` bump: the list didn't
+change.
 
-**Remove a plugin:** delete its directory and its entry from BOTH `marketplace.json` files; **bump
-the Claude marketplace `metadata.version`**; drop its root README row.
+**Remove a plugin:** grep the repo for its name (bare, in `Requires:` lines, and as a `<plugin>:`
+prefix) and repair each hit first; then delete
+its directory and its entry from BOTH `marketplace.json` files; **bump the Claude marketplace
+`metadata.version`**; drop its root README row.
+
+**Rename a plugin:** grep the repo for the old name (bare, in `Requires:` lines, and every
+`<old-plugin>:<skill>`) and rewrite each hit; `git mv` its directory; change `name` in both plugin
+manifests and both marketplace entries, plus each `source` path; bump the plugin's version and the
+Claude marketplace `metadata.version` (the list changed); update both README layers.
+
+**Rename a skill:** change the directory and the frontmatter `name` together, bump the plugin's
+version in both manifests, and grep the repo for the old name (bare and `<plugin>:<skill>`) to
+rewrite each hit, including READMEs and descriptions that name it (bump `metadata.version` if a
+marketplace entry changed).
+
+**Remove a skill:** grep the repo for its name (bare and `<plugin>:<skill>`) first, and repair each
+hit (a routing pointer, a handoff step) or point it at the skill that replaces it; then delete its
+directory; bump the plugin's version in both manifests; drop it from the plugin README, the root
+Plugins-table row, and any description that names it (bumping `metadata.version` if a marketplace
+entry changed).
 
 **Split skills into a new plugin:** `git mv` the skill dirs, create the new plugin's two manifests,
 register it in both marketplace files, **bump the Claude marketplace `metadata.version`** (the list
-changed), bump the SOURCE plugin's version, and update READMEs.
+changed), bump the SOURCE plugin's version, update READMEs and any description naming the moved
+skills, then grep for `<old-plugin>:<skill>` and rewrite each hit (below).
 
-**Move a skill between existing plugins:** `git mv` the skill dir; bump BOTH plugins' versions (no
-`metadata.version` bump — the list didn't change); update both plugin READMEs and both root
-Plugins-table rows.
+**Move a skill between existing plugins:** `git mv` the skill dir; bump BOTH plugins' versions;
+update both plugin READMEs, both root Plugins-table rows and any description that names the skill
+(then bump `metadata.version` if a marketplace entry changed); grep for `<old-plugin>:<skill>` and
+rewrite each hit (below).
 
-**Merge two plugins:** move the skills into the survivor as above, then remove the other plugin as
-above — so the survivor's version AND `metadata.version` are bumped.
+**Merge two plugins:** move the skills into the survivor as above (including the grep), then remove
+the other plugin as above — so the survivor's version AND `metadata.version` are bumped.
 
 After a split, move or merge: a bare skill name resolves across all installed plugins, so a
 reference like `skill-authoring` survives — but a qualified `<plugin>:<skill>` reference does not.
@@ -213,9 +237,11 @@ by domain. A skill that mixes both ("pay the bill through the bank's website") b
 **Dependencies run one way:** domain → tool, tool → tool, and anyone → platform; never tool → domain
 (a tool plugin must not know its consumers); domain → domain is a smell (merge, or extract the
 shared instrument); no cycles. A routing pointer (*Do not use for… — that's `<skill>`*) is not a
-dependency and may point anywhere; a step that hands the agent work in another skill is one (and
-§4's gate applies to it). Declare a real dependency in the dependent plugin's README ("Requires:
-`<plugin>`").
+dependency and may point anywhere: nothing breaks if the target is missing. A step that hands the
+agent work in another skill is one, so give it a **capability gate**: check that the skill is
+actually available before the step, and name what to do when it is not (do the work inline, or
+report the gap). A skill shipped minutes ago may not be visible yet (§4). Declare a real dependency
+in the dependent plugin's README ("Requires: `<plugin>`").
 
 **The five decisions:**
 1. **Which plugin gets a new skill?** The one whose one-sentence job covers it *without widening the
@@ -234,7 +260,9 @@ dependency and may point anywhere; a step that hands the agent work in another s
 **Privacy decides where a plugin may live, not which plugin a skill joins:** a skill carrying
 personal data never joins a public plugin or marketplace — strip it to the reusable pattern first, or
 keep it private. In a private, single-user marketplace the install-decision test rarely says no, so
-decide by the description sentence, the clusters and the dependency direction.
+decide by the description sentence, the clusters and the dependency direction. Split memory by scope:
+facts about the user that no one domain owns go in the platform (profile) plugin; a domain's facts
+stay in that domain's plugin, beside the method that uses them.
 
 Read `references/grouping.md` when a placement is genuinely contested or you must explain it — it has
 the reasoning and examples behind each ruling above.
@@ -243,7 +271,8 @@ the reasoning and examples behind each ruling above.
 
 1. Repo has both marketplace manifests (`.claude-plugin/` + `.agents/plugins/`), listing the same plugins.
 2. Every plugin has BOTH `plugin.json` manifests with matching `name`/`version`.
-3. Every skill dir has a `SKILL.md` with a triggering `description`.
+3. Every skill dir has a `SKILL.md` with a `description` (whether it triggers well is
+   skill-authoring's checklist).
 4. Versions bumped for the change you made (plugin version always; marketplace `metadata.version`
    if the plugin list changed or an entry was edited).
 5. No secrets committed; a `LICENSE` present (public repo); no personal data in a public plugin
@@ -251,10 +280,11 @@ the reasoning and examples behind each ruling above.
 6. Root README has an install command block for each target host (Claude Code, Codex, …).
 7. READMEs are in sync with the change (root Plugins table row per plugin; plugin README's skill
    bullets) — see section 7.
-8. All JSON parses and each `SKILL.md` frontmatter parses as YAML.
+8. Every manifest and `hooks/hooks.json` parses as JSON; each `SKILL.md` frontmatter and
+   `agents/openai.yaml` parses as YAML.
 
-Items 1–4 and 8 are mechanical — run the script rather than checking them by eye, and read its
-exit code (0 clean, 1 defects listed with the fix, 2 could not run):
+Items 1–4 and 8 are mechanical, and item 7 gets a shortlist — run the script rather than checking by
+eye, and read its exit code (0 clean, 1 defects listed with the fix, 2 could not run):
 
 ```bash
 bun run "SKILLDIR/scripts/check-manifests.ts" "MARKETPLACE_ROOT" --base origin/main
@@ -263,9 +293,12 @@ bun run "SKILLDIR/scripts/check-manifests.ts" "MARKETPLACE_ROOT" --base origin/m
 ⚠️ Substitute both placeholders with **literal** paths — `SKILLDIR` is the directory you loaded this
 `SKILL.md` from; it is not a shell variable. `--base` is the ref your change will land on; omit it
 to check only the static structure (all but item 4). It also flags a plugin directory (a manifest or
-`skills/`) that neither marketplace lists — the forgotten step of «Add a plugin». It prints a note,
-not a defect, when the repo has no `LICENSE`, since only you know whether the repo is public. No
-Bun? Install it with the `install-bun` skill, or check those items by hand.
+`skills/`) that neither marketplace lists — the forgotten step of «Add a plugin». It prints notes,
+not defects, for a missing `LICENSE` (only you know whether the repo is public) and for a plugin or
+skill a README never names (a shortlist for item 7; a description that lists skill names is yours to
+read).
+
+No Bun? Install it with the `install-bun` skill, or check those items by hand.
 
 ## Bundled resources
 
