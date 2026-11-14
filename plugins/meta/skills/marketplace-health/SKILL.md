@@ -119,9 +119,11 @@ not here.
 
 ## Check 2 — auto-update enabled?
 
-The per-marketplace toggle lives in **settings.json** under
-`extraKnownMarketplaces` (project `.claude/settings.json` overrides user
-`~/.claude/settings.json`):
+The per-marketplace toggle can live in two kinds of place: **settings.json** under
+`extraKnownMarketplaces` (project `.claude/settings.local.json` and `.claude/settings.json`
+override user `~/.claude/settings.json`), and `~/.claude/plugins/known_marketplaces.json`
+(`<name>.autoUpdate`), which is where the `/plugin` UI toggle stores it — observed on Claude
+Code 2.1.325, 2026-11. Read all of them:
 
 ```json
 {
@@ -134,16 +136,16 @@ The per-marketplace toggle lives in **settings.json** under
 }
 ```
 
-- Read that `autoUpdate` for the marketplace in question. `true` → enabled;
+- Read `autoUpdate` for the marketplace in each place, and report each value with its
+  file; if they disagree, say so rather than picking one. `true` → enabled;
   `false` → pinned (won't self-update). **Defaults differ by source:** official
   Anthropic marketplaces default to `true`, third-party / local-dev ones default
   to `false` — so an *absent* `autoUpdate` on a third-party marketplace means
   **disabled**, and that's the common "why am I stale" answer.
-- **Global override wins:** if the env var `DISABLE_AUTOUPDATER=1` is set, ALL
-  updates are off regardless of the per-marketplace flag (check the environment
-  too). `DISABLE_AUTOUPDATER=1` + `FORCE_AUTOUPDATE_PLUGINS=1` keeps plugin
-  updates on while pausing the Claude Code binary's own updates. (Both verified
-  as of 2026-08; env names change — re-check the current docs if they seem inert.)
+- **Global override wins:** look for `DISABLE_AUTOUPDATER` and
+  `FORCE_AUTOUPDATE_PLUGINS` in the shell environment, the shell profile files and the
+  `env` block of each settings.json. What each does (dated) is in enable-autoupdate §3;
+  in short, `DISABLE_AUTOUPDATER=1` alone turns ALL updates off whatever the flag says.
 - **Turning it on is not this skill's job** — report the verdict and hand the
   fix to `enable-autoupdate`.
 
@@ -172,7 +174,7 @@ Don't assume Claude Code's `claude plugin …` commands or the
 
 - **Reporting** (list, read cache paths, read settings, read env) is
   non-destructive — do it freely.
-- **The go-ahead rule (the same in marketplace-health and enable-autoupdate):** an explicit request to update / fix / enable IS the go-ahead for the state change it names; anything else — a refresh, install, settings edit or re-add the user did not ask for — is proposed with the exact command or diff, and run on their yes.
+- **The go-ahead rule:** an explicit request to update / fix / enable IS the go-ahead for the state change it names; anything else — a refresh, install, settings edit or re-add the user did not ask for — is proposed with the exact command or diff, and run on their yes. (The same rule is written in enable-autoupdate; change both together.)
 - So `marketplace update` / `plugin install` / `/plugin update` run on an "update /
   fix" request or a yes; on a plain "check", do the read-only comparison and report
   the versions as unverified against remote.

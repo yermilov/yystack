@@ -87,18 +87,27 @@ function autoUpdateState(host: 'claude' | 'codex' | 'unknown'): AutoUpdate {
     if (process.env.DISABLE_AUTOUPDATER === '1' && process.env.FORCE_AUTOUPDATE_PLUGINS !== '1') {
       return 'off';
     }
-    for (const f of ['.claude/settings.json', `${homedir()}/.claude/settings.json`]) {
-      if (!existsSync(f)) continue;
+    // The flag can be set in the settings scopes AND in the marketplace registry, which is where
+    // the /plugin UI toggle stores it (observed on Claude Code 2.1.325, 2026-11). Which one wins is
+    // not documented, so collect every explicit value and only nudge when none of them says on.
+    const values: boolean[] = [];
+    const read = (f: string, pick: (j: any) => unknown) => {
+      if (!existsSync(f)) return;
       try {
-        const settings = JSON.parse(readFileSync(f, 'utf8'));
-        const v = settings?.extraKnownMarketplaces?.[MARKETPLACE]?.autoUpdate;
-        if (v === true) return 'on';
-        if (v === false) return 'off';
+        const v = pick(JSON.parse(readFileSync(f, 'utf8')));
+        if (typeof v === 'boolean') values.push(v);
       } catch {
-        /* ignore a malformed settings file */
+        /* ignore a malformed file */
       }
+    };
+    for (const f of ['.claude/settings.local.json', '.claude/settings.json', `${homedir()}/.claude/settings.json`]) {
+      read(f, (j) => j?.extraKnownMarketplaces?.[MARKETPLACE]?.autoUpdate);
     }
-    return 'off_default'; // third-party default when the key is absent
+    read(`${homedir()}/.claude/plugins/known_marketplaces.json`, (j) => j?.[MARKETPLACE]?.autoUpdate);
+    if (values.length === 0) return 'off_default'; // third-party default when the key is absent everywhere
+    if (values.every((v) => v === false)) return 'off';
+    if (values.every((v) => v === true)) return 'on';
+    return 'unknown'; // conflicting values: undetermined, so stay silent rather than guess
   }
   return 'unknown';
 }
@@ -110,7 +119,7 @@ const autoupdate = autoUpdateState(host);
 if (autoupdate === 'off' || autoupdate === 'off_default') {
   if (host === 'codex') {
     emit(
-      `[${MARKETPLACE}] meta plugin v${version} is installed from a LOCAL (non-git) Codex marketplace, so Codex will never auto-update it — it is a pinned snapshot ('codex plugin marketplace upgrade' only refreshes GIT marketplaces). Re-add it from its Git source to get automatic updates. The enable-autoupdate skill explains the options.`,
+      `[${MARKETPLACE}] meta plugin v${version} is installed from a LOCAL (non-git) Codex marketplace, so Codex will not auto-update it ('codex plugin marketplace upgrade' only refreshes GIT marketplaces). If it is a snapshot of the Git repo, re-adding it from Git makes it self-update; if it is your own dev checkout, update it by hand. The enable-autoupdate skill covers both.`,
     );
   } else {
     emit(
