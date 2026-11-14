@@ -19,7 +19,8 @@
  *     - per installed plugin: the ACTIVE version (`codex plugin list --json`) vs the remote's
  *       (GitHub sources only)
  *
- * --offline skips every network read; remote versions are then reported as unverified.
+ * --offline skips every network read; remote versions are then reported as unverified, as info rather
+ * than findings, so an offline run can never certify the versions, only the settings.
  * Unscoped, it lists every Claude Code marketplace in the registry, but only the Codex marketplaces
  * something is installed from (Codex configures several host-bundled ones you never use). Name a
  * marketplace when the question is about one.
@@ -27,7 +28,7 @@
  * (including: the named marketplace is configured on no host checked, or nothing was checked at all).
  * It never refreshes, installs or edits a file — those are state changes the skill gates.
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -65,6 +66,9 @@ const run = (cmd: string[], timeoutMs = 20000): string | undefined => {
     return r.exitCode === 0 ? r.stdout.toString().trim() : undefined
   } catch { return undefined }
 }
+// A semver-ish version ("1.2.3", "1.2.3-beta") can be ordered; anything else (a git sha, which Claude
+// Code uses for a plugin that declares no version) can only be compared for equality.
+const semverish = (v: string) => /^\d+(\.\d+)*(-[\w.]+)?$/.test(v)
 // numeric dot parts; a pre-release suffix sorts below the release
 const cmp = (a: string, b: string) => {
   const [ma, pa = ''] = a.split('-', 2), [mb, pb = ''] = b.split('-', 2)
@@ -153,6 +157,9 @@ async function remoteSide(loc: string | undefined, repo: string | undefined, ref
   return viaGithub()
 }
 
+// Marketplaces the host itself ships, where an unset flag means its own default rather than off.
+const OFFICIAL = new Set(['claude-plugins-official'])
+
 async function claude() {
   const regPath = join(homedir(), '.claude/plugins/known_marketplaces.json')
   const registry = readJson(regPath)
@@ -161,7 +168,10 @@ async function claude() {
   let installed: any[] | undefined
   try { installed = listOut ? JSON.parse(listOut) : undefined } catch { installed = undefined }
   // The override can come from this process's environment or from any settings scope's `env` block.
+  // Project scopes are read relative to the working directory: say which one, so a run from
+  // elsewhere is visibly a run that skipped them.
   const settingsFiles = ['.claude/settings.local.json', '.claude/settings.json', join(homedir(), '.claude/settings.json')]
+  console.log(`Claude Code: project settings read from ${process.cwd()}/.claude (run from the project root to include them)`)
   const envSources: [string, Record<string, unknown>][] = [['process environment', process.env]]
   for (const f of settingsFiles) { const e = readJson(f)?.env; if (e && typeof e === 'object') envSources.push([`${f} env`, e]) }
   const envSeen = envSources.flatMap(([where, e]) => ['DISABLE_AUTOUPDATER', 'FORCE_AUTOUPDATE_PLUGINS']
@@ -182,13 +192,53 @@ async function claude() {
     const repo = githubRepo(m.source)
     const ref: string | undefined = typeof m.source?.ref === 'string' ? m.source.ref : undefined
     const { versions: remoteVersions, label: remoteLabel, behind } = await remoteSide(loc, repo, ref, '.claude-plugin', `claude plugin marketplace update ${name}`)
+    // One row per scope (user, each project): group by plugin, so nine scopes are one line, and
+    // name the scopes when they disagree, since stale-in-one-scope is a real state.
+    const byPlugin = new Map<string, any[]>()
     for (const p of (installed ?? []).filter((x) => String(x.id).endsWith(`@${name}`))) {
       const plugin = String(p.id).split('@')[0]
+      byPlugin.set(plugin, [...(byPlugin.get(plugin) ?? []), p])
+    }
+    for (const [plugin, rows] of byPlugin) {
       const want = remoteVersions?.get(plugin)
-      if (typeof p.version !== 'string') { flag(`${plugin}: the registry lists no version — installed version unverified`); continue }
-      if (!want) { if (!(behind && !remoteVersions)) flag(`${plugin}: installed ${p.version}; remote version unverified`); continue }
-      if (cmp(p.version, want) < 0) flag(`${plugin}: installed ${p.version} < ${remoteLabel} ${want} → STALE (\`claude plugin update ${plugin}@${name}\` after the catalog refresh; restart to apply)`)
-      else ok(`${plugin}: installed ${p.version} = ${remoteLabel} ${want}`)
+      const versions = new Map<string, string[]>()
+      for (const r of rows) {
+        const v = typeof r.version === 'string' ? r.version : '(none)'
+        versions.set(v, [...(versions.get(v) ?? []), r.projectPath ? `${r.scope ?? '?'} ${r.projectPath}` : String(r.scope ?? '?')])
+      }
+      const shown = [...versions].map(([v, sc]) => versions.size === 1 && sc.length === 1 ? v : `${v} (${sc.length === 1 ? sc[0] : `${sc.length} scopes`})`).join(', ')
+      if (versions.has('(none)')) { flag(`${plugin}: the registry lists no version in some scope — installed version unverified (${shown})`); continue }
+      if (!want) {
+        const commitOnly = [...versions.keys()].every((v) => !semverish(v))
+        const msg = commitOnly
+          ? `${plugin}: installed ${shown} — a plugin with no declared version, identified by commit; this checker cannot compute the remote commit, so \`claude plugin update ${plugin}@${name}\` is the only way to be sure it is current`
+          : `${plugin}: installed ${shown}; remote version unverified`
+        if (offline) info(msg)
+        else if (!(behind && !remoteVersions)) flag(msg)
+        continue
+      }
+      const stale = [...versions.keys()].filter((v) =>
+        semverish(v) && semverish(want) ? cmp(v, want) < 0 : v !== want)
+      const shaNote = [...versions.keys()].some((v) => !semverish(v)) || !semverish(want) ? ' (sha versions: compared for equality only)' : ''
+      const staleWhere = stale.flatMap((v) => versions.get(v) ?? [])
+      const where = staleWhere.length > 5 ? `${staleWhere.slice(0, 5).join('; ')}; +${staleWhere.length - 5} more` : staleWhere.join('; ')
+      if (stale.length) flag(`${plugin}: installed ${shown} vs ${remoteLabel} ${want} → STALE in: ${where}${shaNote} (\`claude plugin update ${plugin}@${name}\` after the catalog refresh; restart to apply)`)
+      else ok(`${plugin}: installed ${shown} = ${remoteLabel} ${want}${shaNote}`)
+    }
+    // «Enabled in settings but never appeared»: an enabledPlugins entry the registry does not list.
+    // A user-scope install serves every project; a project or local enable is also met by an install
+    // recorded for THIS project (the working directory), never by one in another project.
+    const here = realpathSync(process.cwd())
+    const sameDir = (p: unknown) => { try { return typeof p === 'string' && realpathSync(p) === here } catch { return false } }
+    const installedFor = (id: string, userScope: boolean) => (installed ?? []).some((x) =>
+      String(x.id) === id && (x.scope === 'user' || (!userScope && sameDir(x.projectPath))))
+    for (const f of settingsFiles) {
+      const en = readJson(f)?.enabledPlugins
+      if (!en || typeof en !== 'object' || !installed) continue
+      const userScope = f === join(homedir(), '.claude/settings.json')
+      for (const [id, on] of Object.entries(en)) {
+        if (on === true && id.endsWith(`@${name}`) && !installedFor(id, userScope)) flag(`${id}: enabled in ${f} but not installed ${userScope ? 'at user scope' : `for ${here}`} — see «Never appeared at all»`)
+      }
     }
     const values: string[] = []
     for (const f of settingsFiles) {
@@ -197,7 +247,8 @@ async function claude() {
     }
     if (typeof m.autoUpdate === 'boolean') values.push(`${regPath}: ${m.autoUpdate}`)
     const bools = values.map((v) => v.endsWith('true'))
-    if (values.length === 0) flag('autoUpdate: not set anywhere → off for a third-party marketplace (enable-autoupdate turns it on)')
+    if (values.length === 0 && OFFICIAL.has(name)) info('autoUpdate: not set — the host\'s own official marketplace updates by default (Claude Code docs; not measured here)')
+    else if (values.length === 0) flag('autoUpdate: not set anywhere → off for a third-party marketplace (enable-autoupdate turns it on)')
     else if (bools.every(Boolean)) ok(`autoUpdate: on (${values.join('; ')})`)
     else if (bools.every((b) => !b)) flag(`autoUpdate: off (${values.join('; ')})`)
     else flag(`autoUpdate: conflicting values — ${values.join('; ')} (precedence undocumented)`)
@@ -237,9 +288,13 @@ async function codex() {
     if (!only && (active ? !mine?.length : !existsSync(cache))) continue // nothing installed from it
     console.log(`Codex — marketplace ${name}`)
     checked++
-    const hostManaged = type === 'local' && !!source && (source.startsWith(`${home}/`) || /\/codex-runtimes?\//.test(source))
+    // Only Codex's own bundled and runtime paths are host-managed. Another app can also park a local
+    // marketplace under Codex's home; that one is neither Codex's nor necessarily stale, so say so.
+    const hostManaged = type === 'local' && !!source && (source.startsWith(`${home}/.tmp/bundled-marketplaces/`) || /\/codex-runtimes?\//.test(source))
+    const underHome = type === 'local' && !!source && source.startsWith(`${home}/`)
     if (type === 'git') ok('source_type = git → Codex keeps it current on its own')
     else if (hostManaged) info(`source_type = local, managed by Codex itself (${source}) — expected, not stale`)
+    else if (underHome) info(`source_type = local inside Codex's home but not a Codex-bundled path (${source}) — probably placed by another app; confirm before calling it healthy or stale`)
     else if (type === 'local') flag(`source_type = local (${source}) → never auto-updates; enable-autoupdate decides whether it should be re-added from Git`)
     else info(`source_type = ${type ?? '(missing)'}`)
     const repo = source ? githubRepo(source) : undefined
@@ -258,7 +313,10 @@ async function codex() {
     if (!active) {
       flag('`codex plugin list --json` failed — falling back to the newest CACHED version, which may not be the active one')
       if (existsSync(cache)) rows = readdirSync(cache).flatMap((plugin) => {
-        const v = readdirSync(join(cache, plugin)).filter((x) => !x.startsWith('.')).sort(cmp).at(-1)
+        const v = readdirSync(join(cache, plugin)).filter((x) => !x.startsWith('.'))
+          // A sha-named directory has no order: semver names win (sorted last, so .at(-1) picks them); shas go by mtime.
+          .sort((a, b) => semverish(a) && semverish(b) ? cmp(a, b) : semverish(a) !== semverish(b) ? (semverish(a) ? 1 : -1)
+            : statSync(join(cache, plugin, a)).mtimeMs - statSync(join(cache, plugin, b)).mtimeMs).at(-1)
         return v ? [[plugin, v, 'cached'] as [string, string, string]] : []
       })
     }
@@ -268,10 +326,12 @@ async function codex() {
       if (!want) {
         const msg = `${plugin}: ${label} ${have}; remote version unverified${repo ? '' : ' (not a GitHub source)'}`
         if (type === 'local') info(msg + ' — a local source has no remote to compare with')
+        else if (offline) info(msg)
         else if (!quietUnverified) flag(msg)
         continue
       }
-      if (cmp(have, want) < 0) flag(`${plugin}: ${label} ${have} < remote ${want} → STALE (\`codex plugin marketplace upgrade ${name}\`)`)
+      const older = semverish(have) && semverish(want) ? cmp(have, want) < 0 : have !== want
+      if (older) flag(`${plugin}: ${label} ${have} vs remote ${want} → STALE (\`codex plugin marketplace upgrade ${name}\`)`)
       else ok(`${plugin}: ${label} ${have} = remote ${want}`)
     }
   }
@@ -280,5 +340,5 @@ async function codex() {
 if (hostArg !== 'codex') await claude()
 if (hostArg !== 'claude') await codex()
 if (checked === 0) fail2(only ? `marketplace "${only}" is not configured on the host(s) checked` : 'no configured marketplace with installed plugins was found')
-console.log(findings ? `check-health: ${findings} finding(s)` : 'check-health: healthy')
+console.log(findings ? `check-health: ${findings} finding(s)` : offline ? 'check-health: settings healthy; versions NOT checked (--offline)' : 'check-health: healthy')
 process.exit(findings ? 1 : 0)

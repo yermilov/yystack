@@ -3,14 +3,14 @@ name: marketplace-health
 description: >-
   Check whether an installed plugin marketplace — on Claude Code or Codex — is HEALTHY: (1) the
   latest published version of each plugin is actually installed, and (2) auto-update is on so it
-  stays current; then, only on an explicit update request, bring a stale one current. Use when the
+  stays current; then, only on an explicit update request, bring a stale install current. Use when the
   user asks "is my marketplace up to date / am I on the latest?", "why didn't my new skill/plugin
   show up after I pushed?", "are plugin auto-updates on?", "a plugin enabled in settings never
   appeared", "check marketplace health", "why did I get a marketplace warning at session start?", or
   after publishing a change — «чи оновлений маркетплейс», «чому не підтягнулась нова версія скіла».
   Do not use to author a marketplace or bump versions (plugin-dev), to turn auto-update on or
-  off (enable-autoupdate), nor to bootstrap or refresh a marketplace's meta plugin from the canonical
-  one (clone-marketplace).
+  off (enable-autoupdate), nor to refresh the vendored meta plugin inside a marketplace REPO you
+  maintain, or bootstrap one (clone-marketplace).
 ---
 
 # Marketplace health check
@@ -25,31 +25,39 @@ healthy / stale verdict with the exact fix:
 This is **read-only diagnosis**, and the bundled script does the reads. The state changes — a
 catalog refresh, a plugin update or install — run only under the go-ahead rule below.
 
-**The go-ahead rule:** an explicit request to update / fix / enable / disable IS the go-ahead for the state change it names; anything else — a refresh, install, settings edit or re-add the user did not ask for — is proposed with the exact command or diff, and run on their yes. (The same rule is written in enable-autoupdate; change both together.)
+**The go-ahead rule:** an explicit request to update, fix, refresh or install IS the go-ahead for
+the state change it names; anything else — a refresh, install or re-add the user did not ask for — is
+proposed with the exact command, and run on their yes. Settings are never edited here (enable-autoupdate
+owns them, under the same rule).
 
 ## Why staleness happens (the mental model)
 
 Marketplace clients cache aggressively and key updates off the **declared version**, not the git
 contents. A change reaches an installed client only when BOTH hold: the plugin's `version` was
-bumped, AND the client re-pulled (auto-update, or a manual refresh). Miss either and the client
+bumped, AND the client re-pulled (auto-update, or a manual refresh). A plugin that declares **no**
+version is identified by its commit sha instead (Claude Code shows the sha as its version), so every
+push counts as new for it, and only the re-pull matters. Miss either and the client
 keeps its cached snapshot — the #1 "I pushed a new skill and nobody sees it" cause.
 
 Versioning is **per plugin**, so "latest installed?" is a per-plugin comparison. A marketplace's
-`metadata.version` does a different job — per `plugin-dev` §4 it is what makes Claude Code re-read
+`metadata.version` does a different job — per plugin-dev's version-discipline section it is what makes Claude Code re-read
 the catalog itself (documented behaviour, not measured here) — so check it when the complaint is "a
 whole new plugin never appeared".
 
 **Auto-update is not instant.** It pulls on its own schedule (at session start, among other times),
-so a push from minutes ago can read STALE on a marketplace whose auto-update is on. Say so rather
-than calling it broken; a refresh is the fix only if the user wants it now.
+so a push from minutes ago can read STALE on a marketplace whose auto-update is on (Output says how
+to report it).
 
 ## Step 0 — register the run
 
 Register these as todo items now, before doing anything else, in whatever todo/plan tool this host
 gives you — and while work remains keep exactly one in progress:
-1. Run the read-only checker (§ Check)   2. Corroborate anything it could not verify (§ Check)
+1. Run the read-only checker (§ Check)   2. Hand-check the «unverified» rows the user's question
+turns on, read-only (never a `git fetch` on the host's catalog clone without the go-ahead) (§ Check)
+2b. Offer the refresh for what stays unverified (§ Fix)
 3. Claude Code: check the shell profile files for the env override — the script cannot (§ Check)
-4. A plugin that never appeared at all — only in that case (§ Never appeared)
+4. A plugin that never appeared at all — only in that case (§ Never appeared; on Claude Code it
+includes the `metadata.version` read, on Codex complete that part as «no metadata.version»)
 5. Refresh the catalog — only under the go-ahead rule (§ Fix)   6. Update or install the plugin —
 only under the go-ahead rule (§ Fix)   7. Report the verdict (§ Output)
 **On Codex**, item 3 is completed «no Codex equivalent» and items 5–6 are one step (§ Fix).
@@ -75,8 +83,10 @@ resubmit it with the caller's items intact.
 bun run "SKILLDIR/scripts/check-health.ts" [MARKETPLACE_NAME] [--host claude|codex|both] [--offline]
 ```
 
-Substitute `SKILLDIR` with the literal directory you loaded this file from. Exit 0 = healthy,
-1 = a finding (each printed with its fix), 2 = could not run. It only reads: `git ls-remote` and
+Substitute `SKILLDIR` with the literal directory you loaded this file from. **Run it from the
+project root**: project-scope settings are read from the working directory (it prints which).
+Exit 0 = healthy, 1 = a finding (stale, off, conflicting or unverified), 2 = could not run. `--offline` reads no
+network, so it can confirm the settings but never certify a version: an offline 0 says so. It only reads: `git ls-remote` and
 GitHub's raw files tell it what the remote publishes, so a plain "check" request still gets
 **verified** versions without a refresh. No Bun? Install it (`install-bun`), or do the same reads by
 hand:
@@ -102,23 +112,27 @@ hand:
   read (Step-0 item 3). enable-autoupdate §3 has what the variables do.
 - **Auto-update (Codex).** No flag: `source_type = "git"` ⇒ Codex keeps it current itself (stated
   as of 2026-08, not re-measured on 0.169); `"local"` ⇒ it never does. A local source inside Codex's
-  own home or runtime cache is a marketplace Codex ships and manages — expected, not stale. Turning auto-update on is
+  bundled-marketplaces or runtime paths is one Codex ships and manages — expected, not stale; another
+local source under its home was probably put there by another app, so confirm it rather than
+calling it healthy. Turning auto-update on is
   enable-autoupdate's job — hand it over with the verdict.
 
-**Version-pin gotcha to name in the report:** if the remote shipped new code without bumping the
-plugin's `version`, the client correctly sees "same version" and skips it. Matching versions with a
-change still missing means the defect is upstream — the fix belongs in `plugin-dev`.
+**Version-pin gotcha to name in the report** (plugins that declare a version): if the remote shipped
+new code without bumping the plugin's `version`, the client correctly sees "same version" and skips
+it. Matching versions with a change still missing means the defect is upstream — the fix belongs in `plugin-dev`.
 
-**The SessionStart nudge.** The marketplace this skill ships in also installs a session-start hook
-that speaks only when this marketplace's auto-update reads off. If the user asks about that
+**The SessionStart nudge.** If the marketplace this skill ships in installs a session-start hook (the
+canonical one does), that hook speaks only when this marketplace's auto-update reads off. If the user asks about that
 message, run the check above: it reads the same places.
 
 ## Never appeared at all
 
 **Claude Code:** `enabledPlugins: {"<plugin>@<marketplace>": true}` records an intent; the plugin is
 usable only once `claude plugin list --json` lists it. A plugin pushed recently may not be there yet:
-the catalog clone lags the push until it is re-pulled. Read `references/enabled-not-installed.md`
-for the reads and the install command.
+the catalog clone lags the push until it is re-pulled. The checker flags each enabled entry the
+registry lacks. If the remote catalog lists the plugin but its `metadata.version` was not bumped
+when the list changed, the client may never re-read the catalog: that defect is upstream, so hand it
+to plugin-dev. Read `references/enabled-not-installed.md` for the reads and the install command.
 
 **Codex:** `codex plugin list --json` is the same authority. Two separate causes: the catalog
 clone does not list the plugin yet (the script's "clone is behind" line), fixed by the Codex
@@ -129,7 +143,7 @@ refresh below; or the catalog lists it and it was never installed, fixed by
 
 - **Claude Code:** refresh the catalog — `claude plugin marketplace update <name>` (omit the name for
   all) — then update the plugin — `claude plugin update <plugin>@<name>` — or, for a plugin never
-  installed, `claude plugin install <plugin>@<name> --scope <user|project|local>` (one value). A
+  installed, `claude plugin install <plugin>@<name> --scope <scope>` (the scope it is enabled at). A
   restart applies it. If refreshes keep failing and wiping the clone,
   `CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1` keeps the last good copy (present in Claude
   Code 2.1.325) — propose it, don't set it.

@@ -12,9 +12,9 @@ nothing to install, whatever `enabledPlugins` says.
 That registry is the authority. A cache directory can linger from an uninstalled or superseded copy
 (`.orphaned_at` marker files sit inside retained version directories), so `ls` gives false positives.
 
-**Read 2 — does the catalog know it yet?** `git -C ~/.claude/plugins/marketplaces/<name> log
---oneline -1` against the commit that added the plugin (or `git ls-remote origin HEAD` from the same
-directory). Also compare the catalog's `metadata.version` with the remote's: if the plugin list
+**Read 2 — does the catalog know it yet?** Check that the clone's `.claude-plugin/marketplace.json`
+lists `<plugin>`, and compare `git -C ~/.claude/plugins/marketplaces/<name> rev-parse HEAD` with
+`git ls-remote origin HEAD` from the same directory. Also compare the catalog's `metadata.version` with the remote's: if the plugin list
 changed and that number did not, the client may not re-read the catalog.
 
 **The fix is two steps** — refreshing alone only makes the plugin visible:

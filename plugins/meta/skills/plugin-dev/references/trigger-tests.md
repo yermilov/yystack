@@ -20,7 +20,8 @@ disallowed. "Fired" = a `Skill` call whose skill is exactly `plugin-dev` or `<pl
 | Date | Host · model | Description | Fired | Silent | Note |
 | --- | --- | --- | --- | --- | --- |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | previous | 12/12 | 10/10 | prompts reworded to name the skill/plugin |
-| 2026-11-14 | Claude Code · claude-fable-5-2 | current (shipped) | 14/14 | 10/10 | adds "release a plugin" and "where do hooks go"; the hook-script near-miss went to another plugin's hook skill |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | interim | 14/14 | 10/10 | adds "release a plugin" and "where do hooks go"; the hook-script near-miss went to another plugin's hook skill |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | current (shipped) | 14/14 | 10/10 | "a change that never reached clients" handed to marketplace-health (it was pulling that skill's prompts) |
 
 What these runs do not establish: Codex routing (not run), other models, repeat stability, or
 whether the skill improves the work (no with-skill vs baseline task run).

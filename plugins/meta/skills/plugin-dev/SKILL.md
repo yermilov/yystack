@@ -1,16 +1,16 @@
 ---
 name: plugin-dev
 description: >-
-  Package a skills marketplace and its plugins: repo layout, Claude + Codex dual manifests, the
-  version bumps auto-update keys off, and where a skill belongs. Use
-  when laying out a marketplace repo, adding/removing a plugin or skill, editing a marketplace.json
-  or plugin.json, releasing a plugin, or fixing a change that never reached clients because a
-  version wasn't bumped — "add a plugin", "package this skill for Claude and Codex", "which version
-  do I bump", "which plugin should this skill go in", "where do hooks go in a plugin", "update the
-  plugins table in the README", «додай плагін у маркетплейс». Do not use for the SKILL.md prose (skill-authoring), to diagnose an INSTALLED
-  marketplace (marketplace-health) or turn its auto-update on (enable-autoupdate), to bootstrap one
-  from the canonical marketplace (clone-marketplace), nor to write hook scripts, commands, agents or
-  MCP servers (the host's docs).
+  Package a skills marketplace and its plugins: layout, dual Claude + Codex manifests, version
+  bumps, and where a skill belongs. Use when laying out a marketplace repo, adding/removing a plugin
+  or skill, editing a marketplace.json or plugin.json, releasing a plugin, or bumping a version that
+  marketplace-health showed was missed — "add a plugin", "package this skill for Claude and Codex",
+  "which version do I bump", "which plugin should this skill go in", "where do hooks go in a
+  plugin", "update the plugins table in the README", «додай плагін у маркетплейс». Do not use for
+  the SKILL.md prose (skill-authoring), to diagnose an installed marketplace or a pushed change that
+  never showed up (marketplace-health), to turn its auto-update on or off (enable-autoupdate), to
+  bootstrap one from the canonical marketplace (clone-marketplace), nor to write hook scripts,
+  commands, agents or MCP servers (the host's docs).
 ---
 
 # plugin-dev — how a great skills marketplace looks

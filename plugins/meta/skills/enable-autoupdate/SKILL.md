@@ -34,8 +34,7 @@ and again if it errors.
 **The go-ahead rule:** an explicit request to update / fix /
 enable / disable IS the go-ahead for the state change it names; anything else — a refresh, install, settings
 edit or re-add the user did not ask for — is proposed with the exact command or diff, and run on
-their yes. The steps below point back here. (The same rule is
-written in marketplace-health; change both together.)
+their yes. The steps below point back here. (marketplace-health states the same rule for its own read-and-refresh actions.)
 
 ## Step 0 — register the run
 

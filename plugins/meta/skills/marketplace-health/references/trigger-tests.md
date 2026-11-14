@@ -17,7 +17,8 @@ disallowed. "Fired" = a `Skill` call whose skill is exactly `marketplace-health`
 
 | Date | Host · model | Description | Fired | Silent | Note |
 | --- | --- | --- | --- | --- | --- |
-| 2026-11-14 | Claude Code · claude-fable-5-2 | current (boundary now says "on or off") | 9/11 | 10/11 | "new skill didn't show up after I pushed" and "will clients pick it up" went to plugin-dev; "update the meta plugin from GitHub" fired here instead of clone-marketplace. Open for this skill's own pass |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | previous (boundary says "on or off") | 9/11 | 10/11 | "new skill didn't show up after I pushed" and "will clients pick it up" went to plugin-dev; "update the meta plugin from GitHub" fired here instead of clone-marketplace |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | current (shipped) | 11/11 | 11/11 | plugin-dev no longer claims "a change that never reached clients"; this skill says it updates an INSTALL and names the vendored meta plugin as clone-marketplace's |
 
 What this run does not establish: Codex routing (not run), other models, repeat stability.
 
