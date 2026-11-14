@@ -18,8 +18,10 @@ and being honest about what was and wasn't read.
   empty, 404 or all navigation: find the real docs path in `llms.txt`, ask for the markdown twin, run
   literal code search (Sourcegraph) and issue / repository search (GitHub) without a token, take an
   uptake census of a newly launched product, and research an open-source deployment behind a login
-  from its own public issues and docs. Ships `scripts/sg-search.ts` and `scripts/gh-repos.ts`, which
-  refuse to report a truncated or partial result as an answer. Triggers: "the page comes back empty",
+  from its own public issues and docs; per-host recipes cover vendor blogs, GitHub, Medium, Hugging
+  Face, Typeform, Luma and SEC filings. Ships `scripts/sg-search.ts` and `scripts/gh-repos.ts`, which
+  refuse to report a truncated or partial result as an answer, and `scripts/html-to-text.ts`, which
+  turns a saved page into text plus its outbound links. Triggers: "the page comes back empty",
   "find this string on GitHub", "code search 401", "what has anyone built with X".
 - **watch-video** — extract what a video says and shows. A local file is read offline (ffmpeg frames
   + whisper.cpp transcript, never uploaded); a YouTube URL goes through Gemini, either as a quick

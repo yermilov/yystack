@@ -1,17 +1,18 @@
 # fetch-web-sources — host recipes (depth)
 
 Per-host recipes for the material a link points at: a vendor blog, a docs page, a repo, a model
-release, a demo, a form, a filing. Read only the section for the host in front of you. Most were
-measured while reading the material behind a social post (`read-twitter` sends its links here), so
-"the tweet" in the text means the post that linked the page — the recipes hold for any link to that
-host. Each section keeps its evidence and its
-date; hosts change, so re-check a recipe that has stopped matching.
+release, a demo, a form, a filing. Read only the section for the host in front of you. Many were
+first measured on pages a social post linked to, and where a recipe says "the post" it means
+whatever page sent you here; the recipes hold for any link to that host. Each section states its
+ruling and its command. The longer measured cases are in `precedents.md` under the same heading;
+a short one stays beside its recipe, dated. Hosts change, so re-check a recipe that has stopped
+matching.
 
 **Index**
 
+- **Counting matches** — why a count-only `grep` answers 1 on a one-line file.
 - **Vendor blogs** (`claude.com/blog`, `anthropic.com/research`) — why a web-fetch summary is not the
   page, how to take the bytes, how to pull the figures.
-- **Google developer docs** — the one-call page-text read.
 - **Bot-blocked hosts** — which 403/202 answers are about the fetcher, not the content.
 - **Framer sites** — the search-index JSON; reading accordion answers.
 - **OpenAI docs** — the `.md` twin and its limits.
@@ -20,63 +21,59 @@ date; hosts change, so re-check a recipe that has stopped matching.
   reads are in SKILL.md §2.3).
 - **Medium** — the `curl` 403 and the teaser trap.
 - **Vercel Security Checkpoint** — recognising the 429 bot challenge.
-- **AI-built app demos** — reading the deployed bundle against a post's claims.
+- **AI-built app demos** — reading the deployed bundle.
 - **Model releases (HuggingFace)** — file sizes, and what they can and cannot prove.
 - **Models named in a post** — resolving a model in registries.
 - **WebGL / three.js demos** — why waiting does not advance a frame-coupled scene.
 - **Typeform** — reading a form's questions without submitting anything.
-- **Luma** — the public calendar JSON.
+- **Luma** — the public calendar JSON, and its rate limit.
 - **SEC / EDGAR filings** — finding and reading an S-1 or 10-K.
+
+---
+
+## Counting matches
+
+`grep -c` counts matching LINES, not occurrences, with or without `-o`, and a JSON response or a
+minified bundle is usually one line, so a count-only `grep` answers 1 for every file that matches at
+all. Print the `-o` matches and count the output lines, or count in a script. The Luma and
+AI-built-demo recipes below both depend on this.
 
 ---
 
 ## Vendor blogs (`claude.com/blog`, `anthropic.com/research`)
 
-⚠️ **A web-fetch tool here returns a GENERATED SUMMARY, not the page's bytes.** The same applies to
-any vendor announcement page. (That is the observed behaviour; what produces it is not established
-here, so do not repeat a guess about the implementation.) Measured 2026-09-20 on one article, three
-failures in one run: a "reproduce verbatim" prompt was REFUSED outright on copyright grounds; a
-source attribution was FABRICATED ("cited as ... recursive self-improvement" — that phrase occurs 0
-times in the page HTML, and the sentence in question links somewhere else entirely); and it asserted
-"no specific technologies are named" when the article's own FIGURES show
-`kubectl rollout restart deployment/[listener]`, pods at 395/412 GiB against a ~660 GiB limit, and a
-standby pod taking the lease in ~30s — i.e. Kubernetes, plainly. The summary was right about the
-PROSE and blind to the pictures.
+**A web-fetch tool here returns a GENERATED SUMMARY, not the page's bytes** — and the same applies to
+any vendor announcement page. Measured 2026-09-20: asked to reproduce the page it refused, it
+invented a source attribution, and it said no technologies were named when the article's figures
+showed a Kubernetes command and pod memory limits (`precedents.md` § Vendor blogs). It was right
+about the prose and blind to the pictures. (That is the observed behaviour; what produces it is not
+established, so do not repeat a guess about the implementation.)
 
-**So take the bytes yourself** — with `--fail-with-body`, never a bare `-sL`:
-`curl -sSL --fail-with-body -A "Mozilla/5.0" -o "<scratch>/post.html" "<url>"`. ⚠️ A bare `-sL` **exits 0 on an
-error page and writes it to the file**, so a block or a dead slug strips into plausible-looking
-prose and you summarise the wrong document without ever reaching the fallback below. Measured
-2026-09-20 on a nonexistent slug of this same host: `-sL` → **exit 0 and 75 KB** of error page;
-`--fail-with-body` → **exit 22, «The requested URL returned error: 404»**; the real article → exit 0
-and 541 KB. Check the exit status before you treat the file as an article.
+**So take the bytes yourself** — with `--fail-with-body`, never a bare `-sL`, which exits 0 on an
+error page and writes it to the file:
 
-Then strip `<script|style|svg>`, turn `</p|h1..h4|li|div>` into newlines, drop tags, unescape — one
-python pass gave 19 KB of clean article text out of that 541 KB page. Then `grep` the raw HTML for
-the outbound `<a href>`s: they carry the post's real citations — the summary measured here
-reproduced none of them, and got one of them wrong. Use a web-fetch tool only for ORIENTATION (what
-is this about, is it worth reading), never as the source of a number, a quote or an attribution you
-will publish.
+```bash
+curl -sSL --fail-with-body -A "Mozilla/5.0" -o "<scratch>/post.html" "<url>"   # check the exit status
+bun run "SKILLDIR/scripts/html-to-text.ts" "<scratch>/post.html" --links --base "<url>"
+```
 
-**And read the figures.** `read-twitter`'s Step 6 tells you to read the TWEET's images; a linked blog post's diagrams
-are a separate thing and are routinely where the load-bearing specifics live — the exact command,
-the real limit, the dated timeline, the screenshot of the internal thread. On webflow-hosted
-Anthropic posts, match the CDN host AND an image extension — a bare host match also drags in the
-site's css, js and gsap bundles — then subtract the site chrome and the social card, which are NOT
-figures:
+The text is the article; the `links:` list carries the post's real citations, which the summary
+reproduced none of. Use a web-fetch tool only for ORIENTATION (what is this about, is it worth
+reading), never as the source of a number, a quote or an attribution you will publish.
+
+**And read the figures.** A blog post's diagrams are routinely where the load-bearing specifics live
+— the exact command, the real limit, the dated timeline, a screenshot of an internal thread — none
+of which is in the prose. On webflow-hosted Anthropic posts, match the CDN host AND an image
+extension (a bare host match also drags in the site's css and js bundles), then drop the site chrome
+and the social card, which are not figures:
 
 ```bash
 grep -oE 'https://cdn\.prod\.website-files\.com/[^"?]+\.(png|jpe?g|webp)' "<scratch>/post.html" \
   | sort -u | grep -vE '_(placeholder|og)_|favicon|apple-touch-icon'
 ```
 
-Both halves of that filter were measured, not guessed: without it the same command returned **9**
-URLs — the site's `apple-touch-icon.png` and the `..._og_<slug>.jpg` social card — and the `og`
-marker is `_og_` mid-filename, so a `/og_` pattern silently misses it. With it, exactly the
-**seven** figures. `curl` each and read it. They carried: the patch-runway chart (CI volume ~30x by
-2026-08), the listener memory chart (~660 GiB pod limit, last OOMKill mid-April), the backlog chart
-(peak ~2.57M unprocessed events, redesign shipped May 9, tuned by May 14), and the verbatim internal
-Claude Tag thread — none of which is in the prose at all.
+The social card's marker is `_og_` mid-filename, so a `/og_` pattern silently misses it. `curl` each
+figure and read it.
 
 **Fallback if `curl` is blocked:** a DOM walk of `.blog_post_layout` — there are **several** such
 elements, so take the **longest**, and walk `h1..h4, p, li, pre` `textContent` rather than trusting
@@ -84,24 +81,19 @@ elements, so take the **longest**, and walk `h1..h4, p, li, pre` `textContent` r
 
 ---
 
-## Google developer docs (`mapsplatform.google.com`, `developers.google.com`)
-
-A page-text read returns the whole article in one call — no DOM walk needed (an observation from the
-original notes, undated: re-check before relying on it).
-
----
-
 ## Bot-blocked hosts
 
-**Bot-blocked for a web-fetch tool (measured 2026-09-17):** `boingboing.net` → **403**;
-`codebreaking-guide.com` → **202 with a ~200-byte body**, which reads like an empty page. Both are
-facts about the fetcher, not the content — open them in the browser instead.
+**A 403, or a 202 with a body of a few hundred bytes, from a web-fetch tool may be about the
+fetcher rather than the content** — the 202 reads like an empty page. Check it in the browser before
+concluding anything: if the page reads there, it was the fetcher; if it is closed there too, it is
+the site's access policy. With no browser, an archived copy (SKILL.md §1.4). Measured 2026-09-17 on two unrelated sites, one of each
+(`precedents.md` § Bot-blocked hosts).
 
 ---
 
 ## Framer sites
 
-**A Framer-built site (most 2026 startup launch pages) — one `curl` gives you the text of EVERY
+**A Framer-built site (common for startup launch pages) — one `curl` gives you the text of EVERY
 page.** The page's `<head>` carries
 `<meta name="framer-search-index" content="https://framerusercontent.com/sites/<siteId>/searchIndex-<hash>.json">`;
 that JSON is keyed by route and holds each page's `h1`/`h2`/`h3`/`p` arrays. Measured 2026-09-19 on one
@@ -109,7 +101,7 @@ startup's launch site: 122 KB, covering its manifesto, team and blog pages and t
 one fetch. Grep the URL out of any page you already have:
 `grep -o 'https://framerusercontent.com/sites/[^"]*searchIndex-[^"]*\.json' "<scratch>/page.html" | head -1`.
 
-⚠️ **Accordion / FAQ ANSWERS are in NEITHER the static HTML NOR the search index** — same run: six
+**Accordion / FAQ answers are in neither the static HTML nor the search index** — same run: six
 FAQ questions present in both, not one answer in either; a Framer accordion renders the answer only
 on a real click. `.click()` on the label's leaf element does nothing (the handler sits on an
 ancestor wrapper), and a Title-Case label on screen is CSS `text-transform`, so matching the
@@ -122,23 +114,15 @@ answer was plainly rendered.
 
 ## OpenAI docs (`developers.openai.com`, `learn.chatgpt.com`)
 
-**Append `.md` to the URL's PATH, before any `?query` or `#fragment`.** The HTML page is ~95%
-navigation chrome (50.8 KB for the models page, enough to spill a tool result to disk);
-`curl -sL <path>.md` returns clean markdown with the tables intact (19 KB for the same page). Full
-index at `developers.openai.com/llms.txt` and `learn.chatgpt.com/llms.txt`. Measured 2026-09-04, on
-plain paths with no query/fragment.
+The HTML page is ~95% navigation chrome (50.8 KB for the models page, enough to spill a tool result
+to disk); the `.md` twin of SKILL.md §1.2 returns clean markdown with the tables intact (19 KB for the
+same page). Full index at `developers.openai.com/llms.txt` and `learn.chatgpt.com/llms.txt`. Measured
+2026-09-04.
 
-Two measured limits: `developers.openai.com/codex/*` 301s to `learn.chatgpt.com/docs/*` (follow it
-— use the final URL), and `openai.com/index/*` announcement/blog posts have NO `.md` twin — a plain
+Two measured limits: `developers.openai.com/codex/*` 301s to `learn.chatgpt.com/docs/*` (follow it —
+use the final URL), and `openai.com/index/*` announcement/blog posts have NO `.md` twin — a plain
 `curl` there returns 403 (re-confirmed 2026-09-23, with a full Chrome `-A`), so read those with the
-browser per «OpenAI announcements» below. A literal `<full-url>.md` on a URL carrying `?query` or
-`#fragment` appends after them instead of before the path, which does not resolve — strip those
-first, append `.md`, then re-add them only if the target actually needs them.
-
-The GENERAL form of this — `.md` vs `Accept: text/markdown`, `llms.txt`/`llms-full.txt` as the
-index when a docs path 404s, and why an empty fetch usually means a wrong URL rather than a
-client-rendered page — is SKILL.md §1. Keep per-SITE measurements here; put
-rules that hold across sites there.
+browser per «OpenAI announcements» below, or with no browser from an archived copy (SKILL.md §1.4).
 
 ---
 
@@ -146,7 +130,7 @@ rules that hold across sites there.
 
 **A page-text read for the prose, and the RSC payload for the CHARTS, whose full datasets are
 embedded in the page and are NOT in the prose, the visible axis labels or any screenshot.**
-Measured 2026-09-23 on `introducing-gpt-6-sol-and-luna`. Two halves, and the second is the one worth
+Measured 2026-09-23 on one model-release announcement. Two halves, and the second is the one worth
 the trip:
 
 - **Prose:** navigate, then a page-text read returns the whole article — headings, both pricing
@@ -177,7 +161,7 @@ the trip:
   `model/effort score cost`. A single unfiltered chart already blows a page script's output cap
   (truncated mid-array on the first try here), so filter by vendor or by model family per call
   rather than dumping.
-- ⚠️ **This is also where the announcement's own spin becomes checkable, which is the point.** The
+- **This is also where the announcement's own spin becomes checkable, which is the point.** The
   datasets the prose quotes selectively carry the rows it omits: on one release (2026-09) the prose
   compared its score against a weaker competitor while the chart's own data held a stronger one, and
   a chart whose numbers never appear in the prose showed a metric barely moving under a blanket
@@ -188,70 +172,45 @@ the trip:
 ## GitHub
 
 Reading the CODE (not just the README), freshness, and the sandbox gate. A literal `curl` (shell)
-against GitHub's own APIs is the reliable path ON A LOCAL HOST — verified directly 2026-08-31 on one
-public repo. On a cloud-sandbox host it MAY be gated, per session and per repo, so run the
-one-call probe below BEFORE you plan around `curl`.
+against GitHub's own APIs is the reliable path ON A LOCAL HOST. On a cloud-sandbox host it MAY be
+gated, per session and per repo, so run the one-call probe below BEFORE you plan around `curl`.
 
 ### The sandbox gate — probe once
 
-🔴 **On a cloud-sandbox host, the whole `curl` path may be shut — and the way it fails actively
-misleads you. Make ONE cheap probe before you plan around `curl`.** Measured on one cloud-sandbox
-host (five separate sessions, 2026-09-10 → 2026-09-12):
+**On a cloud-sandbox host, the whole `curl` path may be shut, and the way it fails misleads.** Make
+ONE cheap probe — `curl -sS https://api.github.com/repos/<owner>/<repo>` — and read the BODY, not
+just the status. Measured on one cloud-sandbox host across five sessions (2026-09-10 → 09-20; the
+bodies verbatim in `precedents.md` § GitHub sandbox gate):
 
-- `api.github.com` answers **403** with a body that is not GitHub's:
-  `{"message":"GitHub access to this repository is not enabled for this session. Use add_repo to
-  request access…","documentation_url":"…/claude-code/github-actions"}`. **There is no `add_repo`
-  tool in these sessions** (checked with the host's tool search), so the message recommends an
-  action that does not exist and reads like a permissions problem on the repo. It is neither: it is
-  the session's egress proxy. **It covers every repo NOT configured for the session, not just the
-  one you asked about** — measured 2026-09-17 with a negative control: `repos/<owner>/<repo>` and
-  `repos/torvalds/linux` (neither configured) gave the identical 403. A repo the session IS bound to
-  may still answer, so keep the one-call probe rather than skipping the shell outright. On the same
-  run `api.github.com/rate_limit` gave **502** `builtin injection failed (github)`, and
-  `search/repositories?q=…` gave **403** `This GitHub API path is not available: sessions are bound
-  to their configured repositories…` — three different bodies, one gate. So for an unconfigured repo
-  the "read versions/stars from `api.github.com`" rule is unreachable from the shell — but NOT from
-  the browser: the ladder below still reaches both `api.github.com` (from a `github.com` tab) and the
-  HTML page, so run the two-channel check there. Only if that browser API route fails too, **say in
-  the report that only one channel was readable**, since the "both channels must agree" rule in
-  «Freshness» then cannot be met.
-- `raw.githubusercontent.com` **varies between sessions** — 200 on 2026-09-10 and on 2026-09-12,
-  and `connect_rejected` / HTTP 000 on 2026-09-11. So do not write it down as the reliable channel
-  either. (Another 200 measured 2026-09-13 on a repo linked from a post, `api.github.com`/`github.com` both
-  403 in the same minute on the same host — consistent with the same per-session variance, not a
-  reason to call it unblocked. 200 again on 2026-09-17 for `torvalds/linux/master/README` and
-  `<owner>/<repo>/master/README.md` — while `<owner>/<repo>/main/Cargo.toml` 404'd because that repo
-  lives on `master`, the wrong-ref trap in «Freshness». 200 again on 2026-09-20 for
-  `<owner>/<repo>/main/README.md` (another repo linked from a post), 5 247 bytes — with both NEGATIVE controls run in the same
-  minute, so the channel was shown to be able to fail: a bad ref (`…/nonexistent-branch-xyz/README.md`)
-  and a bad path (`…/main/NOPE.md`) each **404**. Run those two controls, not just the fetch you
-  wanted — a proxy that answers 200 to everything looks identical to a working channel. On that same
-  repo `main` and `master` returned IDENTICAL bytes; that is not evidence the ref is being ignored
-  (the 404 controls show it is not), so do not write it down as one.) **Probe it fresh each
-  session** rather than assuming either way; when it 200s, `curl -r 0-15` a binary's header is
-  enough to check a claim against the raw bytes without pulling the whole file.
-- It is not GitHub-specific: `cdn.syndication.twimg.com`, `pbs.twimg.com`, `video.twimg.com`,
-  `www.youtube.com`, `www.anthropic.com` and even `example.com` all gave the same `connect_rejected`
-  on at least one run. `curl -sS "$HTTPS_PROXY/__agentproxy/status"` names the cause outright:
-  `noProxy` lists **only package registries** (npmjs, jsr, pypi, files.pythonhosted, crates,
-  proxy.golang) plus `api.anthropic.com` and local ranges, and `recentRelayFailures[]` carries each
-  refusal verbatim with `kind: "connect_rejected"`. **Read that endpoint before diagnosing a dead
-  host** — it is the one cheap way to tell "the proxy refused" from "the host returned 403".
-- **`github.com/user-attachments/assets/<uuid>` — a file or image attached to an issue or PR — is
-  gated too, and answers with a THIRD body.** Measured 2026-09-20 on the same sandbox host: **403**,
-  `{"message":"This GitHub API path is not available: sessions are bound to their configured
-  repositories. Use repository-scoped endpoints (repos/{owner}/{repo}/...)."}` — advice that cannot
-  be followed, because an attachment has no repo-scoped URL at all. In the same minute the same
-  `curl` got **200** from `cdn.syndication.twimg.com/tweet-result` and from
-  `video.twimg.com/...mp4`, so that proxy was alive and refusing GitHub specifically: **run a
-  non-GitHub positive control before blaming the network.** Read the attachment in the **browser**
-  instead (open the URL there) — and check «SVG attachments» below before reaching for a
-  screenshot.
+- `api.github.com` answers **403** with a body that is not GitHub's — it names the session's
+  configured repositories and suggests a tool (`add_repo`) that the session does not have. That is
+  the session's egress proxy, not a permissions problem on the repo, and it covers every repo the
+  session is not bound to (a negative control on an unrelated public repo gave the identical 403).
+  Other API paths on the same host gave a 502 and a second 403 wording: several bodies, one gate.
+  A repo the session IS bound to may still answer, so keep the probe rather than skipping the shell.
+- `raw.githubusercontent.com` **varied between sessions** on that host (200 on some days,
+  `connect_rejected` on another). Probe it fresh each session, and run two NEGATIVE controls in the
+  same minute — a bad ref and a bad path, each of which must 404 — because a proxy that answers 200
+  to everything looks identical to a working channel. When it works, `curl -r 0-15` on a binary
+  checks a header without pulling the whole file.
+- `github.com/user-attachments/assets/<uuid>` (a file attached to an issue or PR) was gated too,
+  with yet another body. **Run a non-GitHub positive control before blaming the network** — on that
+  run other hosts answered 200 in the same minute — and read the attachment in the **browser**
+  (check «SVG attachments» below before reaching for a screenshot).
+- The gate is not GitHub-specific: unrelated hosts gave `connect_rejected` on some runs. Where the
+  host exposes a proxy status endpoint (that one did, at `$HTTPS_PROXY/__agentproxy/status`, listing
+  `noProxy` and `recentRelayFailures[]`), read it before diagnosing a dead host — it is the cheap way
+  to tell "the proxy refused" from "the host returned 403". **Where there is no such endpoint**, the
+  same distinction comes from a control pair: one URL on a host you know is reachable, one on the
+  target. Both fail → the egress is closed; only the target fails → it is the target.
+
+When the shell is gated, the browser still reaches both `api.github.com` (from a `github.com` tab)
+and the HTML page — the ladder below. If that route fails too, **say in the report that only one
+channel was readable**, since «Freshness» needs two.
 
 **Do not generalise any of this into "the GitHub API doesn't work".** On a local host `curl` to
-`api.github.com` is not gated. This is a fact about a HOST and an INSTRUMENT, and it has already
-varied between two sessions on the same host — which is exactly why the rule is *probe once*, not
-*memorise a channel*.
+`api.github.com` is not gated. This is a fact about a HOST and an INSTRUMENT, and it varied between
+sessions on the same host — which is why the rule is *probe once*, not *memorise a channel*.
 
 ### The browser ladder when `curl` is gated
 
@@ -330,7 +289,7 @@ All verified on those runs.
   them on your side in the order its comment gives (round-trip checked on 200 000 random strings,
   2026-11-14): they keep source code exact, where stripping `=` turns assignments and comparisons into different code.
   This is the canonical defang for source code in both this file and `read-twitter`.
-- 🔴 **A link to `…/issues/<n>#issuecomment-<id>` points at ONE community comment, and a
+- **A link to `…/issues/<n>#issuecomment-<id>` points at ONE community comment, and a
   web-fetch tool cannot reach it — fetch it by id instead.** Measured 2026-09-20 on an issue with
   **203 comments**: a web-fetch tool on the anchored URL returned the issue body plus the earliest
   comments and reported outright that "the specific comment with that ID is not included" — twice,
@@ -348,7 +307,7 @@ All verified on those runs.
   `README.txt`) inside one directory before moving to the next**, and take the first 200. Order it
   any other way and a root `README.md` wins over the `.github/README.rst` that GitHub itself
   displays, so you analyse a different document from the one `/readme` and the repo page show.
-  ⚠️ **Whatever this enumeration returns, it is TENTATIVE — a hit is "a README", never "the
+  **Whatever this enumeration returns, it is TENTATIVE — a hit is "a README", never "the
   README", and a miss is "I did not find one", never "there is none".** The list cannot be
   exhaustive (`README.adoc`, an extensionless `README` and `docs/README.rst` are three spellings it
   already lacks), so a higher-priority file it does not know about beats the one you found, and the
@@ -397,7 +356,7 @@ scrambled, swap it for `e.getBoundingClientRect()` (rendered coordinates) and re
 multi-column layout the reading order comes out interleaved across columns whichever coordinate you
 use: the text is complete, the sequence is not, so do not present it as the linear original.
 
-⚠️ **This only works when the labels really are `<text>` nodes — check the count before you trust
+**This only works when the labels really are `<text>` nodes — check the count before you trust
 the output, and fall back to pixels when it is thin.** An SVG whose type was converted to paths, or
 that wraps a raster `<image>`, or that lays its copy out in `<foreignObject>`, yields few or no
 `<text>` nodes, and the recipe then returns a confidently empty reading of a perfectly legible
@@ -455,8 +414,7 @@ only fetcher is a page-rendering wrapper may get summaries for some tasks):
   `ROBOTS_DISALLOWED` to a web-fetch tool** (the repo root is not), so "list the directory with a
   web fetch" cannot work at all.
 - Consequence: infer file names from the entry point's `import`s / referenced type names and fetch
-  each guess via `raw.githubusercontent.com`. **Resolve the default branch first** (same two-call
-  `.default_branch`/`.sha` lookup as above) — every raw guess 404s on a wrong branch regardless of
+  each guess via `raw.githubusercontent.com`. **Resolve the default branch first** (SKILL.md §2.3) — every raw guess 404s on a wrong branch regardless of
   how good the filename guess is, and that failure is easy to misread as "wrong filename" when it's
   really "wrong ref." Best-effort only even on the right branch — files with no static reference
   (tests, resources, dynamic modules, build scripts) can be missed; say so rather than claiming full
@@ -466,100 +424,57 @@ only fetcher is a page-rendering wrapper may get summaries for some tasks):
 
 ### Freshness — no single channel is authoritative
 
-🔴 **A web-fetch tool is NOT a freshness source on GitHub — it answers 200 with a plausible,
-internally consistent, badly STALE snapshot, and nothing in the response reveals it.** Measured
-2026-09-12 on one small public repository, minutes apart: the web fetch said **0 stars / 0 forks / 5
-commits** and a root listing missing three source files and a `site/` folder, while the
-browser showed **124 / 34 / 30** and 39 entries. On 2026-09-11 it likewise reported 252.6k stars
-against the API's 259 003, and twice insisted a CHANGELOG's newest version was `1.0.1` while
-`plugin.json` in the same commit said `1.2.3`. Use it to learn what a file is ABOUT; never for a
-number, a version, or "is this file there".
+**A web-fetch tool is NOT a freshness source on GitHub.** It can answer 200 with a plausible,
+internally consistent, badly STALE snapshot, and nothing in the response reveals it — measured
+twice in September 2026, off by stars, commit counts, missing files and a CHANGELOG version
+(`precedents.md` § GitHub freshness). Use it to learn what a file is ABOUT; never for a number, a
+version, or "is this file there".
 
-**The positive control that settles who is lying, and it is mandatory before writing "the repo
-doesn't contain X":** `raw`-fetch two files you are confident exist AND the one you think is
-missing. On that run raw returned 200 for the three files the snapshot lacked and 404 for one the
-snapshot listed — i.e. the live tree matched the browser and the web-fetch snapshot was ~25
-commits behind. Without it the natural write-up is a flatly false claim about someone's code.
+**Before writing "the repo doesn't contain X", run the positive control:** `raw`-fetch two files you
+are confident exist AND the one you think is missing, pinned to the same SHA. On the measured run raw
+returned 200 for files the snapshot lacked and 404 for one it listed — the snapshot was ~25 commits
+behind. Without the control the natural write-up is a false claim about someone's code.
 
-**NEITHER channel (REST API or HTML page) is authoritative alone; cross-check both for any fact
-that goes into a report.** This reverses how the recipe used to read — it used to say the REST/raw
-side is always the stale one. Measured 2026-08-29 on `router-for-me/CLIProxyAPI`, same moment in
-time, REST API (`api.github.com/repos/...` through a web-fetch WRAPPER, not a literal `curl`) vs.
-the HTML page (`github.com/...` in the logged-in browser):
+**NEITHER channel (REST API or HTML page) is authoritative alone; a fact that goes into a report
+needs both to agree.** Whichever you happen to read can be the stale one: one measured run had the
+REST API through a web-fetch WRAPPER three months behind the HTML page on stars, forks, `pushed_at`
+and description; another had the HTML Releases page as the stale side. So:
 
-| | REST API | HTML page |
-|---|---|---|
-| stars | 36,061 | **49,078** |
-| forks | 5,987 | **7,550** |
-| `pushed_at` | 2026-06-04T18:07:36Z (~3 months stale) | latest commit fresh, 3,564 commits |
-| description | "…GPT 5.5…Grok 4.3…" | "…**GPT 5.6 Series**…**Grok 4.5**…" |
+- **When they disagree, retry the REST API with a literal `curl` before concluding the API itself is
+  stale** — if `curl` agrees with the HTML page, the wrapper was the problem, not GitHub. Attribute
+  an anomalous read to the wrapper until a direct call agrees.
+- Cross-check against the HTML page: `#repo-stars-counter-star[title]`, `#repo-network-counter[title]`,
+  `.f4.my-3` (description), the Releases block.
+- **`pushed_at` is repo-WIDE (any branch); the front page's latest-commit line is DEFAULT-BRANCH
+  only** — they can legitimately disagree, which is not staleness. For code freshness compare the
+  same ref's HEAD sha: resolve it as SKILL.md §2.3 says, then check it against the HTML page's
+  latest-commit line (or `/commits/<branch>`) for that SAME ref.
+- No HTML page reachable and the `curl` retry still looks stale → say that only a possibly-stale
+  snapshot could be read; never present it as current.
 
-Here the channel through the wrapper was the stale side, and by ~3 months — not "a few commits."
-This run did not isolate whether GitHub's REST API itself lags or the WRAPPER served a cached
-response — the same wrapper-vs-`curl` gap documented for `tweet-result` (`read-twitter`'s `references/x-native.md`, «To check
-one tweet's text against the DOM») may apply here too, and as a standing rule, attribute an
-anomalous read to the wrapper until a direct call agrees. **So: whenever the REST API and the HTML
-page disagree, retry the REST API with a literal `curl` before concluding the API itself is
-stale** — if `curl` agrees with the HTML page, the wrapper was the problem, not GitHub. Either way,
-don't accept `pushed_at`/`stargazers_count`/`description` from a fetch you haven't cross-checked as
-current — cross-check against the HTML page (`#repo-stars-counter-star[title]`,
-`#repo-network-counter[title]`, `.f4.my-3`, the Releases block).
-
-**`pushed_at` is repo-WIDE (any branch); the front page's latest-commit line is
-DEFAULT-BRANCH-only** — the two can legitimately disagree on a repo that's more active on a
-non-default branch, which is not staleness. For **code-freshness** specifically, compare the same
-ref's HEAD sha, not `pushed_at` against the front page. "Resolve HEAD via the API, then fetch every
-file at that sha" is still the right procedure for reading file *contents* — but since the resolved
-HEAD sha can itself come from a stale channel, **verify it against the HTML page's own
-latest-commit info for that SAME branch/ref before treating the sha as current** (the commit count /
-latest-commit line on the repo's HTML front page for the default branch, or its `/commits/<branch>`
-page). When the HTML page cannot be reached to cross-check (no browser available) and a `curl` retry
-still looks stale, say explicitly that only a possibly-stale snapshot could be read; never present
-it as current without that caveat. An earlier measured case had the HTML **Releases** page as the
-stale side instead — together: **whichever channel you happen to read can be the stale one; a
-report-worthy fact about a repo needs agreement from both, not just one.**
-
-**Do not hardcode `main`** — plenty of repos are on `master`, `develop` or a product name, and
-`/commits/main` 404s on them, which reads as "the repo is gone" rather than "wrong ref". Ask the
-repo what its default is: `api.github.com/repos/<owner>/<repo>` → `.default_branch`, then
-`api.github.com/repos/<owner>/<repo>/commits/<default_branch>` → `.sha`. If the post's URL already
-names a branch or a tag, that ref wins — it is what the author was pointing at.
+**Do not hardcode `main`** — plenty of repos are on `master`, `develop` or a product name, and a
+wrong ref 404s in a way that reads as "the repo is gone". Take the default branch from the API as in
+SKILL.md §2.3. If the linking post's URL already names a branch or a tag, that ref wins — it is what
+the author was pointing at.
 
 ### A web-fetch wrapper on GitHub — two more failure modes
 
-On one cloud-sandbox host's web-fetch tool (as of 2026-08-28), on top of the general
-wrapper-vs-`curl` freshness rule above:
+Measured on one cloud-sandbox host's web-fetch tool (2026-08-28), on top of the freshness rule above:
 
-1. **Staleness can differ from endpoint to endpoint within the SAME session, not only between the
-   wrapper and a literal `curl`.** Measured 2026-08-28 on a skills-collection repo linked from a post: fetching the
-   repo's HTML page reported "123 skills", and fetching the README via `raw.githubusercontent.com`
-   seconds later reported "75 skills" — two different counts for the same metric from two requests
-   in one session. (A `DEMOS.md` fetch in the same session reported "89" — that's demo coverage, a
-   different metric, not a third skill count; don't conflate it, but do take it as one more
-   unaudited number from this tool.) The real count, read via the browser's own
-   `git/trees?recursive=1` (pinned to a SHA, `"truncated"` checked, per «Reading the code with
-   `curl`» — a branch-scoped tree fetch is not automatically definitive) was **130** `SKILL.md`
-   files. Weak corroborating signal only, not a documented contract: the rendered page carried a
-   `meta-request-id` value whose low 8 hex digits looked like a unix timestamp of the render —
-   decoding it put one page's render 8 days old and the other's fresh. Treat that as a hint worth
-   cross-checking, never as proof by itself.
-2. ⚠️ **An empty body from this tool is not a 404 — and looks exactly like one.** Fetching
-   `api.github.com/...` (JSON) and three different `raw.githubusercontent.com/.../SKILL.md` paths
-   all came back with an empty body and no error, while the identical URLs fetched by a page script
-   in the browser returned real 200s (JSON / ~6 KB files). The empty `raw.githubusercontent.com`
-   reads tempted the conclusion "this file doesn't exist" — it did, just under a different name than
-   guessed. **Before concluding anything from an empty response, run a positive control**: the same
-   host and content-type, on a URL you already know exists (e.g. `raw.../README.md`). Empty there
-   too means the tool is broken, not that the target is missing.
+1. **Staleness can differ from endpoint to endpoint within ONE session.** The repo's HTML page and its
+   README via `raw` gave two different counts for the same metric seconds apart, and the real count
+   (from a SHA-pinned tree listing, `truncated` checked) matched neither. Count from the tree.
+2. **An empty body from the tool is not a 404 — and looks exactly like one.** `api.github.com` JSON
+   and several `raw` paths came back empty with no error, while the same URLs from a browser page
+   script returned real 200s. **Before concluding anything from an empty response, run a positive
+   control**: the same host and content type, on a URL you know exists. Empty there too means the
+   tool is broken, not that the target is missing.
 
-**Working fallback for both, on this host:** open any `github.com` page in the browser and call
-`api.github.com` from a page script (CORS is allowed there) — e.g. `git/trees/<sha>?recursive=1`
-for a listing with file sizes (still check `truncated`). **Trap on top of the trap:** returning a
-large chunk of raw code from a page script gets silently redacted by the host's content classifier
-(`[BLOCKED: Cookie/query string data]`). Return narrowly — counts, names, or a `slice()` defanged
-with the sentinels in § The browser ladder (a defang does not redact secrets, so still keep
-tokens/keys/cookies out of what you return) — and for reading a whole text file, navigate to the raw
-URL and do a page-text read instead.
+**Working fallback for both:** open any `github.com` page in the browser and call `api.github.com`
+from a page script (§ The browser ladder). Return narrowly — counts, names, or a `slice()` defanged
+with the sentinels there (a defang does not redact secrets, so still keep tokens, keys and cookies out
+of what you return) — and for reading a whole text file, navigate to the raw URL and do a page-text
+read instead.
 
 ---
 
@@ -568,7 +483,8 @@ URL and do a page-text read instead.
 **Medium 403s a plain `curl`** (HTTP 403, ~5 KB anti-bot body — measured 2026-09-19 on both a
 cloud-sandbox host and a local host; again 2026-11-14). A web-fetch tool returned the posts (three by
 one author), but as SKILL.md §1.2 says, its output can be a summary: use it to orient, and take any
-text you will quote or summarise from the browser's page-text read. And the content trap on top of it: a Medium post by an author who
+text you will quote or summarise from the browser's page-text read — with no browser, from an
+archived copy (SKILL.md §1.4). And the content trap on top of it: a Medium post by an author who
 also self-hosts is often a **teaser** that says the essay continues on their own site. Check the
 author's own domain for the full text before summarising the Medium excerpt as the essay — on the
 measured post the Medium copy carried only the setup; the full ~20 KB essay was on the author's own
@@ -599,157 +515,97 @@ happens to be absent reads as "the site is empty" rather than "I was bounced" �
 **A User-Agent does not help** — verified: the same request with a full Chrome UA string returned
 429 and the same checkpoint page. **The fix is the browser**: open the page and read it from there
 (a page script over `document.scripts[0].textContent`, `document.documentElement.outerHTML.length`,
-DOM queries) — unaffected in the measured case, on a warm logged-in profile. ⚠️ **Confirm that, do
+DOM queries) — unaffected in the measured case, on a warm logged-in profile. **Confirm that, do
 not assume it**: the challenge can be served to the browser too (a fresh profile, a different IP, a
 driver it flags), and then `document.scripts[0].textContent` is the CHECKPOINT's own script and
 reads as the app's bundle. Assert `document.title !== "Vercel Security Checkpoint"` — and, better,
 that some expected DOM of the real page is present — before you parse anything. That matters for
-the whole class of single-file demo sites tweets link to — they are overwhelmingly on Vercel and
+the whole class of single-file demo sites posts link to — they are overwhelmingly on Vercel and
 their entire substance is the inline `<script>`, which the browser can read and `curl` cannot.
 
 ---
 
 ## AI-built app demos — the deployed bundle
 
-**A post demoing an AI-BUILT APP: the DEPLOYED BUNDLE is the primary source, not the video.** When
-the post shows a generated app and a self-reply links it ("try it here"), the video shows what the
-author chose to show, while the shipped JS carries the whole dataset and the real rendering
-technique — and the two routinely disagree. Measured 2026-09-20 on one post demoing a
-model-built 3D bookshelf app from a photo of a real shelf (live on a hosted-app subdomain):
+**When a post demos a generated app and links it ("try it here"), the DEPLOYED BUNDLE is the
+primary source, not the video.** The video shows what the author chose to show; the shipped JS
+carries the whole dataset and the real rendering technique, and the two routinely disagree
+(`precedents.md` § AI-built app demos).
 
-- `curl` the page (a 429 is never an empty site — check `x-vercel-mitigated: challenge`, which
-  names the Vercel checkpoint of «Vercel Security Checkpoint» above. Its ABSENCE rules out only that
-  one signal, not a bounce: another CDN, proxy or session-sensitive limiter can answer 429 too, and
-  the browser may well get through, so try it either way), read the `/assets/*.js` refs out of the
-  HTML, `curl` each bundle into a `mktemp -d` dir, and **brace-scan the minified JS for the embedded
-  record array** — here `{"id":"…"` objects with keys
-  `title/author/description/uncertain/direct/goodreads/source/shelf/position`. That gave **145
-  records, `uncertain:false` = 107, `uncertain:true` = 38, genre `Crime & mystery` = 23** — every
-  figure matching a number the UI itself prints ("107 identified books", "94 / 145", the "Crime &
-  mystery 23" chip, "Shelf 04 · 33 books"), so **the UI doubles as a positive control on the
-  parse**. Parse first, then find the UI string that should agree with it; a count that matches
-  nothing on screen is a bad parse.
-  ⚠️ **"Read the bundle" means EVERY chunk, and the HTML does not necessarily name them all.** These
-  apps are code-split, so the entry bundle is deliberately partial: here the 145 records live in
-  a feature chunk (248 KB) and **not in the `index-*.js` entry chunk** — re-verified 2026-09-20
-  against the live site, 5 chunks / 519 KB total, so reading only the entry chunk would have found
-  nothing and "concluded" the data was server-side. Worse, a route- or lazy-loaded app names only
-  its entry and preload assets in the HTML and resolves the rest from a runtime chunk table or on
-  navigation, so **close the set transitively**: re-grep each downloaded chunk for further
-  `/assets/*.js` (and bare `"assets/…js"`) refs and fetch anything new until the set stops growing
-  — the same stop-when-the-union-stops-growing criterion `read-twitter`'s `references/x-native.md` uses for self-thread search
-  sweeps. (Here it converged at the HTML's five, which is a positive control on the crawl, not a
-  licence to skip it.) And an API-backed or server-rendered app fetches its data at runtime whatever
-  you download, so **an absence in the JS is a claim about the chunks you read until you have shown
-  the app fetches nothing** — watch the network on load and on one interaction, and grep for
-  `import(`/`fetch(`, before turning any absence into a contradiction.
-- **Check the RENDERING claim against the bundle.** The author replied "just three.js"; the shipped
-  app has **0 `<canvas>`, no `window.THREE`, no WebGL string**, and the shelf is CSS 3D
-  (`perspective:1200px`, `transform-style:preserve-3d`, `rotateY(...)` in the stylesheet). Report
-  what the artifact does and attribute the other claim to the post — do not merge them.
-- **Check the FEATURE claim against the DOM.** "Just snap a photo and get a 3D bookshelf" — the
-  deployed app has **`input[type=file]` count 0**: one hardcoded shelf, no upload. The pipeline ran
-  once, inside the model; it is not a feature of the thing you can open. This is the single most
-  misleading gap between a demo tweet and its artifact, and it costs one `querySelectorAll` to
-  close. ⚠️ **But a zero count is evidence about the CURRENT DOM, not about the feature** — an upload
-  can be a picker built only on click, a drag-and-drop target, `showOpenFilePicker`,
-  `getUserMedia`, or a paste-a-URL flow, and every one of those reads zero on first paint. So
-  corroborate it in the chunks — **and search the COMPILED forms, because JSX attributes do not
-  survive minification**: `type:"file"` / `type:\`file\`` / `type:'file'`, `createElement("input")`,
-  `accept:`, `webkitdirectory`, `FileReader`, not `type="file"`. Re-checked 2026-09-20 across all
-  five chunks of this app: **zero for every one of those**, and its single `<input>` is the shadcn
-  search box — so the negative survives the stronger search. Two false positives that search WILL
-  hand you here, both measured: **`capture:` is useless** (5 hits, every one an
-  `addEventListener(..., {capture:!0})` option, not `<input capture>`), and **grepping the substring
-  `file` hits the search box**, because shadcn's `Input` ships Tailwind `file:`-variant classes
-  (`file:h-7 file:border-0 …`); `dragover` and `new FormData` likewise hit only the React and router
-  chunks. Report which forms you searched, not just the DOM count.
-- **Where the app embeds its own SOURCE INPUT** (here `/assets/source-shelf.jpg`), fetch it and
-  verify the identifications yourself instead of trusting the demo. Two findings only that check
-  produces: the app faithfully reproduces the library's own MISSHELVINGS (two authors out of alphabetical order),
-  which is evidence it read positions rather than sorting a hallucinated list — so do NOT report a
-  local ordering anomaly as a model error until you have looked at the photo; and `uncertain:true`
-  lands on genuinely ambiguous spines (7 identical omnibus spines of one series), i.e. the flag
-  is calibrated, not decorative.
-- ⚠️ **Count in python, not `grep -oc`.** `grep -c` counts matching LINES, not occurrences (with or
-  without `-o`, depending on the grep), and these bundles are effectively one line, so a
-  line-counting `grep` answers 1 for every file that matches at all, and a "density" ranking built
-  on it is silently flat. The same match-vs-line trap, measured on a count-only grep, is in «Luma»
-  below.
+- **Fetch the page, then every bundle.** `curl -sSL --fail-with-body` the page — a 429 is a bounce,
+  not an empty site: check `x-vercel-mitigated: challenge` (§ Vercel Security Checkpoint), and know
+  that its absence rules out only that one signal, since another CDN or limiter can answer 429 too;
+  try the browser either way. Read the `/assets/*.js` refs out of the HTML and `curl` each into your
+  scratch directory.
+- **Close the chunk set transitively.** These apps are code-split: the entry bundle is deliberately
+  partial, and a lazy-loaded app names only its entry and preload assets in the HTML. Re-grep each
+  downloaded chunk for further `/assets/*.js` (and bare `"assets/…js"`) refs and fetch anything new
+  until the set stops growing. On the measured app the data lived in a feature chunk, not the entry
+  chunk — reading only the entry would have "concluded" it was server-side.
+- **An absence in the JS is a claim about the chunks you read.** An API-backed or server-rendered app
+  fetches its data at runtime whatever you download, so watch the network on load and on one
+  interaction, and grep for `import(` / `fetch(`, before turning any absence into a finding.
+- **Use the UI as the positive control on your parse.** Brace-scan the minified JS for the embedded
+  record array, count in a script (§ Counting matches), then find the number the UI itself prints. A
+  count that matches nothing on screen is a bad parse.
+- **Search the COMPILED forms** when you look for a feature in a bundle — JSX attributes do not
+  survive minification: `type:"file"` / `type:'file'`, `createElement("input")`, `accept:`,
+  `FileReader`, not `type="file"`. Expect false positives from generic substrings (`capture:` is
+  usually an `addEventListener` option; `file` hits Tailwind `file:` classes), and say which forms you
+  searched. A zero count in the DOM is evidence about the current DOM only: a picker built on click,
+  a drop target or a paste-a-URL flow all read zero on first paint.
+- **Where the app embeds its own source input** (a photo, a dataset), fetch it and compare it with
+  what the app shows before calling an oddity in the output a model error.
+
+Report what the artifact does and attribute the post's claims to the post — do not merge them.
 
 ---
 
 ## Model releases (HuggingFace)
 
-**A post or page announcing a MODEL RELEASE: the HuggingFace repo is the artifact, and its FILE SIZES are
-the one number the marketing cannot round.** Same family as «AI-built app demos» above.
-`https://huggingface.co/api/models/<org>/<repo>?blobs=true` returns every file with its exact
-`size`, plus `downloads`, `likes`, `lastModified`, `tags` and `cardData.license`;
-`?author=<org>&limit=100` over `/api/models` lists that org's repos — **`limit` caps at 100 and the
-endpoint pages, so on a large org that is a FIRST PAGE, not the shelf**: follow the pagination (or
-say your listing was capped) before deriving any chronology from it. Read the card itself from
-`…/raw/main/README.md` (raw, not the rendered page) and grep it for `RAM`, `memory`, `GB`,
-`mmproj`, `context`, `VRAM`, `KV` before quoting any footprint.
+**For a model release, the HuggingFace repo is the artifact, and its FILE SIZES are the one number
+the marketing cannot round.**
 
-🔴 **The bytes of THE ONE FILE A SETUP LOADS are a FLOOR on that setup's memory, never the
-requirement — so this recipe can QUALIFY a «runs on N GB» claim and must never CONFIRM one.**
-Inference additionally needs the KV cache (which scales with context, and these are long-context
-models), activations, compute and graph buffers, allocator overhead, plus the OS — none of which is
-in any file size.
+- `https://huggingface.co/api/models/<org>/<repo>?blobs=true` returns every file with its exact
+  `size`, plus `downloads`, `likes`, `lastModified`, `tags` and `cardData.license`.
+- `/api/models?author=<org>&limit=100` lists an org's repos — `limit` caps at 100 and the endpoint
+  pages, so on a large org that is a FIRST PAGE: follow the pagination or say the listing was capped.
+- Read the card from `…/raw/main/README.md` (raw, not the rendered page) and grep it for `RAM`,
+  `memory`, `GB`, `mmproj`, `context`, `VRAM`, `KV` before quoting any footprint.
+- **A repo id that does not exist answers HTTP 401 `{"error":"Invalid username or password."}`, not
+  404** (measured 2026-09-22) — that reads as a credentials problem when the id is usually guessed.
+  Check the id against the org listing before any auth detour. This was measured for a NONEXISTENT id
+  only: a gated or private repo behaves differently per endpoint, so read the status AND the body and
+  say which endpoint you probed.
 
-**Two limits on the floor itself, and both are easy to trip.** It is a floor only for the artifact
-actually loaded, as stored: a setup that requantizes at load time, or that splits weights across RAM
-and VRAM (or streams/offloads them), can need LESS resident memory than the file measures. And a
-repo routinely ships files no one loads together — this one carries a 53.81 GB `F16.gguf` beside
-the 5.95 GB pack — so «the repo's size» is a floor on nothing at all. Name the file and the setup,
-or you will refute a true low-memory claim as confidently as a false one.
+**The bytes of THE ONE FILE A SETUP LOADS are a FLOOR on that setup's memory, never the requirement
+— so this recipe can QUALIFY a «runs on N GB» claim and must never CONFIRM one.** Inference also
+needs the KV cache (which grows with context), activations, buffers and the OS, none of which is in
+any file size. Two limits on the floor itself:
 
-On the measured tweet a reply reported **~45 GB resident for one usable session** of a model whose
-weights are 5.95 GB — **an unverified anecdote, not a counter-measurement: it names no backend, no
-context length and no peak-measurement method**, and the vendor's own card reports 7.2 GB resident
-for a different configuration. Quote such a figure WITH its missing conditions, as the reason the
-question is open, never as the answer. If a runtime number is what your report turns on, you need a
-measured peak RSS/VRAM at a stated context and backend; absent that, report the floor AS a floor and
-say the ceiling was not measured.
+- It holds only for the artifact actually loaded, as stored: a setup that requantizes at load time,
+  or splits or streams weights between RAM and VRAM, can need LESS resident memory than the file.
+- A repo routinely ships files nobody loads together (several quantisations, a separate vision
+  projector), so «the repo's size» is a floor on nothing. **Name the file and the setup.**
 
-**`downloads` is per REPOSITORY, not per file** — so when several packings ship as siblings in one
-repo (the usual case for GGUF), it cannot tell you which one people actually pull. Only variants
-published as separate repos are comparable that way.
+A runtime number quoted without its backend, context length and measurement method is an anecdote:
+quote it with its missing conditions, as the reason the question is open. If your report turns on a
+runtime figure, you need a measured peak at a stated context and backend; otherwise report the floor
+as a floor and say the ceiling was not measured.
 
-Measured 2026-09-22 on `prism-ml/Ternary-Bonsai-2-27B-gguf` where the post said «works on anything
-with 8 Gb RAM»:
+Cross-checks that changed the answer on the measured release (`precedents.md` § Model releases):
 
-- the advertised **5.9 GB** is `Ternary-Bonsai-2-27B-PTQ1_0.gguf` at **5.95 GB** — the LANGUAGE
-  MODEL ALONE. The vision tower is a **separate** `mmproj` file (0.63 GB Q8_0 / 0.93 GB BF16), so
-  multimodal use is ~6.6 GB before any KV cache. The card says so outright («These sizes describe
-  the language model alone»); the post does not.
-- a second pack, `PQ2_0`, is **7.21 GB**, and it is the one the vendor's own Apple row measures.
-  **A repo usually ships several packings — name WHICH file your number is**, or you are quoting the
-  smallest and describing the default.
-- **Grep the vendor's own prose for the post's headline number before attributing it to the
-  vendor.** Neither the blog post nor the model card contained the string `8 GB` anywhere: the
-  figure was the TWEETER's gloss, not the release's claim. That is the retelling-attribution rule
-  one level out — see `read-twitter`'s `references/conditional-dives.md`, «When the linked material is itself a RETELLING, not
-  a primary source» — and a two-second `grep` settles who actually said it.
-- ⚠️ **A repo id that does not exist answers HTTP 401 `{"error":"Invalid username or password."}`,
-  NOT a 404** — which reads as "my credentials are wrong" and invites a pointless auth detour, when
-  the actual fault is usually a guessed id (measured: `prism-ml/Ternary-Bonsai-2-27B` → 401, while
-  the real `…-gguf` → 200 in the same second). Run that positive control before concluding anything
-  about your access. That signature was measured for a NONEXISTENT id only — do not generalise it to
-  a gated or private repo, whose behaviour differs by endpoint (metadata can be publicly readable at
-  200 with a `gated` field while the file downloads are restricted, and the status varies with
-  whether you are authenticated at all). Read the status AND the body, and say which endpoint you
-  probed, rather than mapping one code to one cause.
-- **Cross-check the blog against the card — vendors' own two documents disagree.** Here the blog
-  said 1.76 bits/weight and «up to 143 tokens/second on RTX 5090»; the card's own `llama-bench`
-  table said 1.72 (ideal) / 1.75 (as packed) and **129.9** tok/s. Quote the card, which carries the
-  measurement conditions, and say when the two differ.
-- ⚠️ **Check whether stock runtimes can even load the file.** These GGUFs need the vendor's
-  llama.cpp fork; stock llama.cpp «loads `Q2_0` without any warning and produces garbage». A
-  silent-wrong-output path is worth naming in any report that tells someone to go try a model.
+- **Name WHICH file your number is** — the advertised size can be the smallest packing, and the
+  vision projector a separate file on top.
+- **Grep the vendor's own prose for the post's headline number** before attributing it to the
+  vendor; it may be the poster's gloss.
+- **The vendor's blog and card can disagree** — quote the card, which carries the measurement
+  conditions, and say when the two differ.
+- **Check whether stock runtimes can load the file** — a format that needs a vendor fork can load in
+  stock tooling and silently produce garbage.
+- **`downloads` is per REPOSITORY, not per file**, so it cannot tell sibling packings apart.
 
-Retellings of a model release are abundant and wrong in the usual direction: a secondary write-up of
-this same release headlined the size as **8.6 GB** against the primary's 5.9 GB. Tag figures to the
+Secondary write-ups of a release get the numbers wrong in the usual direction: tag figures to the
 vendor's blog, the model card or the API, never to the aggregator that repeated them.
 
 ---
@@ -768,32 +624,30 @@ as measured per-registry, not assumed:
   stealth/unknown model: an **empty `endpoints[]` means no OpenRouter provider is serving this slug
   right now** (delisted / window closed on OpenRouter — the model may still be live elsewhere, under
   another host or slug), and for a stealth listing the `description` is rewritten in place at the
-  reveal — measured 2026-09-19 on `stealth/union-alpha`, whose list entry was gone while this call
-  still returned «Union Alpha **was** a stealth model,…». The API's own `description` is TRUNCATED
+  reveal — measured 2026-09-19 on one stealth listing whose catalogue entry was gone while this call
+  still returned «… **was** a stealth model,…». The API's own `description` was TRUNCATED
   mid-sentence there; the rendered page (`https://openrouter.ai/<slug>`, via a web-fetch tool)
   carried the full line naming the real model and provider. So: API for the specs and the endpoint
   count, page for the full description.
-- **`https://models.dev/api.json`** — Anomaly's (opencode's) registry: ~4.7 MB, 222 providers, one
+- **`https://models.dev/api.json`** — Anomaly's (opencode's) registry: ~4.7 MB and 222 providers in 2026-09, one
   JSON with per-model `limit.context`/`limit.output`, `cost.input`/`output`/`cache_read`,
   modalities, `tool_call`, `reasoning`, `release_date`, **and which providers carry it**. `curl` it
-  to a file in a `mktemp -d` and walk it in python — never through tool stdout. It is the cheapest
-  way to answer «is this model still free / where can I actually reach it», and its one-line
-  `description` is often blunter than the vendor's: measured the same day, it called Pareto «Blended
-  multimodal model that runs multiple language models in parallel and returns a synthesized answer»
-  while the vendor page said «frontier performance for less».
+  to a file in your scratch directory and query it with `jq` or a `bun` one-liner — never through
+  tool stdout. It is the cheapest way to answer «is this model still free / where can I actually
+  reach it», and its one-line `description` is often blunter than the vendor's marketing line.
 
 **Both are registries, not the vendor.** When the two disagree with the vendor's own page, say so
-and quote both — on the measured case the vendor's subprocessor list (Anthropic/OpenAI/xAI) and a
-third party's reading of an unmerged release-note PR (GLM/Qwen/Llama/DeepSeek) named **different**
-model pools, and neither was confirmable from the other.
+and quote both — on the measured case the vendor's own subprocessor list and a third party's reading
+of an unmerged release note named **different** underlying model pools, and neither was confirmable
+from the other.
 
 ---
 
 ## WebGL / three.js demos
 
-⚠️ **A linked WebGL / three.js demo cannot be "waited" into a later state on a software renderer —
+**A linked WebGL / three.js demo cannot be "waited" into a later state on a software renderer —
 many of them CLAMP `dt`, so wall-clock seconds and scene seconds are different units.** Measured
-2026-09-20 on a `*.surge.sh` three.js demo linked from a tweet, in headless
+2026-09-20 on a `*.surge.sh` three.js demo linked from a post, in headless
 Chromium on SwiftShader: its loop does `dt = Math.min(frameSeconds, .06)` while the software
 renderer managed ~0.8 fps, so one REAL second advanced the scene by ~0.05 s — a factor of ~20. A
 2.4–5.5 s camera flight (an animated `CatmullRomCurve3`) was still mid-arc after **22 seconds** of
@@ -836,7 +690,7 @@ than implying they were.
 
 Reading the FORM's questions without submitting anything.
 
-**Never click through the form.** The obvious alternative to this recipe — clicking through the
+⚠️ **Never click through the form.** The obvious alternative to this recipe — clicking through the
 form screen by screen — is destructive, not just slower. Typeform saves **partial** responses as you
 click forward, so "just click through the questions" silently leaves an unfinished response
 submitted in the user's name. This recipe reads the form without touching it.
@@ -876,7 +730,7 @@ that aren't fields, so that would desync it worse, not fix it. If a question's t
 misaligned, add the specific type name to the alternation by hand rather than generalizing the
 pattern.
 
-⚠️ **A `"type":"inline_group"` field is a CONTAINER, not a question, and the top level LIES about
+**A `"type":"inline_group"` field is a CONTAINER, not a question, and the top level misstates
 the field count.** Measured 2026-09-02 on a form whose top-level `fields` array held only 8 entries:
 3 of them were `inline_group`, with a placeholder `title` ("About you", "What you do", "Why you")
 that reads like a section header, not a question — the real questions are nested one level down in
@@ -912,38 +766,40 @@ literal string `future|past`):
 Get `<cal-id>` from the calendar page's HTML: the `apple-itunes-app` meta tag's `app-argument`
 attribute contains `luma://calendar/<cal-id>`.
 
-The response runs ~82k characters — a web-fetch tool will not return that inline; it spills to a
-file and reports the path. **That is normal operation, not an error** — grep the spilled file. On
-one host (as of 2026-08-30) the spilled file was readable by the host's grep tool at its absolute
-path even though such files may not be mounted in the shell sandbox — so if the shell cannot see
-it, try the grep tool before concluding the file is gone.
+**A `429` with `{"message":"You’ve exceeded our rate limit…"}` can come on the FIRST call** —
+measured 2026-11-14, twice, minutes apart, on `api.lu.ma` and `api2.luma.com`
+alike, while the calendar page itself answered 200. That is a rate limit on the API, not an empty
+calendar: wait several minutes before one retry, and otherwise read the events from the calendar page
+in the browser and say the API was unavailable. Never report "no events" from a 429.
 
-Useful patterns: `"city_state":"[^"]*"` with `-o` returns the full list of cities; grep directly for
-a country/city name to check "is there an event in X".
-⚠️ **A count-only grep counts LINES, not occurrences, even with `-o`** — and the whole JSON response
-is one line, so the count always returns 1 regardless of how many matches exist. To count matches,
-print the `-o` matches and count the output lines yourself.
-`pagination_limit` above ~20 events still gets cut off by response size — **never treat one call as
-an exhaustive event history.**
+When it answers, the response runs ~82k characters — a web-fetch tool will not return that inline; it
+spills to a file and reports the path. **That is normal operation, not an error** — grep the spilled
+file, and if the shell cannot see it, try the host's own file-search tool before concluding the file
+is gone.
+
+Useful patterns: `"city_state":"[^"]*"` with `-o` returns the full list of cities; grep for a
+country or city name to check "is there an event in X". The response is one line, so count matches as
+§ Counting matches says. A large `pagination_limit` still gets cut off by response size — **never treat
+one call as an exhaustive event history.**
 
 ---
 
 ## SEC / EDGAR filings (S-1, 10-K …)
 
-**`curl`, not a web-fetch or web-search tool.** Measured 2026-10-26 on one company's S-1 announcement tweet.
-Find the filing by company name (EDGAR wants a `User-Agent` with a contact,
-`-A "<client name> <contact>"` — a contact token is required: a name alone got 403, name plus an
-address-shaped contact got 200, measured 2026-11-14. Ask the user which contact to send; never their
-details by default):
-`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=<name>&type=S-1&owner=include&count=40&output=atom`
-→ 200, each `<entry>` has `filing-href` (the `…-index.htm` page, 200, lists the documents) and
-`file-number`. The main document is one big HTML (14 MB for that S-1): download it into your own
-dir, turn it to text with `python3 -I` (drop script/style, strip tags, `html.unescape`), then grep
-section headings. Do not read 1.5M characters: «Prospectus Summary», «Summary Consolidated
-Financial and Other Data», «Risk Factors Summary» and the MD&A «Overview» carry most of it.
+**`curl`, not a web-fetch or web-search tool.** EDGAR wants a `User-Agent` carrying a contact:
+`-A "<client name> <contact>"` — a name alone got 403, a name plus an address-shaped contact got 200
+(measured 2026-11-14). Ask the user which contact to send; never their details by default.
 
-Full-text search `efts.sec.gov/LatestSearch/rest/search-index` gave 403 once (one observation) —
-prefer the atom feed. **Check dates on the primary:** a web-search tool conflated the earlier
-CONFIDENTIAL submission (2026-06-01) with the public S-1 (2026-10-26). ⚠️ **Offer size, price, Q3
-revenue and compute commitments were BLANK (`$           `) pre-pricing** — that is «not disclosed
-in this filing», not a parse failure; do not fill them in.
+1. Find the filing by company name:
+   `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=<name>&type=S-1&owner=include&count=40&output=atom`
+   → each `<entry>` has `filing-href` (the `…-index.htm` page that lists the documents) and
+   `file-number`. The full-text search endpoint (`efts.sec.gov`) gave 403 once (one observation) —
+   prefer the atom feed.
+2. The main document is one big HTML (14 MB for the measured S-1). Download it with
+   `curl -sSL --fail-with-body`, then find the sections before reading anything:
+   `bun run "SKILLDIR/scripts/html-to-text.ts" <file> --grep 'prospectus summary|risk factors summary|overview'`.
+   «Prospectus Summary», «Summary Consolidated Financial and Other Data», «Risk Factors Summary» and
+   the MD&A «Overview» carry most of it; do not read 1.5M characters.
+3. **Check dates on the primary:** a web-search tool conflated a company's earlier CONFIDENTIAL
+   submission with its public S-1. And figures left blank (`$           `) before pricing are «not
+   disclosed in this filing», not a parse failure — do not fill them in.

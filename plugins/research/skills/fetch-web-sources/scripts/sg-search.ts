@@ -6,27 +6,52 @@
  *   bun run "SKILLDIR/scripts/sg-search.ts" '<literal string>' [--count 20] [--filters 'repo:… lang:…']
  *
  * Prints one `<repository> <path>` line per matching FILE, then `matchCount: N` (Sourcegraph counts
- * matching LINES, so it can exceed the file lines) and every `skipped:` reason.
- * A `skipped: shard-match-limit` / "result limit hit" line means matchCount is a FLOOR ("at least N"),
- * capped by --count — never quote it as a total. `repository-fork` / `excluded-archive` mean forks and
- * archived repos were not searched; add `fork:yes` / `archived:yes` to --filters if they matter.
+ * matching LINES, so it can exceed the file lines) and every `skipped:` reason. When the result
+ * limit was hit it prints `matchCount: >=N (a FLOOR …)` — capped by --count, never a total.
+ * `repository-fork` / `excluded-archive` mean forks and archived repos were not searched; add
+ * `fork:yes` / `archived:yes` to --filters if they matter.
+ * A term that itself starts with `--` goes in `--term '<value>'`.
  *
  * Exit 0 = the stream finished (even with zero matches — then "nowhere" is a real answer),
  * 1 = the stream did NOT finish (HTTP error, bot check, timeout) — that is NOT a zero-result answer,
  * 2 = bad arguments.
  */
 const args = process.argv.slice(2)
-if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
-  console.log(await Bun.file(import.meta.path).text().then((t) => t.replace(/^#!.*\n/, '').split('*/')[0].replace(/^\/\*\*?|^ \* ?/gm, '')))
-  process.exit(args.length === 0 ? 2 : 0)
+const usage = await Bun.file(import.meta.path).text().then((t) => t.replace(/^#!.*\n/, '').split('*/')[0].replace(/^\/\*\*?|^ \* ?/gm, ''))
+if (args.length === 0) { console.log(usage); process.exit(2) }
+// Flags take a value; anything else is the one positional. A term that itself starts with `--` goes
+// in `--term <value>`, whose value is taken verbatim (`bun run` swallows a leading `--` separator, so
+// that cannot be the way).
+const parse = (argv: string[], valued: string[]) => {
+  const values: Record<string, string> = {}
+  const positional: string[] = []
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]
+    if (a === '--') { positional.push(...argv.slice(i + 1)); break }
+    if (a === '--help' || a === '-h') { console.log(usage); process.exit(0) }
+    if (a === '--term') {
+      if (argv[i + 1] === undefined) { console.log('--term needs a value'); process.exit(2) }
+      positional.push(argv[++i])
+      continue
+    }
+    if (a.startsWith('--')) {
+      if (!valued.includes(a)) { console.log(`unknown flag: ${a}`); process.exit(2) }
+      const v = argv[i + 1]
+      if (v === undefined || v.startsWith('--')) { console.log(`${a} needs a value`); process.exit(2) }
+      values[a] = v
+      i++
+    } else positional.push(a)
+  }
+  if (positional.length !== 1) {
+    console.log(`give exactly one search term (got ${positional.length}); quote a multi-word one`)
+    process.exit(2)
+  }
+  return { term: positional[0], values }
 }
-const literal = args[0]
-const opt = (name: string, dflt: string) => {
-  const i = args.indexOf(name)
-  return i >= 0 && args[i + 1] !== undefined ? args[i + 1] : dflt
-}
-const count = opt('--count', '20')
-const filters = opt('--filters', '')
+const { term: literal, values } = parse(args, ['--count', '--filters'])
+const count = values['--count'] ?? '20'
+if (!/^[1-9]\d*$/.test(count)) { console.log('--count must be a positive whole number'); process.exit(2) }
+const filters = values['--filters'] ?? ''
 const q = `context:global content:${JSON.stringify(literal)} ${filters} count:${count}`.replace(/\s+/g, ' ')
 const url = new URL('https://sourcegraph.com/.api/search/stream')
 url.searchParams.set('q', q)
@@ -55,5 +80,9 @@ if (!final) {
   process.exit(1)
 }
 for (const [e, d] of frames) if (e === 'matches') for (const m of d) console.log(`${m.repository} ${m.path}`)
-console.log(`matchCount: ${final.matchCount}`)
-for (const s of final.skipped ?? []) console.log(`  skipped: ${s.reason} | ${s.title}`)
+const skipped: { reason: string; title: string }[] = final.skipped ?? []
+const capped = skipped.some((s) => s.reason === 'shard-match-limit' || /result limit/i.test(s.title ?? ''))
+console.log(capped
+  ? `matchCount: >=${final.matchCount} (a FLOOR: the result limit was hit; raise --count for more, never quote it as a total)`
+  : `matchCount: ${final.matchCount} (complete for what was searched)`)
+for (const s of skipped) console.log(`  skipped: ${s.reason} | ${s.title}`)

@@ -29,8 +29,31 @@ this marketplace alone would see.
 | 2026-11-14 | Claude Code · claude-fable-5-2 | isolated | same, + an OpenAI-announcement prompt | 13/13 | 10/10 | |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | full | same | 13/13 | 10/10 | |
 
-What these runs do not establish: Codex routing (not run), other models, repeat stability (each prompt
-ran once per row), or anything past the routing decision.
+What these runs do not establish: Codex routing (not run — Codex routes from the INSTALLED copy, so
+a run counts for this description only once the installed text matches the working tree), other
+models, repeat stability (each prompt ran once per row), or anything past the routing decision.
+
+## With the skill vs without it
+
+Each task prompt ran once with the skill available and once with `Skill` disallowed; same harness as
+above, isolated, `--max-turns 10`, web fetch allowed. The first two rows allowed a bare shell; the
+last two only `Bash(curl:*)` and `Bash(bun run:*)` — narrower, still unconfined (no OS sandbox).
+Recorded is what changed in the answer, not a score.
+
+| Date | Host · model | Prompt | With the skill | Without it |
+| --- | --- | --- | --- | --- |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | "Find public GitHub repositories whose code contains the literal string `CLAUDE_CODE_ENABLE_TODO_TOOLS`. I don't have a GitHub token." | loaded the skill, one `sg-search.ts` run: 66 repos / 509 matches, and said the stream finished with no result limit hit | also reached Sourcegraph (three hand-built calls), same 66 repos, no statement on whether the stream finished |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | "What sources does https://www.anthropic.com/research/building-effective-agents link to? List the outbound links in the article body exactly." | did NOT load the skill — a plain `curl` worked — and listed 17 links / 14 unique | same: `curl` + a parser, same 17 / 14 |
+
+| 2026-11-14 | Claude Code · claude-fable-5-2 | "Quote the first two sentences of https://openai.com/index/introducing-gpt-4o/ word for word. I need the exact text, not a paraphrase." | loaded the skill; live page 403; found the slug had no snapshot, located the real announcement in the Internet Archive and quoted it with the snapshot date and a "not the live page" caveat | ran out of turns (10) retrying the archive by hand; no answer |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | "Get me the full text of https://medium.com/@karpathy/software-2-0-a64152b37c35 — I want to quote its third paragraph exactly." | loaded the skill; Medium 403 to `curl` and web fetch; quoted the paragraph from a dated archive snapshot and flagged that the live text may differ | ran out of turns (10); no answer |
+
+Reading: where the plain route works, the bare model already knows it, and the skill's value is in
+the guards (a completeness statement, the floor-not-total count); the second prompt is correctly
+outside the skill and measures nothing about it. Where the plain fetch FAILS, the skill turned two
+dead ends into dated, caveated answers within the turn budget. Both with-skill runs reached for the
+Internet Archive on their own; that rung is now §1.4 in SKILL.md, so the next pair measures it as
+written.
 
 ## Should fire
 

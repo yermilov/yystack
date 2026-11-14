@@ -37,7 +37,7 @@ shared path — a sibling run writing the same name turns its numbers into yours
 | A 200 whose text is all nav/menu/footer | Server-rendered; the chrome dwarfs the prose | §1.2 — ask for markdown |
 | A 200 with a genuinely empty body | Client-rendered | §1.2, then the browser (§1.3) |
 
-⚠️ **Do not diagnose "client-rendered" from an empty result alone** — a 404 on a docs SPA can render as
+**Do not diagnose "client-rendered" from an empty result alone** — a 404 on a docs SPA can render as
 a soft shell, which some fetch wrappers report as an empty page. Check the status first:
 
 ```bash
@@ -45,7 +45,9 @@ curl -sL -o /dev/null -w 'http=%{http_code} final=%{url_effective}\n' '<url>'
 ```
 
 Keep the `-L`: docs hosts canonicalise and redirect constantly, and without it you read the redirect's
-own `301` and file a live page as broken. `%{url_effective}` is the URL to use in §1.2.
+own `301` and file a live page as broken. `%{url_effective}` is the URL to use in §1.2. A `200` from a
+JS app does not prove the page exists either — an SPA answers 200 for any path (see «Cautions for
+every rung» for the check).
 
 ### §1.1 `llms.txt` — the index, and the first thing to try on a 404
 
@@ -67,26 +69,65 @@ site doesn't publish one — fall through to §1.2.
 ### §1.2 Ask for markdown instead of HTML
 
 ```bash
-curl -sL https://<host>/<path>.md                          # suffix
-curl -sL -H 'Accept: text/markdown' https://<host>/<path>   # content negotiation
+curl -sSL --fail-with-body -o <scratch>/page.md https://<host>/<path>.md                        # suffix
+curl -sSL --fail-with-body -o <scratch>/page.md -H 'Accept: text/markdown' https://<host>/<path> # negotiation
 ```
 
 Where supported, both return the same markdown at a fraction of the bytes — prefer it by default on
-any docs host that serves it. Limits:
+any docs host that serves it. Check the exit status before reading the file: a bare `-sL` exits 0 on
+an error page and writes it to disk, where it reads like a short article. Limits:
 
 - **`.md` does not conjure a missing page** — a 404 on both spellings means the path is wrong (§1.1).
-- **Append `.md` to the PATH**, before any `?query` or `#fragment`.
-- **Non-docs pages often have no twin** (news/announcement pages). Take the bytes with
-  `curl -sSL --fail-with-body` first; on a 403, use the browser — a page-text read, or the DOM walk
-  the host's recipe names (§5). A web-fetch tool on such a page can return a generated SUMMARY, not
-  the page — use it for orientation only, never for a number, a quote or an attribution
+- **Append `.md` to the PATH**, before any `?query` or `#fragment`: strip those, append `.md`, and
+  re-add them only if the target needs them.
+- **Non-docs pages often have no twin** (news/announcement pages). Take the bytes and turn them into
+  text — `--links` adds the page's outbound links, which is where its citations are:
+
+  ```bash
+  curl -sSL --fail-with-body -o <scratch>/page.html '<url>'          # check the exit status
+  bun run "SKILLDIR/scripts/html-to-text.ts" <scratch>/page.html --links --base '<url>'
+  ```
+
+  On a 403, use the browser — a page-text read, or the DOM walk the host's recipe names (§5) — and
+  with no browser, an archived copy (§1.4). A web-fetch tool on such a page can return a generated
+  SUMMARY, not the page — use it for orientation only, never for a number, a quote or an attribution
   (`references/host-recipes.md` § Vendor blogs).
 
 ### §1.3 Only then, the browser
 
 A real 200, a genuinely empty body, and neither `.md` nor `llms.txt` → the content is drawn by
-scripts: open it in the browser. If the run has no browser, say which half of the read you got rather
-than reporting the whole thing as done.
+scripts: open it in the browser. No browser → an archived copy (§1.4); none there either → report the
+page unread rather than the read as done.
+
+### §1.4 No browser, or it is blocked too — an archived copy
+
+A page that 403s every fetcher can still exist in the Internet Archive. Find the closest snapshot,
+then take its raw capture — `id_` after the timestamp returns the page as captured, without the
+archive's toolbar:
+
+```bash
+curl -sS --fail-with-body --get 'https://archive.org/wayback/available' --data-urlencode 'url=<url>'
+curl -sSL --fail-with-body -o <scratch>/snap.html 'https://web.archive.org/web/<timestamp>id_/<url>'
+```
+
+The first answers `archived_snapshots.closest.timestamp`. An empty `archived_snapshots` means no
+capture ONLY when the reply has no `error` key: the lookup can answer 200 with an empty result and
+`"error": {"code": "timeout"}` (measured 2026-11-14). An `error` key or a non-zero exit is a failed
+lookup — retry it, or go straight to the capture listing below — never "no capture".
+
+**An archived copy is a different document from the live page.** Check it is the article, not a
+block, login or paywall page captured in its place, before you quote it; give its snapshot date;
+and say the live page could not be read, so whoever relies on the quote knows to check the current
+text. Two branches before you give up:
+
+- **The closest capture is not the article** → list every capture and try others:
+  `curl -sS --fail-with-body --get 'https://web.archive.org/cdx/search/cdx' --data-urlencode 'url=<url>'
+  --data-urlencode 'output=json' --data-urlencode 'filter=statuscode:200'` (one row per capture,
+  OLDEST first, with its `timestamp`).
+- **No capture of that URL at all** → the article may live under another slug: look for it on the
+  site's own index or search page (or its archived copy), then run the steps above on the real URL.
+
+Nothing found after both → report the page unread, never paraphrased from memory.
 
 ## §2. Finding things inside public repositories, with no token
 
@@ -102,15 +143,15 @@ truncated or bot-checked stream otherwise reads exactly like "this string is now
 bun run "SKILLDIR/scripts/sg-search.ts" '<literal string>' [--count 20] [--filters 'repo:… lang:…']
 ```
 
-⚠️ **`matchCount` is capped by your own `--count`.** When `skipped:` shows `shard-match-limit` /
-"result limit hit", the count is a floor ("at least N"), never a total. `repository-fork` and
-`excluded-archive` mean those repos were never searched — add `fork:yes` / `archived:yes` if they
-matter.
+⚠️ **A capped count is a floor, never a total** — the script prints `matchCount: >=N (a FLOOR …)`
+when the result limit was hit; quote it that way. `skipped: repository-fork` / `excluded-archive`
+mean those repos were never searched — add `fork:yes` / `archived:yes` to `--filters` if they
+matter. A term that itself starts with `--` goes in `--term '<value>'`.
 
 ### §2.2 Issues and PRs — GitHub issue search (works unauthenticated)
 
 ```bash
-curl -s -H 'Accept: application/vnd.github.text-match+json' --get 'https://api.github.com/search/issues' \
+curl -sS --fail-with-body -H 'Accept: application/vnd.github.text-match+json' --get 'https://api.github.com/search/issues' \
   --data-urlencode 'q="<exact phrase>"' --data-urlencode 'per_page=30'
 ```
 
@@ -122,7 +163,7 @@ is often where a closed deployment is described in the open by its own maintaine
 - **`total_count` is "issues matching a tokenised query", never "issues containing this literal"** —
   and it moves day to day. Cite it only with its date and for what it counts.
 - **Verify every fragment you quote** (`items[].text_matches[].fragment`, or the issue body).
-- ⚠️ **Unauthenticated search is limited to 10 requests per minute** (verified 2026-09). Pace ~6 s
+- **Unauthenticated search is limited to 10 requests per minute** (verified 2026-09). Pace ~6 s
   apart, or a sweep half-finishes with a `403` that looks like a permissions problem.
 
 ### §2.2b What has anybody BUILT with it — repository search
@@ -140,7 +181,7 @@ internal timeout. Narrow and re-run; never cite that page.
 On a sandboxed host, a `403` from `api.github.com` may be the host's egress proxy rather than GitHub
 — read the body. A browser tab on github.com can reach the same API; say which channel you used.
 
-⚠️ **This is candidate discovery, not a census.** It errs both ways: a top-ranked row can be an
+**This is candidate discovery, not a census.** It errs both ways: a top-ranked row can be an
 unaffiliated reimplementation, and an integration that never names the product in its metadata is
 invisible. Read and classify every row you cite (built-on / reimplementation / merely mentions).
 `total_count` is an order of magnitude with a date; `--sort updated` is noise on a hot topic.
@@ -148,7 +189,7 @@ invisible. Read and classify every row you cite (built-on / reimplementation / m
 **Pair it with registry download counts** (no token): `https://pypistats.org/api/packages/<pkg>/recent`,
 `https://api.npmjs.org/downloads/point/<from>:<to>/<pkg>` (scoped names as `@scope%2Fname`); publish
 dates at `https://registry.npmjs.org/<pkg>` → `.time` and `https://pypi.org/pypi/<pkg>/json` →
-`.releases`. ⚠️ **Downloads are a proxy, never "N users"** — CI, mirrors and transitive installs count.
+`.releases`. **Downloads are a proxy, never "N users"** — CI, mirrors and transitive installs count.
 Use them for shape, with comparable windows, and say which window and date.
 
 ### §2.3 Two reads that need no search
@@ -157,9 +198,10 @@ Use them for shape, with comparable windows, and say which window and date.
   a commit SHA, not a branch** (resolve `api.github.com/repos/<o>/<r>` → `.default_branch`, then
   `…/commits/<branch>` → `.sha`). A multi-file read off a moving branch can splice two commits; quote
   the SHA.
-- **Version / release date:** `https://api.github.com/repos/<owner>/<repo>/releases/latest` first. Both
-  it and the HTML releases page have been seen stale, so a version or date going into a report needs
-  the two to agree (`references/host-recipes.md` § GitHub → Freshness). ⚠️ `/releases/latest` skips
+- **Version / release date:** `https://api.github.com/repos/<owner>/<repo>/releases/latest` first, by
+  a direct `curl`. The HTML releases page has been seen stale, and so has the API read through a
+  web-fetch wrapper (a direct call has not), so a version or date going into a report needs the two
+  to agree (`references/host-recipes.md` § GitHub → Freshness). `/releases/latest` skips
   prereleases and drafts; for "the newest version" read `/releases?per_page=10` (check `prerelease`
   / `draft` / `published_at`), or `/tags` where releases aren't used.
 
@@ -191,18 +233,27 @@ A site behind Cloudflare often answers the first navigation of a fresh session w
 ## §5. A known host — check its recipe first
 
 **Before fetching any host listed here, read its section in `references/host-recipes.md`**; a recipe
-there overrides the ladders above. The hosts: vendor blogs (a web-fetch returns a summary, not the
-page — take the bytes), Google developer docs, bot-blocked hosts (which 403/202 answers are about the
-fetcher), Framer sites (the search-index JSON), OpenAI docs (`.md` twins) and announcements (chart
-datasets), GitHub (the sandbox gate, the browser ladder, freshness: no channel is authoritative
-alone), Medium (the `curl` 403 and the teaser trap), the Vercel Security Checkpoint 429, AI-built app
-demos (read the deployed bundle), Hugging Face model releases (file sizes are a FLOOR on memory,
-never a confirmation), model registries, WebGL / three.js demos, Typeform (never click through: it
-saves partial answers in the user's name), Luma (the public calendar JSON), SEC / EDGAR filings.
+there overrides the rungs it names. A recipe that needs a browser does not remove §1.4: with no
+browser, an archived copy is still the next step.
+
+- **Vendor blogs and announcement pages** — take the bytes (§1.2); read the figures too.
+- **Bot-blocked hosts** — which 403 / 202 answers are about the fetcher, not the content.
+- **Framer sites** — one search-index JSON holds every page's text.
+- **OpenAI docs** — `.md` twins; **OpenAI announcements** — the chart datasets sit in the page.
+- **GitHub** — the sandbox gate, the browser ladder, freshness (no channel is authoritative alone).
+- **Medium** — the `curl` 403 and the teaser trap.
+- **Vercel Security Checkpoint** — a 429 bot challenge, not a rate limit.
+- **AI-built app demos** — read the deployed bundle, every chunk.
+- **Hugging Face model releases** — file sizes are a FLOOR on memory, never a confirmation.
+- **Model registries** — resolve a model named in a post without the browser.
+- **WebGL / three.js demos** — a frame-coupled scene cannot be waited into a later state.
+- **Typeform** — never click through: it saves partial answers in the user's name.
+- **Luma** — the public calendar JSON, and its rate limit.
+- **SEC / EDGAR filings** — EDGAR needs a contact in the User-Agent: ask the user which one to send.
 
 ## Cautions for every rung
 
-⚠️ **A 200 from a JS app is not proof a page exists** — an SPA's catch-all answers 200 for an invented
+**A 200 from a JS app is not proof a page exists** — an SPA's catch-all answers 200 for an invented
 URL. Settle it on page-specific content measured against a nonsense URL of the same shape; report the
 pair, never the 200.
 
@@ -212,20 +263,17 @@ side effect — `{}` is the entire valid payload of a trigger or run-now route. 
 documentation, the provider's source, or third-party code that calls it; with none of those, report it
 as unverified.
 
-## Bonus: a `claude.ai` artifact link
-
-`claude.ai/code/artifact/<uuid>` renders in a cross-domain iframe, so fetching the page gives you the
-shell. Read the iframe's `src` (`<uuid>.frame.claudeusercontent.com/_f/<slug>/`) and fetch that.
-
 ## Bundled resources
 
 - `scripts/sg-search.ts` — §2.1's Sourcegraph search with the finished-stream guard. `--help` for flags.
 - `scripts/gh-repos.ts` — §2.2b's repository search with the `incomplete_results` guard. Sends
   `GITHUB_TOKEN` if set (never prints it).
+- `scripts/html-to-text.ts` — a saved HTML page as readable text (§1.2, and the recipes that read a
+  blog post or a filing); `--links` lists its outbound links, `--grep` finds a section in a big one.
 - `references/precedents.md` — the measured case behind each ruling, dated.
 - `references/host-recipes.md` — per-host recipes (§5). Read the section for the host in front of you.
 - `references/trigger-tests.md` — should-fire / should-not prompts and their run record; re-run them
   after any edit to the `description`.
 
-⚠️ `SKILLDIR` in the commands above is a placeholder: substitute the **literal** directory you loaded
+`SKILLDIR` in the commands above is a placeholder: substitute the **literal** directory you loaded
 this `SKILL.md` from — it is not a shell variable.

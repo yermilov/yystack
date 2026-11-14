@@ -166,3 +166,9 @@ cannot see your source.
   transient blip or loops forever on a permanent failure — and the second one is how a script with
   no terminal sentinel turns into a process that polls for hours after its work is over.
 - Give the script `--help`, and keep it identical to what the skill documents.
+- **Refuse arguments you did not parse.** Exit 2 with a one-line reason on an unknown flag, a flag
+  missing its value, or the wrong number of positionals. A script that takes `argv[0]` as its input
+  turns `--count 5 foo` into a search for `--count`, and the result looks like a real answer
+  (measured 14.11.2026). Under `bun run`, a leading `--` right after the script name never reaches
+  it, so do not offer `--` as the way to pass a value that starts with `--`: give that value a flag
+  of its own.
