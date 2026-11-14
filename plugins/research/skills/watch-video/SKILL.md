@@ -26,12 +26,12 @@ else:
   overview), then follow-ups answered from it with `[MM:SS]` citations. "Chat with this video", "let's
   discuss this talk", a URL plus an obvious series of follow-ups. **The transcript alone** ("get me
   the transcript / captions") is Knowledge file steps 1, 2 and 4 — the script, no browser, no Gemini;
-  then hand over the script's JSON from `$WORK` (attach it, or paste `transcript` when short) and offer
-  the visual overview.
+  then attach the script's JSON (`$WORK` is scratch and may be wiped), or paste
+  `transcript` when short, and offer the visual overview.
 
 Unsure between the two YouTube modes: one concrete question → quick; "discuss / ingest /
-remember" → knowledge file; the transcript alone → the Transcript-only list. Another skill handing you a URL plus a context block → Quick extract, with
-that context in the prompt's `Context:` line.
+remember" → knowledge file; the transcript alone → the Transcript-only list. Another skill handing
+you a URL plus a context block → Quick extract, with that context in the prompt's `Context:` line.
 
 Reply in the user's language. `SKILLDIR` in the commands below is a placeholder: substitute the
 **literal** directory you loaded this `SKILL.md` from.
@@ -47,13 +47,15 @@ whatever todo/plan tool this host gives you, and while work remains keep exactly
 - **Quick extract:** 1. Prerequisites — a browser tool + Gemini login verified (else the
   captions-only route) · 2. Open a fresh chat · 3. Pick the model · 4. Insert the prompt · 5. Submit
   and confirm it sent · 6. Wait for the response · 7. Extract it · 8. Check Gemini's answer (the close
-  names both controls, or which was skipped and why)
-- **Transcript only:** 1. Knowledge file step 1 — live stream, `yt-dlp`, `$WORK` · 2. Egress probe
+  names both controls, or which was skipped and why) · 9. Reply
+- **Transcript only:** 1. Knowledge file step 1 without the existing-file check — live stream,
+  `yt-dlp`, `$WORK` · 2. Egress probe
   · 3. Fetch the captions (step 4) · 4. Hand over the transcript and offer the visual overview
 - **Knowledge file + chat:** 1. Before you start — existing file, live stream, `yt-dlp`, `$WORK` (the
-  close names each) · 2. Egress probe · 3. A browser tool + Gemini login verified · 4. Fetch the captions · 5. Gemini's overview —
-  Quick extract steps 2–7 (the close names each, or why one was skipped) · 6. Check the overview —
-  timecode + numbers · 7. Assemble the file · 8. Reply short + hand over the file · 9. Answer
+  close names each) · 2. Egress probe · 3. A browser tool + Gemini login verified · 4. Fetch the
+  captions · 5a–5f. Gemini's overview — one item per Quick extract step 2–7 (fresh chat · model ·
+  prompt · submit and confirm · wait · extract), each closed or skipped with a reason · 6. Check the overview —
+  Quick extract step 8 in full · 7. Assemble the file · 8. Reply short + hand over the file · 9. Answer
   follow-ups from the file
 
 Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
@@ -96,8 +98,7 @@ bun run "SKILLDIR/scripts/frames.ts" clip.mp4 --out "$WORK/frames"
 It prints one JSON line. Act on `audio.verdict`:
 
 - `none` — no audio stream → skip step 3.
-- `silent` — at or below −80 dB: digital silence, or speech too quiet to measure (both read about
-  −91 dB). With whisper already installed → step 3 with the level raised (`-af volume=80dB` in the
+- `silent` — at or below −80 dB: digital silence, or speech too quiet to measure. With whisper already installed → step 3 with the level raised (`-af volume=80dB` in the
   ffmpeg line): quiet speech comes back word for word, true silence yields a lone filler like "you".
   - A lone word like that: report "near-silent; whisper heard only '<word>', which it also invents on
     silence" — not as speech, not as nothing.
@@ -113,13 +114,15 @@ frames where it points. Exit 1 prints ffmpeg's error; `--help` lists the rest. N
 report frames and audio as "not done: no ffmpeg here", never as "no audio". Portrait phone video carries a rotation flag that ffmpeg applies, so
 frames come out upright even when `ffprobe` reports landscape dimensions.
 
-**3. Transcribe.** If `whisper-cli` or its model is missing, **say the first run installs software and
-downloads 1.6 GB, and get a yes** — a request to look at a clip is not consent to that. Then follow
+**3. Transcribe.** Check for both halves: the binary (`command -v whisper-cli`, or the full path of a
+build that is not on PATH — `references/install-transcriber.md`) and a model
+(`ls ~/.cache/whisper.cpp/ggml-*.bin`; any one will do, large-v3-turbo preferred). If either is
+missing, **say the first run installs software and downloads 1.6 GB, and get a yes** — a request to look at a clip is not consent to that. Then follow
 `references/install-transcriber.md`. No way to install one here → say the clip cannot be transcribed
 on this host and do the visual pass; never report as if you had heard it.
 
 ```sh
-MODEL=~/.cache/whisper.cpp/ggml-large-v3-turbo.bin
+MODEL=~/.cache/whisper.cpp/ggml-large-v3-turbo.bin   # or the ggml-*.bin you found
 ffmpeg -i clip.mp4 -vn -ac 1 -ar 16000 -c:a pcm_s16le audio.wav
 whisper-cli -m "$MODEL" -f audio.wav -l <lang> --output-vtt -of transcript
 bun run "SKILLDIR/scripts/fetch-transcript.ts" --vtt transcript.vtt --with-timestamps   # [MM:SS] prose
@@ -155,13 +158,14 @@ doesn't match, screenshot and find its current equivalent.
    covers what is said, not what is shown.
 2. **Open a fresh chat** — click "New chat" in the sidebar. Navigating to `/app` does not always start
    a new conversation.
-3. **Pick the model** — the strongest **Pro**/thinking model for steps and structured output; Flash
-   only when speed matters.
+3. **Pick the model** — the strongest reasoning model on offer for steps and structured output
+   (Pro, as of 2026-09); a fast tier only when speed matters.
 4. **Insert the prompt with `execCommand`, not by typing** — the box is a `contenteditable`, and typed
    characters may not reach the app's state (Send stays disabled). The prompt goes to Google: put in
    no account ids, credentials or personal data (the full rule is under the prompt pattern below). A
    browser tool that cannot run page scripts: paste the prompt from the clipboard instead, and in
    step 6 judge completion from screenshots (the Stop button gone, the answer no longer growing).
+   A multi-hour stream: scope the prompt to a window first (below the prompt pattern).
 
    ```js
    const el = document.querySelector('rich-textarea [contenteditable="true"], div[contenteditable="true"][role="textbox"]');
@@ -193,6 +197,8 @@ doesn't match, screenshot and find its current equivalent.
      unverified.
    - **An answer that is thin, or load-bearing for a real decision:** say it rests on one model and
      what a second source should check, or hand it to `deep-research`.
+9. **Reply** in the user's language, with every timecode you did not pixel-check marked unverified
+   and any claim that rests on Gemini alone saying so.
 
 **A multi-hour stream: ask about a window, not the video.** `ytInitialPlayerResponse.videoDetails
 .shortDescription` holds the full description (often the only timecode map); with
@@ -218,7 +224,8 @@ Flag anything that looks outdated (the interface may have changed). Structured, 
 Write the prompt in the user's language if they want the answer in it. The prompt goes to a third
 party: put in only context the user would be fine sending to Gemini — never account ids, credentials
 or personal data. Within that, be specific about context —
-the specifics are what extract the useful 5% — cap the length (Pro over-elaborates), ask it to flag
+the specifics are what extract the useful 5% — cap the length (the reasoning tier over-elaborates,
+as of 2026-09), ask it to flag
 stale UI, and keep to 2–4 videos per chat.
 
 ---
@@ -233,7 +240,8 @@ see (slides, on-screen code, diagrams). Follow-ups are then answered from the fi
 - **A file for that id already exists** → ask: reuse it or re-run.
 - **A live stream or premiere** → wait for the recording. **Age-gated, private or paywalled** → don't
   bypass; say so.
-- `yt-dlp` on `PATH` — if missing, the script's error says how to install it.
+- `yt-dlp` on `PATH` — if missing, ask before installing it (the script's error names the
+  command); declined → Quick extract, or on the Transcript-only route say it can't be done here.
 - A scratch directory for everything below, never a repo checkout:
   `WORK=$(mktemp -d "${TMPDIR:-/tmp}/watchvideo.XXXXXX") && cd "$WORK"`
 
@@ -261,17 +269,23 @@ A video with no speech (music, a silent demo) → skip this step; the file is Ge
 
 It picks one track: human captions first, then the auto-captions' original — in the video's own
 language, else English. `--sub-lang 'de'` (comma-separated regexes, tried in order) overrides that.
-Exit 1 prints yt-dlp's error. A `429` is YouTube rate-limiting this IP: wait, or use Quick extract.
-"Sign in to confirm you're not a bot" is YouTube gating this IP for that video. Offer one yt-dlp
-update when `yt-dlp --version` is months old; it did not clear the gate in the one measured case
-(`references/precedents.md`, «Sign in to confirm», one network, three videos), so do not retry beyond
-that. The audio download for local transcription meets the same wall: go to Quick extract or a
-Gemini-only file. Don't hand yt-dlp the user's browser cookies
-to get past it: that gives a tool their signed-in session.
-Exit **2** = no captions in that language: tell the user and offer local transcription (a first run
-installs whisper.cpp and downloads a 1.6 GB model — Local video file step 3) or a Gemini-only file —
-ask which; picking local transcription without knowing that is not a yes to the install. Local
-transcription, in the same `$WORK`: download the audio, then run Local video file step 3 from its
+- **Exit 1** prints yt-dlp's error.
+- **A `429`** is YouTube rate-limiting this IP: wait, or use Quick extract. On the Transcript-only
+  route, wait or say the captions can't be fetched from here right now.
+- **"Sign in to confirm you're not a bot"** is YouTube gating this IP for that video. Offer one
+  yt-dlp update when `yt-dlp --version` is months old, and do not retry beyond that
+  (`references/precedents.md`, «Sign in to confirm»). The audio download for local transcription
+  meets the same wall: go to Quick extract or a Gemini-only file — on the Transcript-only route,
+  say the captions can't be fetched from here and offer local transcription only if the user can
+  supply the file. Don't hand yt-dlp the user's browser cookies to get past it: that gives a tool
+  their signed-in session.
+- **Exit 2** = no captions in that language: tell the user and offer local transcription (a first
+  run installs whisper.cpp and downloads a 1.6 GB model — Local video file step 3) or a Gemini-only
+  file — ask which; picking local transcription without knowing that is not a yes to the install.
+  On the Transcript-only route a Gemini-only file has no transcript, so offer local transcription
+  alone.
+
+Local transcription, in the same `$WORK`: download the audio, then run Local video file step 3 from its
 `MODEL=` line on, skipping the `ffmpeg` line (the download already wrote `audio.wav`):
 
 ```bash
@@ -300,8 +314,8 @@ continue transcript-only and say so in the file.
 
 ### 6. Check the overview
 
-Quick extract step 8 on the overview: pixel-check its most important timecode, and cross-check any
-number you will quote. Record the result in `timecodes_verified` below.
+Quick extract step 8 in full on the overview: pixel-check its most important timecode, cross-check
+any number you will quote, and say where the file rests on Gemini alone. Record the result in `timecodes_verified` below.
 
 ### 7. Assemble the file
 
@@ -363,10 +377,11 @@ answer rests on. If something isn't in the file, say so and offer to re-run — 
 - Vouch for what the video *claims*: checking Gemini against the video (Quick extract step 8) is not
   checking the video against the world — caveat surprising claims.
 
-When another skill finds a tutorial video relevant to its task, it hands the URL plus a context block
-here for the extraction.
-
 ## Bundled resources
+
+Length: ~390 lines, over the ~250 aim because three modes and the transcript-only path each keep their branch conditions and
+safeguards at the step; the measured cases, the install and the trigger record live in
+`references/`.
 
 - `scripts/fetch-transcript.ts` — picks one caption track with yt-dlp, merges the rolling auto-caption
   window, adds `[MM:SS]` markers; `--vtt <file>` cleans captions or whisper output you already have,

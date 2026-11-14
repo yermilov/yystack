@@ -27,7 +27,10 @@
  *
  * Exit 0 = transcript written, 2 = no captions in the wanted language(s) (fall back to local
  * transcription or to Gemini alone), 1 = yt-dlp missing or failed (its stderr is printed), 3 = bad
- * arguments, 4 = a --vtt file with text but no cue it could read (never reported as an empty transcript).
+ * arguments (an unknown or repeated flag, a flag without its value, two inputs, or an input that is
+ * neither a YouTube URL — checked by its exact host — nor an 11-character video id; 2 is taken by "no
+ * captions", so usage errors are 3), 4 = a --vtt file with text but no cue it could read (never
+ * reported as an empty transcript).
  */
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
@@ -38,14 +41,46 @@ if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
   console.log(readFileSync(import.meta.path, 'utf8').replace(/^#!.*\n/, '').split('*/')[0].replace(/^\/\*\*?|^ \* ?/gm, ''))
   process.exit(args.length === 0 ? 3 : 0)
 }
-const flag = (n: string) => args.includes(n)
-const opt = (n: string, d: string) => {
-  const i = args.indexOf(n)
-  return i >= 0 && args[i + 1] !== undefined ? args[i + 1] : d
+// One pass over argv: an unknown or repeated flag, a flag without its value, or a second positional
+// is a usage error (exit 3), never silently ignored.
+function usage(msg: string): never { console.error(`fetch-transcript: ${msg} (see --help)`); process.exit(3) }
+const BOOL_FLAGS = new Set(['--with-timestamps', '--keep-workdir'])
+const VALUE_FLAGS = new Set(['--output', '--sub-lang', '--vtt'])
+const bools = new Set<string>()
+const values = new Map<string, string>()
+const positionals: string[] = []
+for (let i = 0; i < args.length; i++) {
+  const a = args[i]
+  if (BOOL_FLAGS.has(a)) {
+    if (bools.has(a)) usage(`${a} given twice`)
+    bools.add(a)
+  } else if (VALUE_FLAGS.has(a)) {
+    const v = args[++i]
+    if (v === undefined || v.startsWith('--')) usage(`${a} needs a value`)
+    if (values.has(a)) usage(`${a} given twice`)
+    values.set(a, v)
+  } else if (a.startsWith('-')) usage(`unknown flag ${a}`)
+  else positionals.push(a)
 }
-const url = args.find((a, i) => !a.startsWith('--') && !['--output', '--sub-lang', '--vtt'].includes(args[i - 1] ?? ''))
+if (positionals.length > 1) usage(`expected one URL or video id, got ${positionals.length}: ${positionals.join(' ')}`)
+const flag = (n: string) => bools.has(n)
+const opt = (n: string, d: string) => values.get(n) ?? d
+const url = positionals[0]
 const vttFile = opt('--vtt', '')
-if (!url && !vttFile) { console.error('fetch-transcript: give a YouTube URL or video id'); process.exit(3) }
+if (url && vttFile) usage('give a YouTube URL or --vtt <file>, not both')
+if (!url && !vttFile) usage('give a YouTube URL or video id')
+// A YouTube URL is checked by parsing it and matching the host exactly; a bare 11-character id is
+// also accepted. Anything else would reach yt-dlp, which fetches almost any site.
+const YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be',
+  'youtube-nocookie.com', 'www.youtube-nocookie.com'])
+if (url && !/^[A-Za-z0-9_-]{11}$/.test(url)) {
+  let host = ''
+  try {
+    const u = new URL(url)
+    if (u.protocol === 'https:' || u.protocol === 'http:') host = u.hostname.toLowerCase()
+  } catch {}
+  if (!YOUTUBE_HOSTS.has(host)) usage(`not a YouTube URL or video id: ${url}`)
+}
 const withTimestamps = flag('--with-timestamps')
 const output = opt('--output', '-')
 const subLang = opt('--sub-lang', '')

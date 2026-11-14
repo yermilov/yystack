@@ -24,7 +24,9 @@
  * Prints one JSON line: {duration_seconds,
  * audio: {verdict, max_volume_db, mean_volume_db}, frames, strips, note}.
  *
- * Exit 0 = done, 1 = ffmpeg/ffprobe missing or failed (its stderr is printed), 3 = bad arguments.
+ * Exit 0 = done, 1 = ffmpeg/ffprobe missing or failed (its stderr is printed), 3 = bad arguments
+ * (an unknown or repeated flag, a flag without its value, a second file — 3 matches fetch-transcript,
+ * where 2 already means "no captions").
  */
 import { mkdirSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -36,20 +38,35 @@ if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
   )
   process.exit(args.length === 0 ? 3 : 0)
 }
-const VALUE_FLAGS = ['--out', '--frames', '--at']
-const opt = (n: string): string | undefined => {
-  const i = args.indexOf(n)
-  if (i < 0) return undefined
-  const v = args[i + 1]
-  if (v === undefined || v.startsWith('--')) fail(3, `${n} needs a value`)
-  return v
-}
 function fail(code: number, msg: string): never {
   console.error(`frames: ${msg}`)
   process.exit(code)
 }
-const clip = args.find((a, i) => !a.startsWith('--') && !VALUE_FLAGS.includes(args[i - 1] ?? ''))
+// One pass over argv: an unknown or repeated flag, a flag without its value, or a second positional
+// is a usage error (exit 3), never silently ignored.
+const VALUE_FLAGS = new Set(['--out', '--frames', '--at'])
+const BOOL_FLAGS = new Set(['--audio-only'])
+const values = new Map<string, string>()
+const bools = new Set<string>()
+const positionals: string[] = []
+for (let i = 0; i < args.length; i++) {
+  const a = args[i]
+  if (VALUE_FLAGS.has(a)) {
+    const v = args[++i]
+    if (v === undefined || v.startsWith('--')) fail(3, `${a} needs a value`)
+    if (values.has(a)) fail(3, `${a} given twice`)
+    values.set(a, v)
+  } else if (BOOL_FLAGS.has(a)) {
+    if (bools.has(a)) fail(3, `${a} given twice`)
+    bools.add(a)
+  } else if (a.startsWith('-')) fail(3, `unknown flag ${a} (see --help)`)
+  else positionals.push(a)
+}
+if (positionals.length > 1) fail(3, `expected one video file, got ${positionals.length}: ${positionals.join(' ')}`)
+const opt = (n: string): string | undefined => values.get(n)
+const clip = positionals[0]
 if (!clip) fail(3, 'give a video file')
+if (values.has('--at') && bools.has('--audio-only')) fail(3, '--at and --audio-only do not combine')
 if (!(await Bun.file(clip).exists())) fail(3, `no such file: ${clip}`)
 const out = resolve(opt('--out') ?? '.')
 const wanted = Number(opt('--frames') ?? 40)
@@ -58,7 +75,7 @@ const at = opt('--at')
 if (at !== undefined && !(Number(at) >= 0)) fail(3, '--at must be a time in seconds')
 mkdirSync(out, { recursive: true })
 // Frames are listed back from the directory, so a previous sweep's files would be counted as this one's.
-if (at === undefined && !args.includes('--audio-only') && readdirSync(out).some((f) => /^(g_\d{3}|st_\d+)\.jpg$/.test(f)))
+if (at === undefined && !bools.has('--audio-only') && readdirSync(out).some((f) => /^(g_\d{3}|st_\d+)\.jpg$/.test(f)))
   fail(3, `${out} already holds g_*.jpg / st_*.jpg from an earlier sweep — use a fresh --out`)
 
 for (const tool of ['ffmpeg', 'ffprobe']) if (!Bun.which(tool)) fail(1, `${tool} is not installed (it ships with ffmpeg)`)
@@ -101,7 +118,7 @@ if (hasAudio) {
 }
 if (audio.verdict === 'speech?' && audio.max_volume_db !== null && audio.max_volume_db < -30)
   audio.verdict = 'faint'
-if (args.includes('--audio-only')) {
+if (bools.has('--audio-only')) {
   console.log(JSON.stringify({ duration_seconds: duration, audio }))
   process.exit(0)
 }
