@@ -22,11 +22,13 @@ a blocked shell or a wrong id for a verdict. One link is not worth this skill �
 Register these as todo items now, before doing anything else, in whatever todo/plan tool this host
 gives you — and while work remains keep exactly one in progress:
 1. Fetch pass — the script over the whole batch (§ 1)   2. Markers per site — one item per site:
-dead marker and alive marker (§ 2)   3. Made-up-id control — one item per site, closed with its
-result or "skipped: real 404/410" (§ 2)   4. Marker re-run — the script with `--dead`/`--alive`, one
-item per site (§ 1)   5. Browser pass — one item per link still BLOCKED, NEEDS-BROWSER, REDIRECTED
-or CHECK (§ 3)   6. Classify — one item per link (§ 4)   7. Replacements — only if wanted (§ 5)
-8. Report (§ 6)
+dead marker, alive marker, and the dead marker checked absent on one known-live item (§ 2)
+3. Made-up-id control — one item per site, closed with its result or "skipped: copied ids with a
+real 404/410" (§ 2)   4. Marker re-run — the script with `--dead`/`--alive`, one item per site;
+a site the shell cannot read closes it "markers taken in the browser" (§ 1)   5. Browser pass — one
+item per link still BLOCKED, NEEDS-BROWSER, REDIRECTED, CHECK or UNKNOWN (§ 3)   6. Classify — one
+item per link (§ 4)   7. Ask about replacements (§ 5)   8. Replacement search — one item per dead
+link, only after a yes (§ 5)   9. Report (§ 6)
 Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
 left open — an unfinished list at the end must mean something really is unfinished.
 No such tool? SEARCH for one first — on hosts with deferred tools it exists but is not loaded, and
@@ -52,17 +54,16 @@ Bun? Install it (`install-bun`), or do the same by hand per link —
 — plus one fetch of each site's homepage.
 
 It fetches each link with a browser user-agent and, **once per site, the homepage as a control**: a
-refused homepage means the refusals are about this shell, not the links. Each link gets one state —
-`DEAD` (404/410 while the homepage answers, or your `--dead` regex matched), `ALIVE` (your `--alive`
-regex matched), and pointers to the next step: `BLOCKED` (401/403/429/451/503, or the homepage is
-refused too), `NEEDS-BROWSER` (a bot-check page, or under 100 characters of visible text),
-`REDIRECTED` (ended on another site, or on a shallower page — often a category or search page, a
-likely dead sign), `CHECK` (a page, no marker
-yet), `UNKNOWN` (network error, timeout, other 5xx). Re-run it with `--dead` / `--alive` once § 2
-gives you the markers (`--alive` is matched against the page title only, so a "related items" block
-cannot pass for the item; compare each ALIVE title with the item the link should be) — one site per run (`--site <host>` when the batch spans several; the markers
-then apply only there). Markers are never read on a bot-check page, and a homepage that is itself a
-bot check counts as refused.
+refused homepage means a 404 is about this shell, not the link. States: `DEAD` and `ALIVE` are
+verdicts (a status or your marker said so); `BLOCKED`, `NEEDS-BROWSER`, `REDIRECTED` (often a
+category or search page — a likely dead sign), `CHECK` and `UNKNOWN` send the link to the browser
+pass. `--help` has what triggers each.
+
+Once § 2 gives you the markers, re-run it per site with `--dead '<regex>' --alive '<regex>'` (and
+`--site <host>` when the batch spans several sites). `--alive` is matched against the page title
+only: it tells you the page has an item's title *shape*, not that it is this item — compare each
+ALIVE title, and the price where it matters, with the item the link should be. A site the shell
+cannot read (BLOCKED, or a bot check on the homepage) gets its markers in the browser pass instead.
 
 ## 2. Markers per site — the method, not a site list
 
@@ -71,7 +72,9 @@ page:
 
 - **Dead marker** — the site's "removed / no longer available / not found" page or text. Many
   listing sites render a friendly removal page with HTTP **200**, so the status code alone is not
-  enough there; a real 404/410 with the homepage answering is a dead marker on its own.
+  enough there; a real 404/410 with the homepage answering is a dead marker on its own. Before you
+  use a text marker, confirm it does **not** match one known-live item on that site — a sidebar
+  saying "no results found" would otherwise turn live links dead.
 - **Alive marker** — something only a live item has: for a listing, its title in the page title plus
   a price or a seller block; for an article or a doc page, its own headline and body text (not a
   site-wide "page not found" with a 200). A page with neither marker — a bot check, or an empty
@@ -81,8 +84,9 @@ page:
   same "removed" page, your dead marker cannot tell *removed* from *never existed*: report those
   links "dead or wrong id". If it gets a real-looking page, a page alone proves nothing — a made-up
   product id has resolved to an unrelated live product — so the alive marker must be this item's
-  own title or id, not just "a product page". Skip it, with that reason, for links whose
-  dead signal is a real 404/410.
+  own title or id, not just "a product page". Skip it, with that reason, only for ids that were
+  copied (not OCR'd or typed) and whose dead signal is a real 404/410 — a mistyped id 404s exactly
+  like a removed one, so an OCR'd or typed id that 404s is `DEAD OR WRONG ID`.
 
 Example of the shape (one classifieds site, verified 2026-10): a removed ad and a made-up id both
 render "Ad removed by the author" with HTTP 200; a live ad's page title carries the listing title and
@@ -90,8 +94,8 @@ price. Put the markers you used, dated, in the report — sites change their pag
 
 ## 3. Browser pass
 
-Open every link the fetch pass left `BLOCKED`, `NEEDS-BROWSER`, `REDIRECTED` or `CHECK` in a
-browser-automation tool; wait for the page to settle, then read its text or take a screenshot. On a
+Open every link the fetch pass left `BLOCKED`, `NEEDS-BROWSER`, `REDIRECTED`, `CHECK` or `UNKNOWN`
+in a browser-automation tool; wait for the page to settle, then read its text or take a screenshot. On a
 host with deferred tools, search for a browser capability before concluding there is none — two
 empty searches are a real absence. **No browser** → those links stay `UNKNOWN (no browser)`.
 

@@ -14,7 +14,8 @@
  *   ALIVE           the --alive regex matched the page (and --dead did not)
  *   REDIRECTED      ended on another site, or on a shallower page of this one (often a category or
  *                   search page) — check it
- *   BLOCKED         401/403/429/451/503, or the homepage is refused too — open it in a browser
+ *   BLOCKED         401/403/429/451/503, or a 404/410 while the homepage is refused too — open it in
+ *                   a browser
  *   NEEDS-BROWSER   200 but a bot-check page or a near-empty shell (under 100 characters of visible
  *                   text once scripts and tags are stripped) — open it in a browser
  *   CHECK           200 with content but no marker given or matched — read it and classify
