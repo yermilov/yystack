@@ -173,4 +173,7 @@ cannot see your source.
 - **Check a URL argument by parsing it and matching the host exactly**, never with a regex over the
   raw string. An unanchored `x\.com/<handle>/status/<id>` pattern accepted `fox.com/a/status/1` as
   an X post (measured 2026-11-14). When several scripts in one skill take the same kind of URL, give
-  them the same host list, so one cannot accept what another refuses.
+  them the same host list, so one cannot accept what another refuses. Then hand the downstream tool
+  a canonical URL you built from the parsed parts (an id, a path), never the raw string: the tool's
+  own parser can read a backslash or `@` differently from yours, and the check then guarded a
+  different URL (flagged by a security review of `watch-video`, 2026-11-14).

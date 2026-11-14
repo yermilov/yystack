@@ -24,7 +24,7 @@ guide: how to make the prose itself good.
 > (`references/trigger-tests.md`). To review a skill, work the Pre-ship checklist at the end: it is the
 > review procedure. If you change this skill, keep it a worked example.
 
-Length verdict (§2): 2026-11-14 — 573 lines. Every section still inline is a ruling an author
+Length verdict (§2): 2026-11-14 — 575 lines. Every section still inline is a ruling an author
 applies while writing (§1 activation and the two-host flag table, §2 tiers, §3 voice, §4
 generalising, §5 bundling, §7 testing, §8 maintenance rulings, §9 portability); evidence, sources
 and mechanics live in `references/`. Three choices keep it over 500 on purpose: the Step-0 block
@@ -339,6 +339,8 @@ because SKILL.md is Markdown.
     on it.
   - **A script refuses arguments it did not parse** (exit 2 with a one-line reason) and its errors
     say whether a failure is permanent or worth a retry.
+  - **A URL argument is parsed and its host matched exactly**, and the downstream tool gets a
+    canonical URL built from the parsed parts, never the raw string.
 - **`assets/`** — reusable non-instruction files: templates, logos, themes, sample outputs.
 
 **Prefer a reference in CODE form over the same thing in prose** — an artifact the model can read in
