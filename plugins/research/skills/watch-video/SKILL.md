@@ -8,8 +8,8 @@ description: >-
   with this video": a quick one-shot via Gemini, or a saved knowledge file (captions + Gemini's
   timestamped visual overview) answered from with [MM:SS] citations. Not for a multi-model second
   opinion (deep-research, where installed), a video posted on X (read-twitter fetches the mp4, then
-  uses this skill's file mode). Hosted non-YouTube video (Loom, Vimeo): Gemini can't ingest it — ask
-  for the file and use the file mode.
+  uses this skill's file mode). Hosted non-YouTube video (Loom, Vimeo): ask for the file and use the
+  file mode.
 ---
 
 # Watch Video
@@ -20,7 +20,7 @@ Get what a video says and shows. Three modes; pick one before anything else:
   user recorded). Offline: `ffmpeg` frames + a `whisper.cpp` transcript. No browser, no Gemini — do
   not ask for a YouTube link.
 - **Quick extract** (default for a YouTube URL) — one Gemini call, nothing saved. "Summarise this",
-  "extract the steps". 60–90 s per video.
+  "extract the steps". About a minute or two per video.
 - **Knowledge file + chat** — a saved markdown file (the captions + Gemini's timestamped visual
   overview), then follow-ups answered from it with `[MM:SS]` citations. "Chat with this video", "let's
   discuss this talk", "get me the transcript", a URL plus an obvious series of follow-ups.
@@ -37,15 +37,15 @@ Reply in the user's language.
 Register these as todo items now — only the chosen mode's list — before doing anything else, in
 whatever todo/plan tool this host gives you, and while work remains keep exactly one in progress:
 
-- **Local video file:** 1. Bring the file into a scratch directory · 2. Is there anything to
-  transcribe? · 3. Transcribe (conditional; a first install needs a yes) · 4. Watch it — frames
-  scaled to the length · 5. Read the transcript before concluding anything from the frames
+- **Local video file:** 1. Bring the file into a scratch directory · 2. Anything to transcribe —
+  stream + level check · 3. Transcribe (conditional; a first install needs a yes) · 4. Watch it —
+  frames scaled to the length · 5. Read the transcript before concluding anything from the frames
 - **Quick extract:** 1. Prerequisites — a browser tool + Gemini login verified (else the
   captions-only route) · 2. Open a fresh chat · 3. Pick the model · 4. Insert the prompt · 5. Submit
   and confirm it sent · 6. Wait for the response · 7. Extract it · 8. Check Gemini's answer (the close
   names both controls, or which was skipped and why)
-- **Knowledge file + chat:** 1. Before you start — existing file, live stream, `yt-dlp` · 2. Egress
-  probe · 3. A browser tool + Gemini login verified · 4. Fetch the captions · 5. Gemini's overview —
+- **Knowledge file + chat:** 1. Before you start — existing file, live stream, `yt-dlp` (the close
+  names each) · 2. Egress probe · 3. A browser tool + Gemini login verified · 4. Fetch the captions · 5. Gemini's overview —
   Quick extract steps 2–7 (the close names each, or why one was skipped) · 6. Check the overview —
   timecode + numbers · 7. Assemble the file · 8. Reply short + hand over the file · 9. Answer
   follow-ups from the file
@@ -66,8 +66,7 @@ until your last one closes.
 
 ## Local video file
 
-Use this whenever the video is a **file**. Gemini cannot ingest it, and such a file is usually
-**private** (a home walk-through, a screen recording, a family member) — **never upload it to a video
+Use this whenever the video is a **file**. Such a file is usually **private** (a home walk-through, a screen recording, a family member) — **never upload it to a video
 or AI service.** "Local" is not total privacy: the transcript lines and the frames you look at enter
 your own context like any file you read, so quote onward only what the task needs.
 
@@ -81,13 +80,21 @@ curl -fsS '<download url>' -o clip.mp4     # an attachment: verify its checksum 
 ln -s /absolute/path/to/their.mov clip.mp4  # a file already on disk: no copy
 ```
 
-**2. Anything to transcribe?** A screen recording or a silent clip has no audio stream — check before
-installing anything:
+**2. Anything to transcribe?** Check before installing anything. A clip may have no audio stream —
+or, more often (screen, meeting and phone recordings), a stream that carries only silence, on which
+whisper can invent text:
 
 ```sh
-ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 clip.mp4 | grep -q . \
-  && echo "has audio — transcribe" || echo "silent — go straight to the frames"
+if ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 clip.mp4 | grep -q .; then
+  ffmpeg -nostats -i clip.mp4 -map 0:a:0 -af volumedetect -f null - 2>&1 | grep -E 'mean_volume|max_volume'
+else
+  echo "no audio stream — go straight to the frames"
+fi
 ```
+
+A `max_volume` near −90 dB is digital silence — go straight to the frames; speech peaks within a few
+dB of 0. Anything in between (a hum, faint background) → transcribe, and read the result with
+suspicion.
 
 **3. Transcribe.** If `whisper-cli` or its model is missing, **say the first run installs software and
 downloads 1.6 GB, and get a yes** — a request to look at a clip is not consent to that. Then follow
@@ -103,7 +110,7 @@ bun run "SKILLDIR/scripts/fetch-transcript.ts" --vtt transcript.vtt --with-times
 
 **Name the language** (`-l en`, `-l de`, …) when you know it — `-l auto` drifts on short clips in
 smaller languages, and a forced wrong language translates instead of transcribing. The VTT keeps cue
-times so sentences line up with frames; the last line turns it into prose with a marker every ~30 s.
+times so sentences line up with frames; the last line prints JSON whose `transcript` is prose with a marker every ~30 s.
 `SKILLDIR` is a placeholder: substitute the **literal** directory you loaded this `SKILL.md` from.
 
 **4. Watch it — scale the sampling to the length.** Aim at ~40 frames (eight strips of five):
@@ -237,8 +244,9 @@ A video with no speech (music, a silent demo) → skip this step; the file is Ge
 It picks one track: human captions first, then the auto-captions' original — in the video's own
 language, else English. `--sub-lang 'de'` (comma-separated regexes, tried in order) overrides that.
 Exit 1 prints yt-dlp's error (a `429` is YouTube rate-limiting this IP: wait, or use Quick extract).
-Exit **2** = no captions in that language: tell the user and offer local transcription or a
-Gemini-only file — ask which. Local transcription, in a scratch directory (whisper as in Local
+Exit **2** = no captions in that language: tell the user and offer local transcription (a first run
+installs whisper.cpp and downloads a 1.6 GB model — Local video file step 3) or a Gemini-only file —
+ask which; picking local transcription without knowing that is not a yes to the install. Local transcription, in a scratch directory (whisper as in Local
 video file step 3):
 
 ```bash
@@ -276,7 +284,9 @@ number you will quote. Record the result in `timecodes_verified` below.
 ### 7. Assemble the file
 
 Save under the session's working output directory as `video-knowledge/<id>-<slug>.md` (`<slug>` =
-3–6 ASCII words; the video id is the key):
+3–6 ASCII words; the video id is the key). The caption route's JSON carries `title`, `channel` and
+`duration`; on the whisper or Gemini-only routes, read them with
+`yt-dlp --print '%(title)s|%(uploader)s|%(duration_string)s' "<url>"`, or off the video page.
 
 ```markdown
 ---
@@ -322,8 +332,8 @@ answer rests on. If something isn't in the file, say so and offer to re-run — 
 
 - Save a YouTube video's picture, or build a cross-video library — one file per video. (Fetching a
   local file into scratch, or a video's audio for transcription, is in scope.)
-- Fetch hosted non-YouTube video (Loom, Vimeo, Wistia): Gemini cannot ingest it, and pulling it off
-  someone else's player is not this skill's call. Ask the user for the file (their own export or
+- Fetch hosted non-YouTube video (Loom, Vimeo, Wistia): pulling it off someone else's player is not
+  this skill's call. Ask the user for the file (their own export or
   download) and use Local video file mode.
 - Vouch for the content: Gemini and auto-captions both err. Step 8 checks the answer against the
   video; whether what the video *claims* is true is a separate check — caveat surprising claims.
