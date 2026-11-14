@@ -8,8 +8,8 @@ yes: the model is a 1.6 GB download, and asking to look at a clip is not consent
 | Host | Install |
 | --- | --- |
 | macOS with Homebrew | `brew install whisper-cpp` (gives `whisper-cli`) |
-| Linux / WSL | build it: `git clone https://github.com/ggml-org/whisper.cpp && cd whisper.cpp && cmake -B build && cmake --build build -j --config Release` — the binary is `build/bin/whisper-cli` |
-| Windows (native) | the release page of the same repository ships prebuilt binaries; or use WSL |
+| Linux / WSL | build it: `git clone https://github.com/ggml-org/whisper.cpp && cd whisper.cpp && cmake -B build && cmake --build build -j --config Release` — the binary is `build/bin/whisper-cli`: put that directory on `PATH`, or use the full path wherever `SKILL.md` says `whisper-cli` |
+| Windows | use WSL: the skill's commands assume a POSIX shell |
 
 A sandboxed host that cannot install anything has no route: say the clip cannot be transcribed here and
 do the visual pass alone — never report as if you had heard it.

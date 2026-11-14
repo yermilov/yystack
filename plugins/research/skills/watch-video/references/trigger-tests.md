@@ -21,13 +21,27 @@ disallowed. "Fired" = a `Skill` call naming exactly this skill.
 | 2026-11-14 | Claude Code · claude-fable-5-2 | boundary moved before the mode summary | 12/12 | 8/9 | the voice memo fired this skill |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | same + an audio-only boundary | 11/12 | 9/9 | the Loom prompt missed: its clause now sat behind the boundary. Reverted |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | original order + the audio-only boundary | 12/12 | 9/9 | run twice, both 12/12 + 9/9 |
-| 2026-11-14 | Claude Code · claude-fable-5-2 | current: same + "answer it directly" | 12/12 | 9/9 | |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | same + "answer it directly" | 12/12 | 9/9 | |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | current: "deep-research, where installed" → "deep-research" | 12/12 | 9/9 | full environment |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | same | 12/12 | 9/9 | isolated (`--setting-sources project`) |
 
 The order is measured, not stylistic: the mode summary and the Loom clause stay before the "Not
 for" list (third row).
 
-What these runs do not establish: Codex routing (not run), other models, or anything past the routing
-decision.
+What these runs do not establish: Codex routing (not run), other models, or repeat stability.
+
+**With the skill vs without it** (2026-11-14, same model, one run each, `--max-turns 14`, the shell
+limited to ffmpeg, ffprobe, whisper-cli and `bun run`). The clip: 4.6 s of a test pattern with the
+spoken line "The blue box on the left is not the one we lost. We brought it from the garage this
+morning." Prompt: "Watch box.mp4 in this folder. Is the blue box in it the one we lost?"
+
+| Without the skill | With the skill |
+| --- | --- |
+| probed the file and read frames only; never touched the audio; "I can't confirm that … I have no record of the box you lost" | registered the five steps, ran `frames.ts` (verdict `speech?`), transcribed with whisper, read the transcript, then three strips; "No — the narration says outright … not the one we lost" |
+
+Not established: the YouTube modes past routing (they need a signed-in Gemini), and Codex. Codex has
+no per-run plugin directory, so a Codex run measures the INSTALLED copy: it counts for a description
+only once that exact text is published and installed, and should be run then.
 
 ## Should fire
 

@@ -89,3 +89,20 @@ The same day, the `--vtt` parser returned an empty transcript with exit 0 on cue
 (`00:01.000 --> …`, valid WebVTT) and on comma milliseconds, and leaked a cue's timing line into the
 prose on a CRLF file. All three now parse; a file with text but no readable cue exits 4 instead of
 reporting an empty transcript.
+
+## YouTube: "Sign in to confirm you're not a bot" on some videos (2026-11-14)
+
+From one home IP, `fetch-transcript.ts` failed with exit 1 and yt-dlp's "Sign in to confirm you're
+not a bot" on two of three public videos, every time across two rounds; the third fetched cleanly.
+yt-dlp 2026.06.09 and the then-current 2026.10.26 (run through `uvx`) gave the same answer for the same
+three videos, so the gate was per video and per IP, not a stale client. What this does not establish:
+how long such a gate lasts, or whether another network clears it. yt-dlp's own suggestion is to pass
+browser cookies; the skill does not, because that hands a tool the user's signed-in session.
+
+## Local file: "silent" audio that was speech (2026-11-14)
+
+An AAC track of pure silence and one of speech attenuated by 85 dB both measured about −91 dB with
+`volumedetect`, so the level cannot tell them apart. Raised by 80 dB before `whisper-cli` (large-v3-turbo,
+`-l en`), the attenuated clip came back word for word, and the silent one came back as the single word
+"you". One synthetic pair: enough for the rule, not a measured threshold for real recordings.
+
