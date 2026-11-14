@@ -25,7 +25,7 @@ NewUptime is the UPnP DAEMON's uptime, which on some firmware resets on a WAN re
 reboot — confirm each "reboot" from the client side (a gap in a gateway ping) before calling it one.
 
   --timeout MS   how long to wait for SSDP answers (default 3000)
-  --json         machine-readable output
+  --json         machine-readable output, one line (append it to a log: one reading per line)
 
 Exit: 0 uptime read · 1 no gateway / no uptime · 2 usage error.`;
 
@@ -158,7 +158,7 @@ async function main() {
   const result: Record<string, unknown> = { locations };
   if (!locations.length) {
     const msg = "no UPnP gateway answered SSDP — UPnP may be off on the router, or a firewall on this host drops multicast replies";
-    if (o.json) console.log(JSON.stringify({ ...result, readAt: new Date().toISOString(), error: msg }, null, 2)); else console.log(msg);
+    if (o.json) console.log(JSON.stringify({ ...result, readAt: new Date().toISOString(), error: msg })); else console.log(msg);
     process.exit(1);
   }
 
@@ -210,7 +210,7 @@ async function main() {
   result.readAt ??= new Date().toISOString();
 
   const ok = typeof result.uptimeSeconds === "number";
-  if (o.json) console.log(JSON.stringify(result, null, 2));
+  if (o.json) console.log(JSON.stringify(result));
   else if (!result.description) console.log(`gateway answered SSDP (${locations.join(", ")}) but no description carried a WAN connection service`);
   else {
     console.log(`read at        ${result.readAt}`);

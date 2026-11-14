@@ -30,6 +30,23 @@ Caveats, each of which has produced a wrong verdict:
 
 - Log uptime every ~20 s (`upnp-uptime.ts --json` from a loop or scheduler) plus a 1 Hz ping of the
   gateway and of a public IP, to a **local file**: an outage cannot stop a local log.
+- It runs for hours on the owner's machine, so start it only with their OK, and tell them how to stop
+  it. A minimal POSIX loop; both run in the background, so Ctrl-C does not stop them — stop each with
+  `kill <PID>` using the PIDs they print (the ping then exits on its next write):
+
+  ```sh
+  ( while :; do bun run "<skill dir>/scripts/upnp-uptime.ts" --json; sleep 20; done ) >> uptime.log 2>&1 &   # one JSON line per reading, with readAt
+  echo "logger PID $!"
+  ping -i 1 <gateway> | while read -r l; do echo "$(date -u +%FT%TZ) $l"; done >> ping-gw.log &
+  echo "ping logger PID $!"     # repeat this line with a public IP for the second ping log
+  ```
+
+  On Windows (PowerShell), the same two loggers; stop each with `Stop-Job`:
+
+  ```powershell
+  Start-Job { while ($true) { bun run "<skill dir>/scripts/upnp-uptime.ts" --json >> uptime.log; Start-Sleep 20 } }
+  Start-Job { ping -t <gateway> | ForEach-Object { "$(Get-Date -Format o) $_" } >> ping-gw.log }   # Windows ping: works in PowerShell 5.1 and 7
+  ```
 - Keep the logging host awake and on power. A sleeping laptop is a blind spot, never a quiet period:
   cross-check its sleep/wake log before reading any gap.
 - Run it across the time of day the owner reports the drops; a clean night proves nothing about the

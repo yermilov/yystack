@@ -7,13 +7,16 @@
 Run each prompt in a fresh session with the marketplace installed, and record whether this skill
 loads. A prompt passes when the result matches the column it is in. Record each run below.
 
-**Runs** (each prompt in a fresh `claude -p` with `--plugin-dir` on the working tree, `--max-turns 1`,
-shell and web tools disallowed; "fired" = the first turn called the Skill tool with this skill):
+**Runs** (each prompt in a fresh `claude -p` with `--plugin-dir` on the working tree, shell and web
+tools disallowed; "fired" = a Skill call naming exactly this skill. The first two rows used
+`--max-turns 1`; the last used `--max-turns 2` with MCP servers cut off):
 
 | Date | Host · model | Fired | Silent | Note |
 | --- | --- | --- | --- | --- |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | 10/12 | 10/10 | the two purchase questions (mesh/extender, "is my router the bottleneck") were answered from general knowledge; the description then gained "BEFORE advising on buying…" |
-| 2026-11-14 | Claude Code · claude-fable-5-2 | 12/12 | 10/10 | the description as shipped |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | 12/12 | 10/10 | the description as shipped in 623f9e8 |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | 12/12 | 10/10 | opening trimmed to "…failures and fix them"; `--max-turns 2`, MCP cut off |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | 12/12 | 10/10 | "…fix them (with the owner's OK) or recommend the fix"; server-side latency → "the service's own monitoring" |
 
 What these runs do not establish: Codex routing (not run), other models, or stability across
 repeated runs of one prompt (each ran once).

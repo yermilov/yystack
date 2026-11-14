@@ -16,7 +16,10 @@ const USAGE = `usage: bun run dns-probe.ts <hostname> --server <ip> [--server <i
                           [--count N] [--interval MS] [--timeout MS] [--type A|AAAA] [--soa] [--json]
 
 Sends N queries for <hostname> to each resolver and prints a pass count per resolver (e.g. 19/20),
-the failure codes seen, the answers with their TTL, and the median latency.
+the failure codes seen, each answer address with its TTL range and how many rounds returned it, and
+the median latency. An address in a private, loopback, link-local or unspecified range is marked
+"(non-public)": for a public name that is the sinkhole / block-page / wrong-path signal. Addresses that
+rotate from round to round on every resolver are ordinary round-robin, not a fault.
 
   --server IP     a resolver to query directly (repeat it: the gateway, each configured upstream,
                   two public resolvers). At least one --server or --system is required.
@@ -30,7 +33,19 @@ the failure codes seen, the answers with their TTL, and the median latency.
                   in turn) and the upper bound of its negative-cache TTL (the SOA minimum field).
   --json          machine-readable output.
 
-Exit: 0 every probe answered · 1 at least one probe failed · 2 usage error.`;
+Exit: 0 every probe answered · 1 at least one probe failed · 2 usage error. Exit 0 can still carry a
+(non-public) answer — read the rows, not only the code.`;
+
+// A public name answered with one of these is a sinkhole, a block page or a resolver on the wrong path.
+function nonPublic(ip: string): boolean {
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip)
+  if (mapped) return nonPublic(mapped[1])
+  if (ip.includes(":")) return /^(::1?$|fe[89ab]|f[cd]|ff)/i.test(ip)
+  const [a, b] = ip.split(".").map(Number)
+  return a === 0 || a === 10 || a === 127 || a >= 224 || (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) ||
+    (a === 198 && (b === 18 || b === 19))
+}
 
 type Outcome = { ok: boolean; code: string; ms: number; answers: string[] };
 
@@ -173,7 +188,24 @@ async function main() {
     const pass = rs.filter((r) => r.ok).length;
     const codes: Record<string, number> = {};
     for (const r of rs) codes[r.code] = (codes[r.code] ?? 0) + 1;
-    const answers = [...new Set(rs.flatMap((r) => r.answers))];
+    // One row per ADDRESS, not per "<ip> ttl=<n>" string: the TTL counts down every round, so the raw
+    // strings never repeat and a different address seen in a later round (a block page, an
+    // intermittent wrong answer) used to fall past a 6-line cap. Count the rounds that returned each.
+    const byAddr = new Map<string, { address: string; rounds: number; ttlMin?: number; ttlMax?: number }>();
+    for (const r of rs) {
+      for (const a of new Set(r.answers)) {
+        const [address, ttlPart] = a.split(" ttl=");
+        const e = byAddr.get(address) ?? { address, rounds: 0 };
+        e.rounds++;
+        if (ttlPart !== undefined) {
+          const ttl = Number(ttlPart);
+          e.ttlMin = e.ttlMin === undefined ? ttl : Math.min(e.ttlMin, ttl);
+          e.ttlMax = e.ttlMax === undefined ? ttl : Math.max(e.ttlMax, ttl);
+        }
+        byAddr.set(address, e);
+      }
+    }
+    const answers = [...byAddr.values()].map((a) => ({ ...a, nonPublic: nonPublic(a.address) }));
     // The order of failures matters: a lone first-probe failure reads differently from a scattered one.
     const sequence = rs.map((r) => (r.ok ? "." : "x")).join("");
     return { resolver: name, pass, total: rs.length, codes, sequence, medianMs: Math.round(median(rs.map((r) => r.ms))), answers };
@@ -190,7 +222,10 @@ async function main() {
       const codes = Object.entries(s.codes).map(([k, v]) => `${k}×${v}`).join(" ");
       console.log(`\n${s.resolver}: ${s.pass}/${s.total} answered · ${codes} · median ${s.medianMs} ms`);
       console.log(`  sequence ${s.sequence}   (. answered, x failed)`);
-      for (const a of s.answers.slice(0, 6)) console.log(`  ${a}`);
+      for (const a of s.answers) {
+        const ttl = a.ttlMin === undefined ? "" : a.ttlMin === a.ttlMax ? ` ttl=${a.ttlMin}` : ` ttl=${a.ttlMin}–${a.ttlMax}`;
+        console.log(`  ${a.address}${ttl} · in ${a.rounds}/${s.pass} answered rounds${a.nonPublic ? " (non-public)" : ""}`);
+      }
     }
     if (o.soa) {
       if (soa) {

@@ -31,3 +31,12 @@ A boot list showed a reboot a few minutes after the owner photographed the route
 photo's timestamp was the clock that explained it: the plug had been touched. That is why the boot
 list is read only after discarding boots that line up with physical handling, and why such a boot
 still points at a loose power plug.
+
+## A worked shape (generic, SKILL.md §4)
+
+A gigabit plan, a Wi-Fi 5 (AC1200) main router, and a **wirelessly-backhauled** Wi-Fi 6 extender near
+the desk. Measurement shows low throughput, weak signal and packet loss at the desk but near-plan
+speed beside the router and on the cable, so the extender's wireless hop is halving bandwidth. The
+first fix is to **wire the extender's backhaul** (Access Point mode on an Ethernet run) or wire the
+client, not to add a second wireless extender. Many extenders already have a gigabit port and AP
+mode, so the fix often costs only a cable.

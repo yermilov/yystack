@@ -1,15 +1,16 @@
 ---
 name: check-network
 description: >-
-  Diagnose home-network speed, DNS and drop-out failures and apply or recommend the
-  highest-leverage fix. Use when Wi-Fi is slow, latency spikes or pings lose packets, the connection
+  Diagnose home-network speed, DNS and drop-out failures and fix them (with the owner's OK) or
+  recommend the fix. Use when Wi-Fi is slow, latency spikes or pings lose packets, the connection
   keeps dropping, the router seems to reboot itself, a 4G/LTE modem keeps disconnecting or only
-  recovers after a power-cycle, a domain returns NXDOMAIN only at home, and BEFORE advising on buying
-  an extender, mesh or new router or on whether the router is the bottleneck (measure first: the
-  usual answer is a cable) — “speeds are below my plan”, “DNS is broken”, “site works on
-  mobile data”, “Wi-Fi drops every few hours”, “bufferbloat”, «інтернет повільний», «вай-фай
-  відвалюється», «роутер не резолвить домен». Not for public or office networks you don't
-  administer (a slow work VPN included) — that's their admin's job — nor for server-side app latency.
+  recovers after a power-cycle, a domain returns NXDOMAIN only at home, and BEFORE advising on
+  buying an extender, mesh or new router or on whether the router is the bottleneck (measure first:
+  the usual answer is a cable) — “speeds are below my plan”, “DNS is broken”, “site works on mobile
+  data”, “Wi-Fi drops every few hours”, “bufferbloat”, «інтернет повільний», «вай-фай відвалюється»,
+  «роутер не резолвить домен». Not for public or office networks you don't administer (a slow work
+  VPN included) — that's their admin's job — nor for server-side app latency (the service's own
+  monitoring).
 ---
 
 # check-network — diagnose and fix a home network
@@ -79,7 +80,8 @@ layer each gap pointed at, and item 9 naming the router settings you actually re
 "looked at the router" hides the one setting that was the answer. Close item 8 naming the logging
 span and host, the boots seen, which were confirmed from the client side, which were discarded as
 handling, the load comparison, and whether the power test was proposed; a logger still running at the
-end of the session closes as "logging since <time> on <host>, verdict pending". Close item 10 naming
+end of the session (started only with the owner's OK, on their machine) closes as "logging since
+<time> on <host>, verdict pending — stop it with <how>". Close item 10 naming
 the RSRP / RSRQ / SINR grade and the reconnects per hour.
 
 **No access to the network at all** (a chat-only question such as "should I buy a mesh?", or you are
@@ -100,11 +102,15 @@ start. The owner signs in; you never type, extract or store their router passwor
 Use this branch when one hostname returns `NXDOMAIN`, `SERVFAIL`, or times out at home while other
 sites work. Do not infer "the router blocks the domain" from one cached answer.
 
-`scripts/dns-probe.ts` runs the series below on any OS with Bun (`bun run "<skill dir>/scripts/dns-probe.ts"
-<host> --server <gateway> --server 1.1.1.1 --server 8.8.8.8 --system --soa`). It prints a pass count,
-the failure codes and their order, the answers with TTLs, and the negative-cache TTL bound; exit 1
-means some probe failed. Without Bun, the OS tools are in `references/measurement-commands.md` § DNS
-queries.
+`scripts/dns-probe.ts` runs the series below on any OS with Bun:
+`bun run "<skill dir>/scripts/dns-probe.ts" <host> --server <gateway> --server 1.1.1.1 --server 8.8.8.8 --system --soa`.
+It prints a pass count, the failure codes and their order, each answer address with its TTL range
+and how many rounds returned it, and the negative-cache TTL bound. Exit 1 means some probe failed;
+exit 0 can still carry a `(non-public)` answer. Read the answers ACROSS resolvers: addresses rotating
+on every resolver are normal round-robin (a CDN name can return dozens). The finding is an address
+only the gateway (or the system path) returns and no public resolver does — above all one the
+script marks `(non-public)`: a private, loopback or `0.0.0.0` answer for a public name is a sinkhole
+or block page. Without Bun, the OS tools are in `references/measurement-commands.md` § DNS queries.
 
 1. **Compare paths.** Query the exact hostname through the operating system's normal resolver, the
    LAN gateway explicitly, and two public recursive resolvers. Record status, answer, TTL and
@@ -209,15 +215,17 @@ with a different cable. Only a slow result that survives that is genuinely upstr
 
 ## 2a. Drop-outs — prove whether the router reboots before theorising
 
-A drop of ~60–90 s that every client sees at once is the signature of a router reboot, not of the
-ISP. Prove it before blaming anyone. You can do it **without the admin password**, because most
+A drop of ~60–90 s that every client sees at once is the usual signature of a consumer router's
+reboot, not of the ISP (a typical boot time — a different router can take longer, so the uptime below
+is the proof, not the duration). Prove it before blaming anyone. You can do it **without the admin password**, because most
 consumer routers answer an unauthenticated UPnP query with their uptime:
 `bun run "<skill dir>/scripts/upnp-uptime.ts"` prints the uptime, the boot time it implies, the WAN type
-and the WAN byte counters (read-only; exit 1 means no gateway answered). Rulings:
+and the WAN byte counters (read-only; exit 1 means no gateway answered, or one answered with no uptime). Rulings:
 
 - **Confirm each "reboot" from the client side** (Wi-Fi link down, a ping gap at that instant): the
   UPnP counter is the daemon's and can reset on a WAN reconnect without a reboot.
-- **Log to a local file on a host that stays awake**, across the hours the owner reports drops; a
+- **Log to a local file on a host that stays awake** (with the owner's OK — it runs for hours on their
+  machine; tell them how to stop it), across the hours the owner reports drops; a
   sleeping laptop is a blind spot, not a quiet period.
 - **Discard boots someone's hands caused** before reading the list, then rule out load, then propose
   the UPS power test, which the owner can run without any password.
@@ -227,7 +235,7 @@ UPnP calls, their caveats, the logger, and the power test.
 
 ## 3. Inspect the router admin UI
 
-Use the session the owner signed in to (a browser on the gateway address you read in §1, or the
+Use the session the owner signed in to (a browser on the gateway address — `references/measurement-commands.md` § Finding the gateway — or the
 vendor host printed on the router's label). Router admin access can re-route or capture every
 device in the house, so it is theirs to grant: have them sign in and hand over the session, or read
 the settings back to you. Never type their admin password yourself; the same holds for the ISP
@@ -266,7 +274,8 @@ Rank fixes by leverage, not by novelty:
    the room and put the extender in **Access Point mode** on that cable (reconfiguring it drops its
    clients: owner's OK, as for a router write), or wire the client directly.
    It removes the halving wireless hop for the price of a cable, often with hardware already owned.
-   Expected: near line-rate, single-digit-ms latency, 0% loss.
+   Expected on a healthy cable: near the wired figure from §1, single-digit-ms latency, 0% loss —
+   the wired row of your own table is the target, not a generic number.
 2. **Relocate / reposition.** Move the AP or the client to cut distance and walls; raise or reorient
    the AP. Free, and §1's measurements already told you how much it is worth.
 3. **Band / channel tuning.** Prefer 5 GHz near the AP; try a clear channel in dense RF. Small wins.
@@ -285,28 +294,13 @@ happy to stop at "good enough", and that is a valid place to stop.
 **Verify (item 12).** After any change, re-run §1 at the affected spot (and the DNS series, on the DNS
 branch) and report before/after numbers side by side. A fix you did not re-measure is a guess.
 
-## A worked shape (generic)
-
-A gigabit plan, a Wi-Fi 5 (AC1200) main router, and a **wirelessly-backhauled** Wi-Fi 6 extender near
-the desk. Measurement shows low throughput, weak signal and packet loss at the desk but near-plan
-speed beside the router and on the cable, so the extender's wireless hop is halving bandwidth. The
-first fix is to **wire the extender's backhaul** (Access Point mode on an Ethernet run) or wire the
-client, not to add a second wireless extender. Many extenders already have a gigabit port and AP
-mode, so the fix often costs only a cable.
-
 ## Anti-patterns
 
-- Recommending a plan upgrade or a new router **before** measuring the internal path.
-- Blaming the ISP without the **wired** test: two Wi-Fi measurements cannot tell a slow line from a
-  slow radio.
+Two worth repeating:
+- Adding a **wireless** extender/mesh node to "extend range": it usually makes throughput worse
+  (§4 item 5; a worked case is in `references/precedents.md` § A worked shape).
 - Trusting a single speed-test number instead of comparing **idle vs loaded** latency, **desk vs
-  router** position, and **packet loss to the gateway**.
-- Adding a **wireless** extender/mesh node to "extend range"; it usually makes throughput worse.
-- Changing several router settings at once instead of one, re-measured, kept or reverted.
-- Declaring an intermittent DNS fault repaired, or an upstream healthy, on a **single** passing query.
-- Removing a per-device DNS override before confirming the device is on the home network and using
-  the gateway as its resolver.
-- Treating "the symptom stopped reproducing" as "the symptom is fixed".
+  router** position, and **packet loss to the gateway** (§1).
 
 ## Validation
 
