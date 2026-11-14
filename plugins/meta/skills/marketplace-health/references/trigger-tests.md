@@ -8,9 +8,18 @@
 Run each prompt in a fresh session with the marketplace installed, and record whether this skill
 loads. A prompt passes when the result matches the column it is in. Record each run below.
 
-**Runs:** none yet. The set was written on 2026-11-14 from the description and has not been run.
-Until a dated row appears here (host, fired x/11, stayed silent y/10), the description's routing has
-been reviewed but not measured.
+**How it was run:** a fresh `claude -p` per prompt from an empty directory, `--plugin-dir` on the
+working tree, `--max-turns 2`, MCP servers cut off, and writes, shell, web, subagents and workflows
+disallowed. "Fired" = a `Skill` call whose skill is exactly `marketplace-health` or
+`<plugin>:marketplace-health`.
+
+**Runs:**
+
+| Date | Host · model | Description | Fired | Silent | Note |
+| --- | --- | --- | --- | --- | --- |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | current (boundary now says "on or off") | 9/11 | 10/11 | "new skill didn't show up after I pushed" and "will clients pick it up" went to plugin-dev; "update the meta plugin from GitHub" fired here instead of clone-marketplace. Open for this skill's own pass |
+
+What this run does not establish: Codex routing (not run), other models, repeat stability.
 
 ## Should fire
 
@@ -34,6 +43,7 @@ been reviewed but not measured.
 | --- | --- |
 | "turn on auto-update for my marketplace" | an action → `enable-autoupdate` |
 | "make my Codex marketplace update itself" | → `enable-autoupdate` |
+| "turn off auto-update for my acme-tools marketplace" | an action → `enable-autoupdate` |
 | "bump the version of my plugin" | authoring → `plugin-dev` |
 | "add a new plugin to my marketplace" | → `plugin-dev` |
 | "update my marketplace's meta plugin to the latest from GitHub" | → `clone-marketplace` |

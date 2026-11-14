@@ -8,8 +8,8 @@ description: >-
   show up after I pushed?", "are plugin auto-updates on?", "a plugin enabled in settings never
   appeared", "check marketplace health", "why did I get a marketplace warning at session start?", or
   after publishing a change — «чи оновлений маркетплейс», «чому не підтягнулась нова версія скіла».
-  Do not use to author a marketplace or bump versions (plugin-dev), to turn auto-update ON
-  (enable-autoupdate), nor to bootstrap or refresh a marketplace's meta plugin from the canonical
+  Do not use to author a marketplace or bump versions (plugin-dev), to turn auto-update on or
+  off (enable-autoupdate), nor to bootstrap or refresh a marketplace's meta plugin from the canonical
   one (clone-marketplace).
 ---
 
@@ -25,7 +25,7 @@ healthy / stale verdict with the exact fix:
 This is **read-only diagnosis**, and the bundled script does the reads. The state changes — a
 catalog refresh, a plugin update or install — run only under the go-ahead rule below.
 
-**The go-ahead rule:** an explicit request to update / fix / enable IS the go-ahead for the state change it names; anything else — a refresh, install, settings edit or re-add the user did not ask for — is proposed with the exact command or diff, and run on their yes. (The same rule is written in enable-autoupdate; change both together.)
+**The go-ahead rule:** an explicit request to update / fix / enable / disable IS the go-ahead for the state change it names; anything else — a refresh, install, settings edit or re-add the user did not ask for — is proposed with the exact command or diff, and run on their yes. (The same rule is written in enable-autoupdate; change both together.)
 
 ## Why staleness happens (the mental model)
 
@@ -136,7 +136,7 @@ refresh below; or the catalog lists it and it was never installed, fixed by
 - **Codex:** `codex plugin marketplace upgrade <name>` (omit the name for every Git marketplace);
   for a plugin the catalog lists but that was never installed, `codex plugin add <plugin>@<name>`.
 - On a plain "check", run neither; put the exact commands in the report.
-- Never edit settings here, even on a "fix it" request — turning auto-update on is
+- Never edit settings here, even on a "fix it" request — turning auto-update on or off is
   enable-autoupdate's; hand it over with the verdict.
 
 ## Output
