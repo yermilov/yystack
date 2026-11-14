@@ -1,4 +1,4 @@
-# Workflow skills — the depth behind §2's rules
+# Workflow skills — the depth behind SKILL.md §2's rules
 
 > Reference for the `skill-authoring` skill. Every **ruling** about workflow skills is already inline
 > in `SKILL.md` §2 — the mandate, the marker sentences, the granularity test, the length rule. This
@@ -42,7 +42,7 @@ reader must be able to audit; the close-verdict protects the rest.
 
 A list split past the point of consequence is the All-Caps Tyrant in list form — when every line is a
 checkpoint, none is. And because this is a property rather than a string, no marker detects it: its
-enforcement is the per-item test in §2 plus checklist item 9.
+enforcement is the per-item test in SKILL.md §2 plus checklist item 9.
 
 ## 4. Nesting — the wording for both shapes of todo tool
 
@@ -72,7 +72,7 @@ while the numbering lines up.
 
 ## 6. Paying for the steps with `references/`
 
-A heavily-branched task runner honestly runs past 800 lines — that is a real workflow's size, and the
+A heavily-branched task runner honestly runs past 800 lines (and owes SKILL.md §2's Length verdict) — that is a real workflow's size, and the
 reason the per-step budget exists. What does not change is the tier-2 cost: the body stays in context
 all session. So one file per deep step, keeping inline the step, its order, its branch conditions and
 its rulings, and moving out the evidence, the long alternate paths and the platform detail —

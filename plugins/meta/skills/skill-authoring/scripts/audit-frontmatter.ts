@@ -40,7 +40,7 @@ Scans <root>/plugins/*/skills/*/SKILL.md (default root: the current directory).
 Exits 1 on the defects a machine can be sure of: frontmatter that will not parse, a missing or
 non-string name/description, a name that disagrees with its directory, and a description over the
 ${CAP}-character cap. Descriptions crowding the cap and missing boundaries are reported but do not
-fail the run — both need a human read.`)
+fail the run — both need a human read. Exits 2 when the audit cannot run: no plugins/*/skills/*/SKILL.md under the root, or a Bun without its YAML parser (< 1.3).`)
   process.exit(0)
 }
 

@@ -65,7 +65,7 @@ Any one of the three means it is a program, and a program belongs in a real code
 have types, tests and a review history.
 
 **The line is not size, and getting that wrong is the common mistake.** Measured across one
-marketplace: the largest script in it, at 865 lines, is in exactly the right place — a deterministic
+marketplace (2026-08; a snapshot of that library, not a size limit): the largest script in it, at 865 lines, is in exactly the right place — a deterministic
 converter, no state, nothing supervised. The one that had to be removed was **shorter**, at 473
 lines, and it was the only script in the collection that supervised another process, kept state
 between invocations *and* retried. All three at once.
@@ -85,7 +85,8 @@ executable using only values the agent is holding. It may never depend on state 
 there: a path relative to a repo root the agent is not standing in, or a variable nobody set. Those
 two are the whole of the prohibition, and both failures below are instances of it.
 
-What that cost, measured over eight days of session transcripts in one marketplace: **16 distinct
+What that cost, measured over eight days of session transcripts in one marketplace (to 2026-08-26,
+one host; it counts sessions that hit the failure, not how often it happens elsewhere): **16 distinct
 sessions** failed to find a script the skill documented as `scripts/<name>.sh`. That path reads as
 repo-root-relative; the file actually lived several levels down, inside the skill. The agents ran it,
 got `No such file or directory`, and silently fell back to a worse route — one of them ran a full

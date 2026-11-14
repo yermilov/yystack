@@ -32,7 +32,7 @@ A rule you only apply to *other* skills isn't enforced, it's decorative.
 
 ## 3. The 1124-character description, and the grep that lied (§1)
 
-A shipped skill sat at **1124 characters**, past Codex's 1024-char loader cap. Rewriting it as a
+A shipped skill sat at **1124 characters**, past Codex's 1024-char validator cap. Rewriting it as a
 classifier rather than a capability list brought it to **904 with every trigger intact** — the excess
 was capability prose, not triggers.
 
@@ -154,8 +154,8 @@ unattended on a schedule, where a silently skipped step is least likely to be no
 So the honest finding is not "nobody did it" but **"one family did it and it never generalized"**:
 one template, and every other workflow written after the same authoring guide skipping it. The
 guide's sentence addresses the **author**, and the author is not present at run
-time; only a template put the words where the running agent would read them. (The owner's own read
-was the stronger "not one of my workflow skills follows the scheme" — the audit is what narrowed it.)
+time; only a template put the words where the running agent would read them. (The author's first read
+was the stronger "not one workflow skill follows the scheme" — the audit is what narrowed it.)
 
 Nothing about the runs looked wrong, which is the cost: with no registered list, a run that did three
 of seven steps produces the same shape of report as one that did all seven, and the skipped steps are

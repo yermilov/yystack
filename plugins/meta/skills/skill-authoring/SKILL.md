@@ -1,16 +1,16 @@
 ---
 name: skill-authoring
 description: >-
-  Write, structure, and review great Agent Skills (SKILL.md files) so an agent reliably triggers and
-  follows them. Use when creating, writing, editing, improving, reviewing, shortening or debugging a
-  skill / SKILL.md / plugin skill — when a skill won't trigger, fires when it shouldn't, is too
-  long, or must work on both Claude Code and Codex. Triggers include «як написати скіл»,
-  «створити/покращити скіл», «чому скіл не тригериться», "write a skill", "make a SKILL.md", "my
-  skill never triggers", "stop a skill auto-firing", "my workflow skill skips steps". Do not use for
-  plugin PACKAGING — manifests, version bumps, marketplace wiring, README tables (that is
-  plugin-dev), nor for building or running evals; this skill is about the SKILL.md itself. Covers
-  the description, invocation flags, the three kinds of skill, progressive disclosure and
-  anti-patterns.
+  Write, structure and review Agent Skills (SKILL.md files) so an agent reliably triggers and
+  follows them. Load it BEFORE answering any question about a skill's description, triggering,
+  auto-firing, length, steps or Codex portability, even one you could answer from memory. Use when
+  creating, editing, improving, reviewing, shortening or debugging a skill / SKILL.md: «як написати
+  скіл», «створити/покращити скіл», «чому скіл не тригериться», "write a skill", "make a SKILL.md",
+  "my skill never triggers", "stop a skill auto-firing", "my workflow skill skips steps", "will my
+  skill work on Codex", "review my skill before I publish it". Do not use for plugin PACKAGING —
+  manifests, version bumps, marketplace wiring, README tables (that is plugin-dev) — nor for
+  building or running evals (the host's eval tooling), nor for a CLAUDE.md / AGENTS.md, a slash
+  command or a subagent definition (the host's docs).
 ---
 
 # Skill authoring
@@ -19,12 +19,18 @@ How to write an **Agent Skill** that an agent you've never met, on a prompt you 
 triggers, follows, and benefits from — thousands of times. This is the prescriptive **writing/design**
 guide: how to make the prose itself good.
 
-> This skill practices what it preaches — its own description, structure, and length are meant as a
-> worked example. If you change it, keep it that way.
+> This skill practices what it preaches — its own description and structure are meant as a worked
+> example (its open test items are recorded in `references/trigger-tests.md`). If you change it, keep
+> it that way.
 
-Length verdict (§2): 2026-11-14 — what stays inline is §1's flag table and host status (they decide
-how to gate a skill), §2's tier rules and Step-0 block (copied verbatim by authors), the §6 table (the
-index every review uses), and each section's rulings; their evidence is in `references/precedents.md`.
+Length verdict (§2): 2026-11-14 — ~540 lines after a section-by-section pass that moved out the
+description-cap story, §3's Claude 5 sources, §5's script reasoning, §6's pattern explanations, the
+Step-0 line-by-line rationale and the library-review mechanics (`references/`). Every section still
+inline is a ruling an author applies while writing (§1 activation and the two-host flag table, §2
+tiers and the Step-0 block authors copy verbatim, §3 voice, §4 generalising, §5 bundling, the §6
+index table, §7 testing, §8 maintenance rulings, §9 portability, the checklist); none carries
+evidence that is not already in a reference. A further cut would mean splitting this guide into two
+skills, which is not proposed.
 
 ## The one job
 
@@ -97,34 +103,23 @@ Bad:  Helps with testing.   ← no artifacts, no verbs, no situations; fires on 
   sibling points *at* while pointing at nobody is both the likeliest gap (a hub reads as "obviously
   the main one") and the worst one (the classifier already defaults to it, and the hub is typically
   the skill that CHANGES STATE while its siblings only read). Worked case: `references/precedents.md` §1.
-- **Audit the marketplace for MISSING boundaries, not just for length — and include this skill in the
-  sweep.** Length has an obvious failure signal (the loader truncates); a missing boundary has none —
-  it fails silently, as a near-miss skill quietly winning the trigger. Count it off the **parsed
-  description**, never a file grep: a `Do not use for…` in the BODY reads as a boundary that isn't
-  there, and real boundaries phrase themselves freely ("Do NOT use it
-  to…", "— that's `<sibling>`"), so any pattern is a shortlist and reading is the verdict. Treat "no
-  boundary" as the default defect, not the exception, and audit yourself first (`references/precedents.md` §2).
+- **No boundary is the default defect**, and it fails silently (a near-miss skill quietly wins the
+  trigger). Check it on the PARSED description, not a file grep, and audit this skill too; the sweep
+  is in `references/library-maintenance.md` §2.
 - **Write the description last,** once the body is stable — the behaviour you built, not the aspiration.
 - **Trigger-test it:** list ~10 prompts that _should_ fire and ~10 that _shouldn't_ (typos, slang,
   indirect phrasings, near-misses sharing a keyword). If the description can't separate them, rewrite it.
-- **There is a ceiling: keep the description under 1024 characters.** Codex's skill *validator* fails
-  a longer one outright ("Description is too long … Maximum is 1024"); its *runtime* is more insidious
-  — it accepts the skill and **truncates** (verified as of 2026-08 on Codex CLI; don't infer one from
-  the other, and re-check on a new major version). **And under the cap is not safe either:** the runtime fits all installed skills
-  into a *skills context budget*, shortening descriptions and dropping whole skills to make them fit,
-  so your length competes with your neighbours' for the right to be seen. Since **every cut comes off
-  the tail**, put the routing there first — verbs, `Use when`, then the boundary — and let any
-  capability sweep be the last clause, as the only part you can afford to lose; keeping it short is
-  what actually protects the rest. Length is a smell anyway: a classifier needing 1100 characters is listing what the skill
-  *can* do instead of what should *trigger* it; most good ones land at 500–900. Measure with the
-  bundled `audit-frontmatter.ts` (invocation under Bundled resources), never a `description:`
-  line-grep, which bleeds into later keys and has falsely flagged skills as over-cap
-  (`references/precedents.md` §3).
+- **Keep the description under 1024 characters, and aim for 500–900** (the audit script warns from 922). Codex's validator rejects a
+  longer one and its runtime truncates it (Codex CLI, 2026-08); under the cap, a shared skills budget
+  still shortens descriptions from the tail. So put the routing first (verbs, `Use when`, the
+  boundary) and any capability sweep last. Measure with `audit-frontmatter.ts` (Bundled resources),
+  never a `description:` line-grep, which bleeds into later keys (`references/precedents.md` §3).
 
 ### Who may invoke it — two flags, three combinations
 
 The description decides *whether* a skill is a candidate; two frontmatter flags decide *who is allowed
-to pull the trigger*. Both default to off, which is why most authors never meet them:
+to pull the trigger*. Both default to off, which is why most authors never meet them (Claude Code,
+verified 2026-11):
 
 | Frontmatter                      | User | Model | Description in context      |
 | -------------------------------- | ---- | ----- | --------------------------- |
@@ -134,13 +129,11 @@ to pull the trigger*. Both default to off, which is why most authors never meet 
 
 Setting both is the one unreachable combination — it leaves nobody who can run the skill.
 
-**These two keys are Claude Code frontmatter; Codex reads neither** (checked 2026-11 against Codex
-CLI's own migration notes — re-check on a new major version). Those notes list
-`disable-model-invocation` as having no Codex equivalent. They map `user-invocable` to
-`policy.allow_implicit_invocation` in the skill's `agents/openai.yaml` and call that mapping
-"similar intent, not equivalent semantics". So for a skill shipping to both hosts, the confirmation
-stop in the body is the only gate both hosts read. Set the flag where it exists, and keep the stop in
-the body either way.
+**These two keys are Claude Code frontmatter; Codex reads neither** (Codex CLI's migration notes,
+2026-11). Its nearest setting for `user-invocable` is `policy.allow_implicit_invocation` in the
+skill's `agents/openai.yaml` ("similar intent, not equivalent semantics"); `disable-model-invocation`
+has no equivalent. So for a skill shipping to both hosts, the confirmation stop in the body is the
+only gate both read: set the flag where it exists, and keep the stop in the body either way.
 
 - **`disable-model-invocation: true` is the mechanical fix for the Surprise Skill (§6).** A skill that
   deploys, publishes, spends money, messages someone, or rewrites history should be *unable* to
@@ -166,21 +159,13 @@ Three context tiers — design for the loading path:
 The biggest structural mistake is putting tier-3 material in tier 2. Once a skill triggers, its body
 **stays in context for the rest of the session**, so every wasted line is paid for repeatedly.
 
-- **Length:** most bodies want ~100–250 lines; treat 300+ as a warning sign; **~500 is where
-  length stops being free and has to be paid for section by section.** Past it, add a layer of
-  hierarchy and point outward, then run one falsifiable test on every section still inline: **could
-  its depth move to a reference, leaving one line of ruling behind?** If it could, that section is
-  bloat and the body fails. The only answer that passes is that moving it would strand a ruling
-  or a branch condition, which §2 forbids moving. "It is all important" is not that answer, and a
-  body that cannot name a surviving section has not been examined — it has been excused. A
-  `SKILL.md` over 500 lines then owes **a one-line verdict** recording that the test was run and why
-  what is left had to stay, naming those sections, so the next reviewer can check the argument
-  instead of re-deriving it; at 500 or
-  fewer nothing is owed. Per §8 that mandate is a string, so it has a fixed marker and an exact
-  cutoff: a line starting `Length verdict (§2):`, against `wc -l` over the whole file, frontmatter
-  included. The bundled `audit-markers.ts` checks it and ignores a verdict that is only quoted inside
-  code (a hand-grep's traps: `references/precedents.md` §9). Workflow skills budget per step instead —
-  see the subsection at the end of this section.
+- **Length:** most bodies want ~100–250 lines; treat 300+ as a warning sign. **Past ~500, test every
+  inline section: could its depth move to a reference, leaving one line of ruling behind?** If so, it
+  is bloat. Only a stranded ruling or branch condition justifies keeping it ("it is all important" is
+  not an answer). Such a file then owes a line starting `Length verdict (§2):` (counted with `wc -l`
+  over the whole file) naming the sections that had to stay; `audit-markers.ts` checks it (hand-grep
+  traps: `references/precedents.md` §9). This is the one statement of the rule; workflow skills
+  follow it too, and judge length per step.
 - **Body skeleton that works:** `When to use` (+ when not) → `Goal`/success state → `Workflow` →
   `Decision rules` (If X, do Y) → `Output` → `Quality checks` → `Bundled resources`.
 - **Signpost with activation conditions**, never "see the references": write `Read
@@ -243,10 +228,9 @@ replies — state it once, name each item as you start it, account for every one
 
 **Keep one of the two marker sentences verbatim**: `Register these as todo items` (the block above)
 or `Register them in this session's own todo/plan tool` (the same rule written as prose). It is a
-string mandate (§8), so `audit-markers.ts` can find it. The heading and the rest of the wording are
-yours. Keep every other line of the block too. Each one stops a failure that has actually happened:
-a host whose planner is renamed or deferred, a search that finds the tool and does not recognise it,
-an absence that can never be concluded. `references/workflow-skills.md` §1 says which line stops which.
+string mandate (§8), so `audit-markers.ts` can find it. The heading and the phrasing of each line
+are yours; what every line does must stay (`references/workflow-skills.md` §1 says which failure each
+line stops).
 
 **One item per thing that can be independently skipped — a step holding N checks is itself a
 checklist.** The block cures skimming at the level it enumerates and nowhere below: register a step
@@ -257,11 +241,9 @@ so*, not *decomposable*; below that line the item stays whole and **its close ca
 enumeration**. Unlike the marker, this is a **property**: no string detects it, so its audit is that
 per-item test plus checklist item 9 (§8 says why the distinction matters).
 
-**Length: a workflow skill is the legitimate exception to the ~100–250 default** — not to the
-over-500 test. It carries N steps, each a small task skill, so budget **per step** rather than counting the
-file. The tier-2 cost doesn't change, so past 500 lines a workflow owes the same per-section test and
-the same `Length verdict (§2):` line as anything else — applied per step: **one file per deep step**,
-keeping the step, its order, its branch conditions and its rulings inline.
+**Length: a workflow skill may run past the ~100–250 default** — budget it per step, with one
+reference per deep step, keeping each step's order, branch conditions and rulings inline. The over-500
+rule above applies unchanged.
 
 📖 **`references/workflow-skills.md` before you write the step list** — why each line of the block
 is there, the body skeleton for this kind, and the nesting wording for both shapes of todo tool (your steps add to
@@ -286,31 +268,20 @@ Brief a competent, fast, literal-ish, context-budgeted colleague — not a lawye
 
 ### Under-constrain on purpose — what changed with the Claude 5 generation
 
-Anthropic cut most of Claude Code's system prompt for the Claude 5 models with no measurable loss
-(source, dated: `references/precedents.md` §8 — read it when you're deciding how far to cut). What
-matters for a skill author is *why* over-constraint costs: not tokens, but **conflict**. Two surfaces
-saying opposite things make the model spend its reasoning reconciling you instead of on the task. So
-the default flipped: write the **least** instruction that still gets the behaviour, and let the model
-read the surrounding context.
+Over-constraint now costs **conflict**, not tokens: two surfaces saying opposite things make the model
+spend its reasoning reconciling you. So write the least instruction that still gets the behaviour
+(source and per-surface detail: `references/precedents.md` §8).
 
-- **A skill is a lightweight guide for finding information when needed — not a repository of
-  everything.** The "central repository" instinct is named as a myth: authors stuff every known
-  practice into one file assuming the model won't find it otherwise. Over-constrain only in genuinely
-  high-stakes areas (the hierarchy above); everywhere else state the goal and stop.
-- **Check a skill against its NEIGHBOURS, not just against itself.** The expensive failure is two
-  surfaces that each read fine alone — a skill and the repo's `CLAUDE.md`, or two sibling skills —
-  issuing opposite instructions into the same request. When you add a rule, read what will be loaded
-  alongside it and **delete the loser** rather than shipping both and hoping.
-- **Say it once.** If an instruction belongs in a tool/script description, a `--help`, or an enum, it
-  does not also belong in the body — and a rule or procedure stated in two places of one file is two
-  rules waiting to diverge. Duplication was a workaround for older models weighting the end of their
-  context window; now it is pure conflict surface. The one exception is a one-line safeguard repeated
-  at the step it guards (§2) — and that exception is the whole of it.
-- **Don't expect the host's tooling to rightsize your prose.** Host "doctor" commands at most report
-  which skills are unused or costly; none shortens a line for you. Rightsizing is by hand (what was
-  checked, and when: `references/precedents.md` §12).
-- **This guidance is generation-specific.** Several of these reversals invert advice that was *correct*
-  for older models. Re-verify when a new model family ships — and stamp what you write the same way.
+- **A skill is a lightweight guide, not a repository of everything.** Over-constrain only where the
+  stakes are high (the hierarchy above); elsewhere state the goal and stop.
+- **Check a skill against its neighbours**, not just itself: read what loads alongside it (sibling
+  skills, the repo's `CLAUDE.md`) and delete the loser of any contradiction.
+- **Say it once.** A rule that belongs in a tool description, a `--help` or an enum does not also
+  belong in the body, and a rule stated twice in one file is two rules waiting to diverge. The one
+  exception is §2's safeguard at the step it guards.
+- **No host command rightsizes prose for you**; that is by hand (`references/precedents.md` §12).
+- **This guidance is generation-specific**: re-verify it when a new model family ships, and date
+  what you write.
 
 ## 4. Generalize, don't overfit
 
@@ -354,22 +325,17 @@ because SKILL.md is Markdown.
 - **`scripts/`** — deterministic work where exactness matters or the model makes mechanical mistakes
   (validate frontmatter, check the tree, convert formats, lint, parse logs). Give them `--help` and
   **verbose, LLM-readable errors** so the agent can debug a failure instead of staring at exit-1. Not
-  for judgment ("decide the positioning"). Three rulings, each of which has already cost a run:
-  - **TypeScript run with bun is the default language.** Python when the work needs a library only
-    Python has; anything else — bash included — only for a reason you write down in the file.
+  for judgment ("decide the positioning"). Three rulings, each of which has already cost a run
+  (the why and the cases: `references/skill-scripts.md` §1–§3):
+  - **TypeScript run with bun is the default language**; Python when only Python has the library;
+    anything else, bash included, only for a reason written in the file.
   - **A script may be a pure transformation; it may not supervise a long-lived process, keep state
-    between invocations, or retry.** Any of those three makes it a program, and a program belongs in
-    a real codebase with types, tests and a review history — not under `skills/`. This is a test of
-    shape, **not of size**: a long converter is fine where a short orchestrator is not.
-  - **A documented command must reach a runnable form using only what the agent already has** — from
-    any working directory. Two acceptable shapes: a name already on `PATH`, or an explicit
-    placeholder the agent replaces with a **literal** value it knows (the directory it loaded the
-    skill from). Both are forbidden from depending on unset state: never a repo-relative path, and
-    never a variable like `$SKILL_DIR`, which is **not set** in the agent's shell — a command built
-    from it resolves to `/scripts/…` and fails exactly like the bare path it replaced. Mark a
-    placeholder as one, and quote it, so a substituted path containing spaces still runs. Do not
-    assume a plugin's `bin/` reaches `PATH` — that is host-specific. When you fix an invocation,
-    **replace** the old form rather than leaving both.
+    between invocations, or retry.** That is a test of shape, not size; a program belongs in a real
+    codebase with tests.
+  - **A documented command must run from any working directory using only what the agent has**: a
+    name already on `PATH`, or a quoted placeholder the agent replaces with a literal path it knows
+    (the directory it loaded the skill from). Never a repo-relative path, and never `$SKILL_DIR`, which
+    is not set in the agent's shell. When you fix an invocation, replace the old form.
 - **`assets/`** — reusable non-instruction files: templates, logos, themes, sample outputs.
 
 **Prefer a reference in CODE form over the same thing in prose** — an artifact the model can read in
@@ -409,27 +375,8 @@ how to write an error a model can act on.
 | **Rotten Date**        | silently wrong over time                         | isolate volatile facts, stamp "verified as of …", tell the agent to re-check when freshness matters   |
 | **Surprise Skill**     | auto-runs destructive/expensive/private actions  | confirm first in the body, plus the host's invocation flag where one exists (§1) — _a skill may be powerful; it must not be sneaky_ |
 | **Decorative Checklist** | a workflow skill's steps get skimmed — the agent does 1, 3 and 7 and calls it done | numbered prose is not a checklist → open the skill with the copyable Step-0 TODO block (§2) |
-| **All-or-Nothing Gate** | a completeness rule makes runs record *nothing* | see below                                                                                             |
-| **Self-Confirming Check** | a capability check that can only ever answer "no", so a fallback becomes the only path | see below                                                                                             |
-
-**All-or-Nothing Gate — write the completeness rule so it gates the CONCLUSION, not the RECORDING.**
-*"Do not write anything unless you have all N sources"* reads as rigour and behaves as data loss: the
-run that falls short discards what it did gather. Split it in two — **recording** partial input is
-always allowed and carries an explicit coverage line (`partial pass: 7/16, missing: …`); only the
-**derived conclusion** (the score, the verdict, the published number) waits for full coverage. Then a
-reader can tell "no signal" from "nobody looked". (What it cost once: `references/precedents.md` §6.)
-
-**Self-Confirming Check — never write a capability test whose failure looks like its own answer.**
-*"If tool X isn't in your tool list, fall back"* is not a test on a host that **defers** tools:
-nothing is listed until the host's tool search loads it, so the check always answers "absent". Make
-the probe positive: name the search/load step as part of the test, and treat the capability as
-missing only if the load itself comes back empty.
-
-The mirror image is worse: **a check with no floor tells a correct agent it is wrong.** A skill that
-asserts a capability exists and offers no way to conclude otherwise makes a genuine absence read as
-agent error. Give every absence a floor — "two empty probes close the question; that is a fact about
-this host, not your mistake" — and date the host claim, because host state changes (both cases:
-`references/precedents.md` §10).
+| **All-or-Nothing Gate** | a completeness rule makes runs record *nothing* | gate the CONCLUSION, not the RECORDING: partial input is always recorded with a coverage line (`partial pass: 7/16, missing: …`); only the derived verdict waits for full coverage (`references/precedents.md` §6) |
+| **Self-Confirming Check** | a capability check that can only ever answer "no" (or "yes") | make the probe positive (name the search/load step as part of the test) and give every absence a floor: "two empty probes close the question; that is a fact about this host, not your mistake". Date the host claim (`references/precedents.md` §10) |
 
 ## 7. Test it — anecdotes aren't evals
 
@@ -474,33 +421,13 @@ This skill's own set is `references/trigger-tests.md`. Copy its shape for yours.
   same change, or point them all at one canonical recipe. If the warning would then appear in three
   places, the fix belongs one layer down — in the server, the tool schema, or a default — where it
   retires every copy at once.
-- **A mandatory rule needs an audit and a rollout, or it binds only the skill you were editing.**
-  Say, in the same change, **how conformance is detected** and **who gets swept**:
-  - **A requirement that IS a string** (a block, a heading, a named section) gets a **fixed marker**,
-    chosen when you write the rule: at most two forms, taken from what conforming skills already
-    say. Pair it with the **inventory of skills the rule applies to** — the grep is a shortlist, the
-    inventory is the verdict. The check ignores a marker inside code, or a skill that only quotes it
-    passes (`audit-markers.ts` does this for this guide's markers). Repair later drift in the skills,
-    never by widening the pattern. Why each of these, and the `grep -L` traps of a hand-run check:
-    `references/precedents.md` §9.
-  - **A requirement that is a PROPERTY** no string can express — "each item covers one
-    independently-skippable thing", "the branch condition is in the body" — has no marker, so **say
-    so and name the check that enforces it instead**: a line in the pre-ship checklist, and a named
-    check in whatever review the library runs. Inventing a marker for a property is worse than none;
-    it makes the grep pass while the property is absent.
-  - **Rollout is the second half, and it is the one that silently doesn't happen.** Enumerate every
-    plugin — not the ones you happened to be editing — or, if that is a job of its own, file it as
-    its own work item in the same change. A mandate landed on one skill is a mandate nobody else has.
-- **A periodic re-review is the point, not a chore.** Skills drift out of conformance as this guidance
-  itself changes — the Claude 5 reversals (§3) invalidated advice that was correct when written. Sweep
-  the library on a cadence: run the bundled `audit-frontmatter.ts` and `audit-markers.ts` (no host
-  command rightsizes prose for you, §3), then go by hand for what they can't see. **Record
-  the COMMIT this guide was at when each review ran, and open the next one by diffing the endpoints —
-  `git diff <sha>..HEAD -- <path/to/this/skill>`** — otherwise a reviewer applies the rules it
-  already knew, and a skill written before a rule silently conforms to nothing: a skipped check no
-  report can show. Anchor on a SHA. Do not use `log -p`, which replays rules later withdrawn, or a
-  package version, which is not a revision. Then look for what no diff shows — a missing `Do not use for…` (§1), a ruling
-  stranded in a reference (§2), rules contradicting a neighbouring skill or `CLAUDE.md`.
+- **A mandatory rule needs an audit and a rollout, or it binds only the skill you were editing.** In
+  the same change, say how conformance is detected (a fixed marker for a requirement that is a string;
+  a named check for one that is a property) and who gets swept (every plugin, or a work item that
+  will). Mechanics: `references/library-maintenance.md` §1.
+- **Re-review the library on a cadence**, because skills drift as this guide changes. Run the two
+  bundled audits, then go by hand. Record the commit this guide was at, and open the next review by
+  diffing from it: `references/library-maintenance.md` §2.
 - **Principle of least surprise:** the skill's behaviour must not surprise someone who only read its
   description. Destructive, irreversible and external actions get the confirmation stop of §1.
 - No malware, exploit code, or instructions that exfiltrate data or evade controls. (Role-play/persona
@@ -540,10 +467,9 @@ on one but not the other is the usual portability failure.
 ## Pre-ship checklist
 
 1. Can a stranger agent tell from the **description** alone when to fire it — verbs, artifacts,
-   situations, synonyms, one boundary? Did you trigger-test ~10/~10?
+   situations, synonyms, one boundary? Did you **run** the ~10/~10 trigger set (§7) and record it?
 2. Is the **body lean** (~100–250 lines), tier-3 material moved to bundled files, references
-   **signposted with conditions**? Over 500 lines: a `Length verdict (§2):` line naming the sections
-   that had to stay? For anything you moved out: did **both halves** of each paired
+   **signposted with conditions**? Over 500 lines: the verdict line (§2)? For anything you moved out: did **both halves** of each paired
    rule travel together, so nothing is left only-prohibited inline? Reading the body ALONE, does the
    agent know **which way to go at every branch** (§2)? Does each safeguard sit **at the step it
    guards**, not only in a preamble (§2)?
@@ -563,8 +489,10 @@ on one but not the other is the usual portability failure.
 9. **Workflow skill?** Does it open with the copyable **Step-0 TODO block** carrying a marker
    sentence verbatim (`audit-markers.ts`), does every item resolve to a named place in the body (and vice-versa), is no
    item a **bundle of independently-skippable checks**, and is every deep step's evidence in
-   `references/`? Length is judged **per step** — and past 500 lines the body carries a
-   `Length verdict (§2):` line.
+   `references/`?
+10. The §8 properties: does every measurement carry its boundary? Did you **run** the commands the
+   skill prescribes? Does the body honour the skill's own scope claims? After a fix, did you grep the
+   file for other routes to the same failure?
 
 ## Bundled resources
 
@@ -578,8 +506,10 @@ on one but not the other is the usual portability failure.
 - **`references/skill-scripts.md`** — the depth behind §5's `scripts/` bullet: why TypeScript+bun is
   the default language, the line a script may not cross, and how a documented command reaches a
   runnable form from any working directory. Read it before you add or grow a `scripts/` file.
-- **`references/trigger-tests.md`** — should-fire and should-not-fire prompts for this skill. Read it
-  when you change the description, and re-run them.
+- **`references/library-maintenance.md`** — §8's mechanics: auditing and rolling out a mandatory
+  rule, and a review anchored on a commit. Read it when you add such a rule or open a library review.
+- **`references/trigger-tests.md`** — should-fire and should-not-fire prompts for this skill and the
+  run record. Read it when you change the description, and re-run them.
 - **`scripts/audit-frontmatter.ts`** — the frontmatter audit: the 1024 cap, missing boundaries,
   name↔directory, unparseable YAML. Run it before shipping a description change and at the start of
   any library-wide sweep (§1).

@@ -8,9 +8,24 @@
 Run each prompt in a fresh session with the marketplace installed, and record whether this skill
 loads. A prompt passes when the result matches the column it is in. Record each run below.
 
-**Runs:** none yet. The set was written on 2026-11-14 from the description and has not been run.
-Until a dated row appears here (host, fired x/10, stayed silent y/10), the description's routing has
-been reviewed but not measured.
+Write realistic prompts: name the skill the user means. A prompt about "this skill" with nothing to
+point at makes the model ask which one, which measures the prompt, not the description.
+
+**How it was run:** a fresh `claude -p` per prompt from an empty directory, `--plugin-dir` on the
+working tree, `--max-turns 2`, MCP servers cut off, and writes, shell, web, subagents and workflows
+disallowed. "Fired" = a `Skill` call naming this skill.
+
+**Runs:**
+
+| Date | Host · model | Description | Fired | Silent | Note |
+| --- | --- | --- | --- | --- | --- |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | previous | 6/10 | 10/10 | three prompts said "this skill" with no skill named; one went to another installed review skill |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | previous | 6/10 | 10/10 | skills named; the model searched for the file, then answered from memory without loading this skill |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | interim | 10/10 | 10/10 | the description now says to load it before answering any question about a skill |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | current (shipped) | 10/10 | 12/12 | boundary adds CLAUDE.md / slash commands / subagents; two near-misses added for it |
+
+What these runs do not establish: Codex routing (not run), other models, repeat stability, or
+whether the skill improves the answer (no with-skill vs baseline task run yet).
 
 ## Should fire
 
@@ -19,13 +34,13 @@ been reviewed but not measured.
 | "write a skill that summarises our standup notes" | the core verb + object |
 | "make a SKILL.md for our deploy checklist" | the file name as the keyword |
 | "my skill never triggers, what's wrong with the description?" | a symptom, not a verb |
-| "this skill keeps auto-firing when nobody asked for it" | the opposite symptom (§1 flags) |
+| "my invoice-check skill keeps auto-firing on any message that mentions money — how do I stop it?" | the opposite symptom (§1 flags) |
 | "the agent skips half the steps of my workflow skill" | the workflow kind (§2 Step-0 block) |
 | "shorten this SKILL.md, it's 900 lines" | length (§2) |
-| "review my skill before I publish it" | a review, not a write |
+| "review my standup-notes skill before I publish it; its description is 'Summarise standup notes into decisions and owners'" | a review, not a write |
 | "як написати скіл для перевірки рахунків?" | a native-language phrasing |
-| "чому мій скіл не тригериться?" | a native-language symptom |
-| "does this skill work on Codex too?" | portability (§9) |
+| «чому мій скіл invoice-check не тригериться, коли я пишу "перевір рахунок"?» | a native-language symptom |
+| "I wrote a SKILL.md that calls a Claude Code hook — will it work on Codex too?" | portability (§9) |
 
 ## Should NOT fire
 
@@ -41,6 +56,8 @@ been reviewed but not measured.
 | "what skills does this candidate list on their CV?" | "skills" in its everyday sense |
 | "run the eval harness on my skill" | eval tooling, which §7 leaves to the host |
 | "review my pull request" | a code review, not a skill review |
+| "write a subagent definition for a security reviewer" | a subagent, not a SKILL.md → the host's docs |
+| "add a /deploy slash command to this repo" | a slash command → the host's docs |
 
 ## What a failure means
 
