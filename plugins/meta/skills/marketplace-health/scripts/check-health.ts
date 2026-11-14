@@ -25,7 +25,8 @@
  * something is installed from (Codex configures several host-bundled ones you never use). Name a
  * marketplace when the question is about one.
  * Exit 0 = healthy, 1 = a finding (stale, auto-update off/conflicting, unverified), 2 = could not run
- * (including: the named marketplace is configured on no host checked, or nothing was checked at all).
+ * (including: an unknown flag, a second name, the named marketplace configured on no host
+ * checked, or nothing checked at all).
  * It never refreshes, installs or edits a file — those are state changes the skill gates.
  */
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
@@ -33,16 +34,31 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 const args = process.argv.slice(2)
-if (args.includes('--help') || args.includes('-h')) {
+// One pass, refusing what we do not parse: a typo'd flag silently ignored (`--offlne`) would run the
+// network checks the caller meant to skip, and still exit as if asked. --help wins only when the rest
+// of the line is valid.
+let hostArg = 'both'
+let hostSeen = false
+let offline = false
+let help = false
+const positional: string[] = []
+for (let i = 0; i < args.length; i++) {
+  const a = args[i]
+  if (a === '--help' || a === '-h') help = true
+  else if (a === '--offline') offline = true
+  else if (a === '--host') {
+    if (hostSeen) fail2('--host given twice')
+    hostSeen = true
+    hostArg = args[++i] ?? ''
+    if (!['claude', 'codex', 'both'].includes(hostArg)) fail2('--host takes claude, codex or both')
+  } else if (a.startsWith('-')) fail2(`unknown flag ${a}; the flags are --host, --offline and --help`)
+  else positional.push(a)
+}
+if (positional.length > 1) fail2(`expected at most one MARKETPLACE_NAME, got: ${positional.join(' ')}`)
+if (help) {
   console.log(readFileSync(import.meta.path, 'utf8').replace(/^#!.*\n/, '').split('*/')[0].replace(/^\/\*\*?|^ \* ?/gm, ''))
   process.exit(0)
 }
-const hostIdx = args.indexOf('--host')
-const hostArg = hostIdx >= 0 ? args[hostIdx + 1] : 'both'
-if (!['claude', 'codex', 'both'].includes(hostArg ?? '')) fail2('--host takes claude, codex or both')
-const offline = args.includes('--offline')
-const positional = args.filter((a, i) => !a.startsWith('-') && !(hostIdx >= 0 && i === hostIdx + 1))
-if (positional.length > 1) fail2(`expected at most one MARKETPLACE_NAME, got: ${positional.join(' ')}`)
 const only = positional[0]
 
 function fail2(msg: string): never {
@@ -82,7 +98,7 @@ const cmp = (a: string, b: string) => {
 const githubRepo = (src: any): string | undefined => {
   if (src?.source === 'github' && typeof src.repo === 'string') return src.repo
   const url = typeof src === 'string' ? src : src?.url
-  const m = typeof url === 'string' ? url.match(/github\.com[:/]([^/]+\/[^/.]+?)(\.git)?$/) : null
+  const m = typeof url === 'string' ? url.match(/github\.com[:/]([^/]+\/[^/]+?)(\.git)?\/?$/) : null
   return m?.[1]
 }
 // `ref` is the branch or tag the marketplace is pinned to; without one, the default branch.
@@ -331,7 +347,7 @@ async function codex() {
         continue
       }
       const older = semverish(have) && semverish(want) ? cmp(have, want) < 0 : have !== want
-      if (older) flag(`${plugin}: ${label} ${have} vs remote ${want} → STALE (\`codex plugin marketplace upgrade ${name}\`)`)
+      if (older) flag(`${plugin}: ${label} ${have} vs remote ${want} → STALE (\`codex plugin marketplace upgrade ${name}\`, then confirm with \`codex plugin list --json\`)`)
       else ok(`${plugin}: ${label} ${have} = remote ${want}`)
     }
   }

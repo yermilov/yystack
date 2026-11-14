@@ -29,6 +29,8 @@ this plugin. The first four rows did not record which.
 | 2026-11-14 | Claude Code · claude-fable-5-2 · full | meta 0.7.49 (878 chars), old prompts | 10/10 | 12/12 | same |
 | 2026-11-14 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.49 (878 chars) | 10/10 | 12/12 | two should-fire prompts now name the skill they mean |
 | 2026-11-14 | Claude Code · claude-fable-5-2 · full | meta 0.7.49 (878 chars) | 10/10 | 12/12 | same |
+| 2026-11-14 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.52 (893 chars) | 10/10 | 13/13 | reciprocal boundary with marketplace-health; a never-showed-up near-miss added |
+| 2026-11-14 | Claude Code · claude-fable-5-2 · full | meta 0.7.52 (893 chars) | 10/10 | 13/13 | |
 
 What these runs do not establish: Codex routing (not run — Codex routes from the INSTALLED copy, so
 a run counts for this description only once the installed text matches it), other models, or repeat
@@ -68,6 +70,7 @@ should carry one of those.
 
 | Prompt | Why not — and what should fire instead |
 | --- | --- |
+| "I pushed my new deploy-checklist skill to our marketplace yesterday and it still doesn't show up in Claude Code" | an install that never picked up the change → `marketplace-health` |
 | "bump the plugin version and add it to marketplace.json" | packaging → `plugin-dev` |
 | "create a new plugin with two manifests" | packaging → `plugin-dev` |
 | "is my marketplace up to date on this machine?" | install state → `marketplace-health` |

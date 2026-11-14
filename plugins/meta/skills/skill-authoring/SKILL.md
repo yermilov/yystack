@@ -6,11 +6,11 @@ description: >-
   auto-firing, length, steps or Codex portability, even one you could answer from memory. Use when
   creating, editing, improving, reviewing, shortening or debugging a skill / SKILL.md: «як написати
   скіл», «створити/покращити скіл», «чому скіл не тригериться», "write a skill", "make a SKILL.md",
-  "my skill never triggers", "my workflow skill skips steps", "will my
-  skill work on Codex", "review my skill before I publish it". Do not use for plugin PACKAGING —
-  manifests, version bumps, marketplace wiring, README tables (that is plugin-dev) — nor for
-  building or running evals (the host's eval tooling), nor for a CLAUDE.md / AGENTS.md, a slash
-  command or a subagent definition (the host's docs).
+  "my skill never triggers", "my workflow skill skips steps", "will my skill work on Codex", "review
+  my skill before I publish it". Do not use for plugin PACKAGING — manifests, version bumps,
+  marketplace wiring (plugin-dev) — a skill that never appeared after an install or push
+  (marketplace-health), evals (the host's tooling), nor a CLAUDE.md / AGENTS.md, a slash command or
+  a subagent definition (the host's docs).
 ---
 
 # Skill authoring
@@ -24,7 +24,7 @@ guide: how to make the prose itself good.
 > (`references/trigger-tests.md`). To review a skill, work the Pre-ship checklist at the end: it is the
 > review procedure. If you change this skill, keep it a worked example.
 
-Length verdict (§2): 2026-11-14 — 572 lines. Every section still inline is a ruling an author
+Length verdict (§2): 2026-11-14 — 573 lines. Every section still inline is a ruling an author
 applies while writing (§1 activation and the two-host flag table, §2 tiers, §3 voice, §4
 generalising, §5 bundling, §7 testing, §8 maintenance rulings, §9 portability); evidence, sources
 and mechanics live in `references/`. Three choices keep it over 500 on purpose: the Step-0 block
@@ -70,9 +70,10 @@ the structure guidance below (§2) applies *through* the lens of the kind you pi
 others **by name** across the installed set. Grow small composable skills rather than one monolith;
 the God Skill (§6) is what you get when you don't.
 
-**When NOT to use this skill:** the description's boundary — packaging a plugin (`plugin-dev`), an
-eval harness (your host's tooling; §7 says only *what* to test), a `CLAUDE.md` / `AGENTS.md`, a slash
-command or a subagent definition. This one is about writing the prose well.
+**When NOT to use this skill:** the description's boundary — packaging a plugin (`plugin-dev`), a
+skill that never appeared after an install or push (`marketplace-health`), an eval harness (your
+host's tooling; §7 says only *what* to test), a `CLAUDE.md` / `AGENTS.md`, a slash command or a
+subagent definition. This one is about writing the prose well.
 
 ## 1. Activation — the description is the trigger, the flags decide who may pull it
 

@@ -1,21 +1,15 @@
 # A plugin that never appeared — the reads and the install (Claude Code)
 
-Read this when a plugin "never appeared at all" (Step-0 item 4). The ruling — enabled is not
-installed, the registry is the authority, state changes only under the go-ahead rule — is in
-`SKILL.md`; this file is the procedure.
+Read this when a plugin "never appeared at all" (Step-0 item 4). The rulings — enabled is not
+installed, `claude plugin list --json` is the authority, state changes only under the go-ahead rule —
+are in `SKILL.md`; this file adds only the catalog read and the two-step fix.
 
-**Why it happens.** The catalog clone under `~/.claude/plugins/marketplaces/<name>/` is a git
-checkout that lags the push. Until it is re-pulled, the catalog has no such plugin and there is
-nothing to install, whatever `enabledPlugins` says.
-
-**Read 1 — is it installed?** `claude plugin list --json`, looking for `<plugin>@<marketplace>`.
-That registry is the authority. A cache directory can linger from an uninstalled or superseded copy
-(`.orphaned_at` marker files sit inside retained version directories), so `ls` gives false positives.
-
-**Read 2 — does the catalog know it yet?** Check that the clone's `.claude-plugin/marketplace.json`
-lists `<plugin>`, and compare `git -C ~/.claude/plugins/marketplaces/<name> rev-parse HEAD` with
-`git ls-remote origin HEAD` from the same directory. Also compare the catalog's `metadata.version` with the remote's: if the plugin list
-changed and that number did not, the client may not re-read the catalog.
+**Does the catalog know it yet?** In the clone at `<installLocation>` (from
+`~/.claude/plugins/known_marketplaces.json`), check that `.claude-plugin/marketplace.json` lists
+`<plugin>`, and compare `git -C <installLocation> rev-parse HEAD` with
+`git -C <installLocation> ls-remote origin HEAD`. Compare the catalog's `metadata.version` with the
+remote's too: if the plugin list changed and that number did not, the client may not re-read the
+catalog — an upstream defect for `plugin-dev`.
 
 **The fix is two steps** — refreshing alone only makes the plugin visible:
 1. `claude plugin marketplace update <name>`
