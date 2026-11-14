@@ -23,6 +23,8 @@ disallowed. "Fired" = a `Skill` call whose skill is exactly `marketplace-health`
 | 2026-11-14 | Claude Code · claude-fable-5-2 · full | meta 0.7.52 (886 chars) | 11/11 | 12/12 | |
 | 2026-11-14 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.52 (892 chars) | 13/13 | 12/12 | update-request phrasings added to the description and two should-fire prompts |
 | 2026-11-14 | Claude Code · claude-fable-5-2 · full | meta 0.7.52 (892 chars) | 13/13 | 12/12 | |
+| 2026-11-14 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.54 (893 chars) | 13/13 | 13/13 | boundary toward install-bun (a missing-Bun session note) + its should-not row, which routed to install-bun |
+| 2026-11-14 | Claude Code · claude-fable-5-2 · full, installed `meta@yystack` disabled | meta 0.7.54 (893 chars) | 13/13 | 13/13 | |
 
 **Full** = the runner's other installed plugins loaded too; **isolated** = `--setting-sources project`,
 only this plugin. Rows without either were not recorded.
@@ -75,3 +77,4 @@ and a shell-enabled pair needs an OS-level sandbox first (the reviewing method's
 | "is my npm package up to date?" | a different package system |
 | "check my home network health" | "health", but not plugins |
 | "write a skill that checks versions" | skill authoring → `skill-authoring` |
+| "my session started with: the session-start check runs on Bun, which isn't installed" | Bun is missing → `install-bun` |

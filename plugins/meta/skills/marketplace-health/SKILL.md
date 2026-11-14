@@ -1,16 +1,16 @@
 ---
 name: marketplace-health
 description: >-
-  Check that an installed plugin marketplace (Claude Code or Codex) is HEALTHY — the latest
-  published plugin versions installed, auto-update on — and, only on an explicit update request,
+  Check that an installed Claude Code or Codex plugin marketplace is HEALTHY — the latest
+  plugin versions installed, auto-update on — and, only when asked to update,
   bring a stale install current. Use when the user asks "is my marketplace up to date / am I on the
   latest?", "why didn't my new skill/plugin show up after I pushed?", "are plugin auto-updates on?",
   "a plugin enabled in settings never appeared", "update my plugins to the latest", "why the
   marketplace warning at session start?", or after a publish — «чи оновлений маркетплейс», «онови
   плагіни», «чому не підтягнулась нова версія скіла». Do not use to author a marketplace or bump
   versions (plugin-dev), to turn auto-update on or off (enable-autoupdate), to bootstrap a
-  marketplace REPO or refresh its vendored meta plugin (clone-marketplace), nor for an installed
-  skill that never triggers (skill-authoring).
+  marketplace repo or refresh its meta plugin (clone-marketplace), for a skill that never
+  triggers (skill-authoring), nor a missing-Bun session note (install-bun).
 ---
 
 # Marketplace health check

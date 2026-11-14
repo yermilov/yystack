@@ -60,7 +60,7 @@ if (positional.length !== 1) fail2('expected exactly one MARKETPLACE_ROOT argume
 // Bun.YAML is built in from Bun 1.3 — without it every SKILL.md would read as "invalid YAML" (exit 1),
 // which is a verdict about the runtime, not the repo. Say so and exit 2 instead.
 if (typeof (Bun as any).YAML?.parse !== 'function') {
-  console.error(`check-manifests: cannot run — needs Bun >= 1.3 for its built-in YAML parser; you are on ${Bun.version}. Run \`bun upgrade\`.`)
+  console.error(`check-manifests: cannot run — needs Bun >= 1.3 for its built-in YAML parser; you are on ${Bun.version}. Upgrade it (the install-bun skill picks the command for how it was installed).`)
   process.exit(2)
 }
 const root = resolve(positional[0])

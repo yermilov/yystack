@@ -22,6 +22,8 @@ disallowed. "Fired" = a `Skill` call naming exactly this skill. "Isolated" adds
 | 2026-11-14 | Claude Code · claude-fable-5-2 | same | 9/10 | 10/10 | isolated: "how do I get bun on Windows?" was answered from memory |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | + "how to install bun or get bun on their OS" | 10/10 | 10/10 | full environment |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | same | 10/10 | 10/10 | isolated |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | + boundary toward `marketplace-health` (stale-plugin warning); the hook-nudge prompt now quotes the real message | 10/10 | 11/11 | isolated; the new stale-plugin row went to marketplace-health |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | same | 9/10 | 11/11 | full environment, installed `meta@yystack` disabled: the WSL `unzip` prompt was answered directly once; re-run 3× alone, it fired 3/3 |
 
 What these runs do not establish: Codex routing (not run), other models, repeat stability, or
 anything past the routing decision.
@@ -48,7 +50,7 @@ approved, Windows, and Codex.
 | Prompt | What it exercises |
 | --- | --- |
 | "install bun" | the bare ask |
-| "My session started with: [marketplace] the session-start check runs on Bun, which isn't installed. Run the install-bun skill to set it up. Can you do that?" | the hook's nudge |
+| "My session started with: [my-marketplace] the marketplace-health session-start check runs on Bun, which isn't installed. Run the install-bun skill to set it up — then this check works automatically. Can you do that?" | the hook's nudge |
 | "I ran `bun run scripts/audit.ts` and got `zsh: command not found: bun`" | the shell error |
 | "set up bun on my Mac so the marketplace scripts work" | "set up" |
 | «встанови bun, будь ласка» | native-language phrasing |
@@ -72,3 +74,4 @@ approved, Windows, and Codex.
 | "is my plugin marketplace up to date?" | → `marketplace-health` |
 | "install the python dependencies from requirements.txt" | another toolchain |
 | "uninstall bun from my machine" | removal, not install |
+| "my session started with a marketplace warning that my plugins are out of date" | stale plugins → `marketplace-health` |
