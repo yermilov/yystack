@@ -9,7 +9,7 @@ Run each prompt in a fresh session with the marketplace installed, and record wh
 loads. A prompt passes when the result matches the column it is in. Record each run below.
 
 **Runs:** none yet. The set was written on 2026-11-14 from the description and has not been run.
-Until a dated row appears here (host, fired x/11, stayed silent y/10), the description's routing has
+Until a dated row appears here (host, fired x/12, stayed silent y/9), the description's routing has
 been reviewed but not measured.
 
 ## Should fire
@@ -27,6 +27,7 @@ been reviewed but not measured.
 | «що на цьому відео?» (a file) | a native-language phrasing |
 | «зроби конспект цього відео» (a YouTube URL) | native-language summary |
 | "watch this and tell me if the advice is outdated: <YouTube URL>" | "watch", a judgement |
+| "summarise this Loom: https://www.loom.com/share/<id>" | hosted video → asks for the file |
 
 ## Should NOT fire
 
@@ -34,7 +35,6 @@ been reviewed but not measured.
 | --- | --- |
 | "ask ChatGPT and Gemini whether this claim holds" | a multi-model answer → `deep-research` |
 | "read this tweet: https://x.com/<user>/status/<id>" | an X post → `read-twitter` |
-| "summarise this Loom: https://www.loom.com/share/<id>" | hosted non-YouTube video, out of scope |
 | "summarise this article: https://example.com/post" | a web page → `fetch-web-sources` |
 | "download this YouTube video as mp4" | saving the video is out of scope |
 | "make a video of my app's onboarding" | creating video, not reading it |

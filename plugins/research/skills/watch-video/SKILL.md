@@ -8,8 +8,8 @@ description: >-
   with this video": a quick one-shot via Gemini, or a saved knowledge file (captions + Gemini's
   timestamped visual overview) answered from with [MM:SS] citations. Not for a multi-model second
   opinion (deep-research, where installed), a video posted on X (read-twitter fetches the mp4, then
-  uses this skill's file mode), or hosted non-YouTube video (Loom, Vimeo, Wistia), which Gemini
-  cannot ingest.
+  uses this skill's file mode). Hosted non-YouTube video (Loom, Vimeo): Gemini can't ingest it — ask
+  for the file and use the file mode.
 ---
 
 # Watch Video
@@ -40,13 +40,15 @@ whatever todo/plan tool this host gives you, and while work remains keep exactly
 - **Local video file:** 1. Bring the file into a scratch directory · 2. Is there anything to
   transcribe? · 3. Transcribe (conditional; a first install needs a yes) · 4. Watch it — frames
   scaled to the length · 5. Read the transcript before concluding anything from the frames
-- **Quick extract:** 1. Prerequisites — browser + Gemini login verified · 2. Open a fresh chat ·
-  3. Pick the model · 4. Insert the prompt · 5. Submit and confirm it sent · 6. Wait for the response ·
-  7. Extract it · 8. Check Gemini's answer (the close names both controls, or which was skipped and why)
-- **Knowledge file + chat:** 1. Prerequisites — `yt-dlp`, egress probe, browser + Gemini login ·
-  2. Fetch the captions · 3. Gemini's overview (Quick extract steps 2–7) · 4. Check the overview's
-  most important timecode (Quick extract step 8) · 5. Assemble the file · 6. Reply short + hand over
-  the file · 7. Answer follow-ups from the file
+- **Quick extract:** 1. Prerequisites — a browser tool + Gemini login verified (else the
+  captions-only route) · 2. Open a fresh chat · 3. Pick the model · 4. Insert the prompt · 5. Submit
+  and confirm it sent · 6. Wait for the response · 7. Extract it · 8. Check Gemini's answer (the close
+  names both controls, or which was skipped and why)
+- **Knowledge file + chat:** 1. Before you start — existing file, live stream, `yt-dlp` · 2. Egress
+  probe · 3. A browser tool + Gemini login verified · 4. Fetch the captions · 5. Gemini's overview —
+  Quick extract steps 2–7 (the close names each, or why one was skipped) · 6. Check the overview —
+  timecode + numbers · 7. Assemble the file · 8. Reply short + hand over the file · 9. Answer
+  follow-ups from the file
 
 Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
 left open — an unfinished list at the end must mean something really is unfinished.
@@ -129,9 +131,13 @@ Gemini localises labels to the account's language and renames things every few m
 doesn't match, screenshot and find its current equivalent.
 
 1. **Prerequisites** — a browser-automation tool driving a profile signed in to
-   `https://gemini.google.com/` (a paid tier preferred). Verify the login by the account avatar or the
-   greeting with the user's name — not by "the page renders": Gemini shows a usable-looking UI to
-   anonymous visitors.
+   `https://gemini.google.com/` (a paid tier preferred). On a host with deferred tools, search for a
+   browser capability before concluding there is none: one empty search is about the name, two are a
+   real absence. Verify the login by the account avatar or the greeting with the user's name — not by
+   "the page renders": Gemini shows a usable-looking UI to anonymous visitors. **No browser tool, or
+   no login:** tell the user, and offer the **captions-only route** — fetch the captions with
+   `scripts/fetch-transcript.ts` (Knowledge file step 4) and answer from them, saying the answer
+   covers what is said, not what is shown.
 2. **Open a fresh chat** — click "New chat" in the sidebar. Navigating to `/app` does not always start
    a new conversation.
 3. **Pick the model** — the strongest **Pro**/thinking model for steps and structured output; Flash
@@ -200,22 +206,33 @@ stale UI, and keep to 2–4 videos per chat.
 One markdown file per video: the clean transcript plus Gemini's overview of what the transcript can't
 see (slides, on-screen code, diagrams). Follow-ups are then answered from the file.
 
-### 1. Prerequisites and the egress probe
+### 1. Before you start
 
-- `yt-dlp` on `PATH` (install it if missing — `pipx install yt-dlp` or `brew install yt-dlp`).
-- **Probe egress before planning around it**:
-  `curl -o /dev/null -sS -w '%{http_code}' https://www.youtube.com/`. `000` means no HTTP response at
-  all (proxy, DNS, TLS, timeout), so the shell cannot fetch captions this session. Don't scrape them
-  out of the browser instead — those routes return empty bodies that look like "no captions"
-  (`references/precedents.md`). Tell the user and offer a **Gemini-only** file (`caption_source:
-  none`) or Quick extract; ask which.
-- The browser + Gemini login, as in Quick extract step 1.
+- **A file for that id already exists** → ask: reuse it or re-run.
+- **A live stream or premiere** → wait for the recording. **Age-gated, private or paywalled** → don't
+  bypass; say so.
+- `yt-dlp` on `PATH` — if missing, the script's error says how to install it.
 
-### 2. Fetch the captions
+### 2. The egress probe
+
+`curl -o /dev/null -sS -w '%{http_code}' https://www.youtube.com/`. `000` means no HTTP response at
+all (proxy, DNS, TLS, timeout), so the shell cannot fetch captions this session. Don't scrape them out
+of the browser instead — those routes return empty bodies that look like "no captions"
+(`references/precedents.md`). Tell the user and offer a **Gemini-only** file (`caption_source: none`)
+or Quick extract; ask which.
+
+### 3. The browser + Gemini login
+
+As in Quick extract step 1. None → a **transcript-only** file (`visual_overview_source: skipped`);
+say what it lacks.
+
+### 4. Fetch the captions
 
 ```bash
 bun run "SKILLDIR/scripts/fetch-transcript.ts" "<url>" --with-timestamps --output <scratch>/transcript.json
 ```
+
+A video with no speech (music, a silent demo) → skip this step; the file is Gemini-only.
 
 It picks one track: human captions first, then the auto-captions' original — in the video's own
 language, else English. `--sub-lang 'de'` (comma-separated regexes, tried in order) overrides that.
@@ -231,7 +248,7 @@ whisper-cli -m "$MODEL" -f audio.wav -l <lang> --output-vtt -of transcript
 bun run "SKILLDIR/scripts/fetch-transcript.ts" --vtt transcript.vtt --with-timestamps
 ```
 
-### 3. Gemini's overview
+### 5. Gemini's overview
 
 Quick extract steps 2–7, with exactly this prompt so files are consistent:
 
@@ -248,14 +265,15 @@ Watch this YouTube video and produce a detailed knowledge document I can use lat
 URL: <PASTE THE FULL URL>
 ```
 
-If Gemini refuses or is weak, continue transcript-only and say so in the file.
+Over ~60 min, Gemini may truncate — offer per-15-minute windows. If Gemini refuses or is weak,
+continue transcript-only and say so in the file.
 
-### 4. Check the overview
+### 6. Check the overview
 
 Quick extract step 8 on the overview: pixel-check its most important timecode, and cross-check any
 number you will quote. Record the result in `timecodes_verified` below.
 
-### 5. Assemble the file
+### 7. Assemble the file
 
 Save under the session's working output directory as `video-knowledge/<id>-<slug>.md` (`<slug>` =
 3–6 ASCII words; the video id is the key):
@@ -277,28 +295,26 @@ timecodes_verified: <"[MM:SS] matched" / "[MM:SS] did not match" / "none">
 *by <channel>* · [Watch on YouTube](<url>) · <duration>
 
 ## Structured overview (Gemini, with timestamps — unverified except as noted above)
-<Gemini's response, [MM:SS] markers preserved>
+<Gemini's response, [MM:SS] markers preserved — or, for a transcript-only file, the line
+"No visual overview: <why>">
 
 ## Full transcript
 <the script's transcript, [MM:SS] markers every ~30 s — or, for a Gemini-only file, the line
 "No transcript: <why>">
 ```
 
-### 6. Reply short, hand over the file
+### 8. Reply short, hand over the file
 
 A 2–3 sentence TL;DR, the file (attach or link it the way your host hands over files), and one line:
 "Ask anything about it — I'll answer with timestamps."
 
-### 7. Answer follow-ups from the file
+### 9. Answer follow-ups from the file
 
 Read the file rather than re-ingesting; ground every answer in it; cite timecodes as links
 (`?t=<seconds>`). Prefer the transcript's markers — they come from the captions — over the
 overview's, which are Gemini's and unverified unless the frontmatter says otherwise; say which one an
 answer rests on. If something isn't in the file, say so and offer to re-run — never fabricate.
 
-**Edge cases:** a file for that id already exists → ask: reuse it or re-run. Over ~60 min → Gemini may
-truncate; offer per-15-minute windows. Live stream or premiere → wait for the recording. Age-gated,
-private or paywalled → don't bypass; say so. No speech → skip step 2, Gemini only.
 
 ---
 
@@ -306,7 +322,9 @@ private or paywalled → don't bypass; say so. No speech → skip step 2, Gemini
 
 - Save a YouTube video's picture, or build a cross-video library — one file per video. (Fetching a
   local file into scratch, or a video's audio for transcription, is in scope.)
-- Hosted non-YouTube video — out of scope (a local FILE is in scope, above).
+- Fetch hosted non-YouTube video (Loom, Vimeo, Wistia): Gemini cannot ingest it, and pulling it off
+  someone else's player is not this skill's call. Ask the user for the file (their own export or
+  download) and use Local video file mode.
 - Vouch for the content: Gemini and auto-captions both err. Step 8 checks the answer against the
   video; whether what the video *claims* is true is a separate check — caveat surprising claims.
 

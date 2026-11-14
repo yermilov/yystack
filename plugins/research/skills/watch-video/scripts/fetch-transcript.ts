@@ -48,6 +48,10 @@ if (!url && !vttFile) { console.error('fetch-transcript: give a YouTube URL or v
 const withTimestamps = flag('--with-timestamps')
 const output = opt('--output', '-')
 const subLang = opt('--sub-lang', '')
+// Validate the user's patterns before any network call, so a typo is exit 3 whatever yt-dlp would say.
+for (const p of subLang.split(',').map((x) => x.trim()).filter(Boolean)) {
+  try { new RegExp(p) } catch { console.error(`fetch-transcript: --sub-lang entry '${p}' is not a valid regex`); process.exit(3) }
+}
 
 function findYtDlp(): string {
   for (const c of ['yt-dlp', join(homedir(), '.local/bin/yt-dlp')]) {
@@ -133,6 +137,7 @@ function assemble(pieces: Piece[]): string {
 }
 
 if (vttFile) {
+  if (!existsSync(vttFile)) { console.error(`fetch-transcript: VTT not found: ${vttFile}`); process.exit(3) }
   const body = assemble(mergeRollingOverlap(parseVtt(readFileSync(vttFile, 'utf8'))))
   console.log(JSON.stringify({ transcript: body, word_count: body.split(/\s+/).filter(Boolean).length }))
   process.exit(0)
@@ -148,9 +153,13 @@ function pickTrack(meta: Record<string, any>): Track | undefined {
   const manual = Object.keys(meta.subtitles ?? {}).filter((k) => k !== 'live_chat')
   const auto = Object.keys(meta.automatic_captions ?? {})
   const orig: string | undefined = meta.language ?? auto.find((k) => k.endsWith('-orig'))?.slice(0, -5)
-  const wanted = subLang ? subLang.split(',').map((p) => p.trim()).filter(Boolean) : [orig, 'en'].filter(Boolean) as string[]
+  // Metadata is matched literally (it is data, not a pattern); only --sub-lang entries are regexes.
+  const lit = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const wanted = subLang
+    ? subLang.split(',').map((p) => p.trim()).filter(Boolean)
+    : ([orig, 'en'].filter(Boolean) as string[]).map(lit)
   for (const p of wanted) {
-    const re = new RegExp(`^(?:${p})$`)
+    const re = new RegExp(`^(?:${p})$`) // user patterns were validated at startup; metadata is escaped
     const m = manual.filter((k) => re.test(k)).sort((a, b) => a.length - b.length)[0]
     if (m) return { kind: 'manual', key: m }
     const asr = auto.find((k) => k.endsWith('-orig') && re.test(k.slice(0, -5)))
