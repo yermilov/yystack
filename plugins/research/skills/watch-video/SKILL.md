@@ -1,15 +1,15 @@
 ---
 name: watch-video
 description: >-
-  Extract content from a video. A LOCAL VIDEO FILE (a disk path, a task attachment, a phone clip —
-  "analyze /path/clip.mov", «що на цьому відео»): read it offline with ffmpeg + whisper.cpp, no upload.
-  A YOUTUBE URL (youtu.be/…, youtube.com/watch, /shorts/) with intent to extract or discuss —
-  "summarise this video", "transcript", "extract the steps", "chat with this video": Gemini's native
-  ingestion, either QUICK one-shot or a saved KNOWLEDGE FILE (transcript + Gemini's timestamped visual
-  overview) answered from with [MM:SS] citations. Do not use for a multi-model second opinion on a
-  high-stakes question (that's deep-research, where installed), for a video posted on X (read-twitter
-  pulls the mp4, then uses the local-file mode here), or for hosted non-YouTube video (Loom, Vimeo,
-  Wistia), which Gemini can't ingest.
+  Get what a video says and shows. A LOCAL VIDEO FILE (a path, an attachment, a phone clip, a screen
+  or Zoom recording, an .mp4/.mov — "watch this clip", «що на цьому відео»): read offline with ffmpeg +
+  whisper.cpp, never uploaded. A YOUTUBE URL (youtu.be, watch, /shorts/) with intent to extract —
+  "summarise this video", "what's in it", "get the transcript/captions", "extract the steps", "chat
+  with this video": a quick one-shot via Gemini, or a saved knowledge file (captions + Gemini's
+  timestamped visual overview) answered from with [MM:SS] citations. Not for a multi-model second
+  opinion (deep-research, where installed), a video posted on X (read-twitter fetches the mp4, then
+  uses this skill's file mode), or hosted non-YouTube video (Loom, Vimeo, Wistia), which Gemini
+  cannot ingest.
 ---
 
 # Watch Video
@@ -17,18 +17,18 @@ description: >-
 Get what a video says and shows. Three modes; pick one before anything else:
 
 - **Local video file** — anything you can put on disk (a path, a task or chat attachment, a clip the
-  user recorded). Offline: `ffmpeg` frames + `whisper.cpp` transcript. No browser, no Gemini, no URL —
-  do not ask for a YouTube link.
+  user recorded). Offline: `ffmpeg` frames + a `whisper.cpp` transcript. No browser, no Gemini — do
+  not ask for a YouTube link.
 - **Quick extract** (default for a YouTube URL) — one Gemini call, nothing saved. "Summarise this",
-  "extract the steps", "transcript". 60–90 s per video.
-- **Knowledge file + chat** — a saved markdown file (yt-dlp transcript + Gemini's timestamped
-  visual overview), then follow-ups answered from it with `[MM:SS]` citations. "Chat with this
-  video", "let's discuss this talk", a URL plus an obvious series of follow-ups.
+  "extract the steps". 60–90 s per video.
+- **Knowledge file + chat** — a saved markdown file (the captions + Gemini's timestamped visual
+  overview), then follow-ups answered from it with `[MM:SS]` citations. "Chat with this video", "let's
+  discuss this talk", "get me the transcript", a URL plus an obvious series of follow-ups.
 
-Unsure between the two YouTube modes: one concrete question → quick; "discuss / ingest / remember" →
-knowledge file. If Gemini's answer is thin or load-bearing for a real decision, escalate to the
-`deep-research` skill if it is installed; otherwise say the answer rests on one model and name what a
-second source should check.
+Unsure between the two YouTube modes: one concrete question → quick; "discuss / ingest / transcript /
+remember" → knowledge file. If Gemini's answer is thin or load-bearing for a real decision, say it
+rests on one model and name what a second source should check (or hand it to `deep-research`, if
+installed).
 
 Reply in the user's language.
 
@@ -38,21 +38,27 @@ Register these as todo items now — only the chosen mode's list — before doin
 whatever todo/plan tool this host gives you, and while work remains keep exactly one in progress:
 
 - **Local video file:** 1. Bring the file into a scratch directory · 2. Is there anything to
-  transcribe? (`ffprobe`) · 3. Transcribe (conditional; a first install needs a yes) · 4. Watch it —
-  frames scaled to the length · 5. Read the transcript before concluding anything from the frames
+  transcribe? · 3. Transcribe (conditional; a first install needs a yes) · 4. Watch it — frames
+  scaled to the length · 5. Read the transcript before concluding anything from the frames
 - **Quick extract:** 1. Prerequisites — browser + Gemini login verified · 2. Open a fresh chat ·
   3. Pick the model · 4. Insert the prompt · 5. Submit and confirm it sent · 6. Wait for the response ·
   7. Extract it · 8. Check Gemini's answer (the close names both controls, or which was skipped and why)
-- **Knowledge file + chat:** 1. Prerequisites — browser + Gemini login, `yt-dlp`, egress probe ·
-  2. Fetch the transcript · 3. Gemini's structured + visual overview · 4. Assemble the file ·
-  5. Reply short + hand over the file · 6. Answer follow-ups from the file
+- **Knowledge file + chat:** 1. Prerequisites — `yt-dlp`, egress probe, browser + Gemini login ·
+  2. Fetch the captions · 3. Gemini's overview (Quick extract steps 2–7) · 4. Check the overview's
+  most important timecode (Quick extract step 8) · 5. Assemble the file · 6. Reply short + hand over
+  the file · 7. Answer follow-ups from the file
 
-Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never left
-open. No such tool? SEARCH for one first — on hosts with deferred tools it exists but is not loaded,
-and its name differs per host; anything that creates items and marks them in progress and completed IS
-that tool. It must be the SESSION's own planner, never an external tracker. If there truly is none,
-keep the list in your replies and account for every item at the end. Invoked from another workflow,
-these items ADD to the caller's list; the calling item stays open until your last one closes.
+Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
+left open — an unfinished list at the end must mean something really is unfinished.
+No such tool? SEARCH for one first — on hosts with deferred tools it exists but is not loaded, and
+its name differs per host. Anything that creates items and marks them in progress and completed IS
+that tool, whatever it is called. Search by that capability, then by any name you remember: one empty
+result is evidence about the name; two are a real absence on this host — say so plainly, it is not
+your mistake. It must be the SESSION's own planner, never an external tracker (Jira, Linear, a task
+app): your bookkeeping is not their backlog. If there truly is none, keep the list in your
+replies — state it once, name each item as you start it, account for every one at the end.
+Invoked from another workflow, these items ADD to the caller's list; the calling item stays open
+until your last one closes.
 
 ---
 
@@ -60,15 +66,12 @@ these items ADD to the caller's list; the calling item stays open until your las
 
 Use this whenever the video is a **file**. Gemini cannot ingest it, and such a file is usually
 **private** (a home walk-through, a screen recording, a family member) — **never upload it to a video
-or AI service.**
+or AI service.** "Local" is not total privacy: the transcript lines and the frames you look at enter
+your own context like any file you read, so quote onward only what the task needs.
 
-⚠️ "Local" is not total privacy: the file never leaves the machine, but the transcript lines and the
-frames you look at enter your own context like any file you read. Quote onward only what the task
-needs.
-
-**Work in a scratch directory, never in a repo checkout** — the model is 1.6 GB and frames run to
-hundreds of files. On a sandboxed host, check that the directory is writable first: a read-only `/tmp`
-makes `curl` fail with exit 23, which reads like a bad URL.
+**1. Work in a scratch directory, never in a repo checkout** — frames run to hundreds of files. On a
+sandboxed host, check that the directory is writable first: a read-only `/tmp` makes `curl` fail with
+exit 23, which reads like a bad URL.
 
 ```sh
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/watchvideo.XXXXXX") && cd "$WORK"
@@ -76,35 +79,32 @@ curl -fsS '<download url>' -o clip.mp4     # an attachment: verify its checksum 
 ln -s /absolute/path/to/their.mov clip.mp4  # a file already on disk: no copy
 ```
 
-**Anything to transcribe?** Check before installing anything — a screen recording or silent clip has
-no audio stream:
+**2. Anything to transcribe?** A screen recording or a silent clip has no audio stream — check before
+installing anything:
 
 ```sh
 ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 clip.mp4 | grep -q . \
   && echo "has audio — transcribe" || echo "silent — go straight to the frames"
 ```
 
-**Transcribe.** ⚠️ **The first run installs software and downloads 1.6 GB — say so and get a yes
-first**; a request to look at a clip is not consent to that.
+**3. Transcribe.** If `whisper-cli` or its model is missing, **say the first run installs software and
+downloads 1.6 GB, and get a yes** — a request to look at a clip is not consent to that. Then follow
+`references/install-transcriber.md`. No way to install one here → say the clip cannot be transcribed
+on this host and do the visual pass; never report as if you had heard it.
 
 ```sh
 MODEL=~/.cache/whisper.cpp/ggml-large-v3-turbo.bin
-command -v whisper-cli >/dev/null || brew install whisper-cpp   # macOS; elsewhere use an existing whisper
-if [ ! -s "$MODEL" ]; then
-  mkdir -p "$(dirname "$MODEL")"
-  curl -fsSL --retry 3 -o "$MODEL.part" \
-    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin && mv "$MODEL.part" "$MODEL"
-fi
 ffmpeg -i clip.mp4 -vn -ac 1 -ar 16000 -c:a pcm_s16le audio.wav
-whisper-cli -m "$MODEL" -f audio.wav -l <lang> --output-srt -of transcript
+whisper-cli -m "$MODEL" -f audio.wav -l <lang> --output-vtt -of transcript
+bun run "SKILLDIR/scripts/fetch-transcript.ts" --vtt transcript.vtt --with-timestamps   # [MM:SS] prose
 ```
 
-No way to install a transcriber here → say the clip cannot be transcribed on this host and do the
-visual pass; never report as if you had heard it. **Name the language** (`-l en`, `-l de`, …) when you
-know it — `-l auto` drifts on short clips in smaller languages, and a forced wrong language translates
-instead of transcribing. `--output-srt` gives timecodes to line sentences up with frames.
+**Name the language** (`-l en`, `-l de`, …) when you know it — `-l auto` drifts on short clips in
+smaller languages, and a forced wrong language translates instead of transcribing. The VTT keeps cue
+times so sentences line up with frames; the last line turns it into prose with a marker every ~30 s.
+`SKILLDIR` is a placeholder: substitute the **literal** directory you loaded this `SKILL.md` from.
 
-**Watch it — scale the sampling to the length.** Aim at ~40 frames (eight strips of five):
+**4. Watch it — scale the sampling to the length.** Aim at ~40 frames (eight strips of five):
 
 ```sh
 FPS=$(ffprobe -v error -show_entries format=duration -of csv=p=0 clip.mp4 | awk '{printf "%.4f", 40/($1>1?$1:1)}')
@@ -117,35 +117,36 @@ Over ~20 minutes, don't sweep frames: read the transcript, pick the moments it p
 single frames there. Portrait phone video carries a rotation flag that ffmpeg applies, so frames come
 out upright even when `ffprobe` reports landscape dimensions.
 
-⚠️ **Read the transcript BEFORE concluding anything from the frames** — a picture of an action can mean
-the opposite of what the narration says (case: `references/precedents.md`).
+**5. Read the transcript BEFORE concluding anything from the frames** — a picture of an action can
+mean the opposite of what the narration says (case: `references/precedents.md`).
 
 ---
 
 ## Quick extract (one-shot, Gemini)
 
-**Prerequisites:** a browser-automation tool driving a profile signed in to `https://gemini.google.com/`
-(a paid tier preferred). Verify the login by the account avatar or the greeting with the user's name —
-not by "the page renders": Gemini shows a usable-looking UI to anonymous visitors.
+The UI labels and the selectors below were verified on Gemini's live page as of 2026-09 (English UI);
+Gemini localises labels to the account's language and renames things every few months — when one
+doesn't match, screenshot and find its current equivalent.
 
-UI labels below are the English ones, verified as of 2026-09; Gemini localises them to the account's
-language and renames them every few months — screenshot when one doesn't match.
-
-1. **Open a fresh chat** — click "New chat" in the sidebar. Navigating to `/app` does not always start
+1. **Prerequisites** — a browser-automation tool driving a profile signed in to
+   `https://gemini.google.com/` (a paid tier preferred). Verify the login by the account avatar or the
+   greeting with the user's name — not by "the page renders": Gemini shows a usable-looking UI to
+   anonymous visitors.
+2. **Open a fresh chat** — click "New chat" in the sidebar. Navigating to `/app` does not always start
    a new conversation.
-2. **Pick the model** — the strongest **Pro**/thinking model for steps and structured output; Flash
+3. **Pick the model** — the strongest **Pro**/thinking model for steps and structured output; Flash
    only when speed matters.
-3. **Insert the prompt with `execCommand`, not by typing** — the box is a `contenteditable`, and typed
+4. **Insert the prompt with `execCommand`, not by typing** — the box is a `contenteditable`, and typed
    characters may not reach the app's state (Send stays disabled):
 
    ```js
    const el = document.querySelector('rich-textarea [contenteditable="true"], div[contenteditable="true"][role="textbox"]');
    el.focus(); document.execCommand('insertText', false, '<your prompt>');
    ```
-4. **Submit by clicking Send (not Enter, which adds a newline), then confirm it sent:** the input must be
-   empty afterwards. ⚠️ A click on the button's element reference has silently done nothing before —
+5. **Submit by clicking Send (not Enter, which adds a newline), then confirm it sent:** the input must
+   be empty afterwards. A click on the button's element reference has silently done nothing before —
    if the text is still there, click the button's on-screen coordinates.
-5. **Wait** — 30–90 s. While generating there is a Stop button; poll, don't spam screenshots:
+6. **Wait** — 30–90 s. While generating there is a Stop button; poll, don't spam screenshots:
 
    ```js
    const r = [...document.querySelectorAll('.markdown, model-response, .model-response-text')];
@@ -153,14 +154,14 @@ language and renames them every few months — screenshot when one doesn't match
       hasStop: !!document.querySelector('button[aria-label*="Stop"]') });
    ```
 
-   Done when `hasStop` is false and the length has been stable ~10 s. ⚠️ **Read `textContent`, never
+   Done when `hasStop` is false and the length has been stable ~10 s. **Read `textContent`, never
    `innerText`** — `innerText` has read 0 on a fully rendered answer. If `len` is tiny with no Stop
    button, compare `document.querySelector('main')?.textContent?.length` before calling the answer
    empty: thousands more means the response rendered outside the selector — screenshot it. A browser
    tool's script timeout mid-poll is harmless: call again.
-6. **Extract** — the last response's `textContent`. It can glue adjacent blocks together with no
+7. **Extract** — the last response's `textContent`. It can glue adjacent blocks together with no
    separator; skim for that. For long answers, read it in overlapping slices if your tool truncates.
-7. **Check Gemini's answer before it goes in a report** — Gemini invents details and timecodes:
+8. **Check Gemini's answer before it goes in a report** — Gemini invents details and timecodes:
    - **Cross-check each NUMBER you quote** against an independent source. That validates that claim
      only — not that Gemini watched anything.
    - **Pixel-check the most important TIMECODE**: open `youtube.com/watch?v=<id>&t=<s>s`, mute, seek,
@@ -204,25 +205,35 @@ see (slides, on-screen code, diagrams). Follow-ups are then answered from the fi
 - `yt-dlp` on `PATH` (install it if missing — `pipx install yt-dlp` or `brew install yt-dlp`).
 - **Probe egress before planning around it**:
   `curl -o /dev/null -sS -w '%{http_code}' https://www.youtube.com/`. `000` means no HTTP response at
-  all (proxy, DNS, TLS, timeout) — the shell route is out on this host this session: use Quick
-  extract. Don't try to scrape captions out of the browser instead; those routes return empty bodies
-  that look like "no captions" (`references/precedents.md`).
+  all (proxy, DNS, TLS, timeout), so the shell cannot fetch captions this session. Don't scrape them
+  out of the browser instead — those routes return empty bodies that look like "no captions"
+  (`references/precedents.md`). Tell the user and offer a **Gemini-only** file (`caption_source:
+  none`) or Quick extract; ask which.
+- The browser + Gemini login, as in Quick extract step 1.
 
-### 2. Fetch the transcript
+### 2. Fetch the captions
 
 ```bash
 bun run "SKILLDIR/scripts/fetch-transcript.ts" "<url>" --with-timestamps --output <scratch>/transcript.json
 ```
 
-`SKILLDIR` is a placeholder: substitute the **literal** directory you loaded this `SKILL.md` from. For a
-non-English video pass `--sub-lang` (e.g. `'de.*,de'`). Exit **2** = no auto-captions: tell the user
-and offer local transcription (download the audio with `yt-dlp -x`, then the whisper step above) or
-Gemini alone — ask which. Exit 1 prints yt-dlp's error (a `429` is YouTube rate-limiting this IP: wait,
-or use Quick extract).
+It picks one track: human captions first, then the auto-captions' original — in the video's own
+language, else English. `--sub-lang 'de'` (comma-separated regexes, tried in order) overrides that.
+Exit 1 prints yt-dlp's error (a `429` is YouTube rate-limiting this IP: wait, or use Quick extract).
+Exit **2** = no captions in that language: tell the user and offer local transcription or a
+Gemini-only file — ask which. Local transcription, in a scratch directory (whisper as in Local
+video file step 3):
 
-### 3. Gemini's structured + visual overview
+```bash
+MODEL=~/.cache/whisper.cpp/ggml-large-v3-turbo.bin
+yt-dlp -x --audio-format wav --postprocessor-args "ffmpeg:-ac 1 -ar 16000" -o audio.wav "<url>"
+whisper-cli -m "$MODEL" -f audio.wav -l <lang> --output-vtt -of transcript
+bun run "SKILLDIR/scripts/fetch-transcript.ts" --vtt transcript.vtt --with-timestamps
+```
 
-Same flow as Quick extract steps 1–7, with exactly this prompt so files are consistent:
+### 3. Gemini's overview
+
+Quick extract steps 2–7, with exactly this prompt so files are consistent:
 
 ```
 Watch this YouTube video and produce a detailed knowledge document I can use later. Structure it as numbered sections:
@@ -239,7 +250,12 @@ URL: <PASTE THE FULL URL>
 
 If Gemini refuses or is weak, continue transcript-only and say so in the file.
 
-### 4. Assemble the file
+### 4. Check the overview
+
+Quick extract step 8 on the overview: pixel-check its most important timecode, and cross-check any
+number you will quote. Record the result in `timecodes_verified` below.
+
+### 5. Assemble the file
 
 Save under the session's working output directory as `video-knowledge/<id>-<slug>.md` (`<slug>` =
 3–6 ASCII words; the video id is the key):
@@ -252,29 +268,33 @@ channel: <uploader>
 duration: <duration_string>
 processed_at: <YYYY-MM-DD>
 language: <language>
-caption_source: <file, or "whisper">
+caption_source: <the script's caption_source, "whisper", or "none">
 visual_overview_source: gemini   # or "skipped"
+timecodes_verified: <"[MM:SS] matched" / "[MM:SS] did not match" / "none">
 ---
 
 # <title>
 *by <channel>* · [Watch on YouTube](<url>) · <duration>
 
-## Structured overview (Gemini, with timestamps)
+## Structured overview (Gemini, with timestamps — unverified except as noted above)
 <Gemini's response, [MM:SS] markers preserved>
 
 ## Full transcript
-<clean transcript with [MM:SS] markers every ~30 s>
+<the script's transcript, [MM:SS] markers every ~30 s — or, for a Gemini-only file, the line
+"No transcript: <why>">
 ```
 
-### 5. Reply short, hand over the file
+### 6. Reply short, hand over the file
 
 A 2–3 sentence TL;DR, the file (attach or link it the way your host hands over files), and one line:
 "Ask anything about it — I'll answer with timestamps."
 
-### 6. Answer follow-ups from the file
+### 7. Answer follow-ups from the file
 
 Read the file rather than re-ingesting; ground every answer in it; cite timecodes as links
-(`?t=<seconds>`). If something isn't in the file, say so and offer to re-run — never fabricate.
+(`?t=<seconds>`). Prefer the transcript's markers — they come from the captions — over the
+overview's, which are Gemini's and unverified unless the frontmatter says otherwise; say which one an
+answer rests on. If something isn't in the file, say so and offer to re-run — never fabricate.
 
 **Edge cases:** a file for that id already exists → ask: reuse it or re-run. Over ~60 min → Gemini may
 truncate; offer per-15-minute windows. Live stream or premiere → wait for the recording. Age-gated,
@@ -284,18 +304,23 @@ private or paywalled → don't bypass; say so. No speech → skip step 2, Gemini
 
 ## What this skill does NOT do
 
-- Multi-model triangulation — that's `deep-research` where installed.
+- Save a YouTube video's picture, or build a cross-video library — one file per video. (Fetching a
+  local file into scratch, or a video's audio for transcription, is in scope.)
 - Hosted non-YouTube video — out of scope (a local FILE is in scope, above).
-- Fact-checking — Gemini and auto-captions both err; caveat surprising claims and cross-check
-  load-bearing ones.
-- Download videos or build a cross-video library — one file per video.
+- Vouch for the content: Gemini and auto-captions both err. Step 8 checks the answer against the
+  video; whether what the video *claims* is true is a separate check — caveat surprising claims.
 
 When another skill finds a tutorial video relevant to its task, it hands the URL plus a context block
 here for the extraction.
 
 ## Bundled resources
 
-- `scripts/fetch-transcript.ts` — yt-dlp transcript with rolling-caption dedup and `[MM:SS]` markers;
-  `--vtt <file>` cleans captions you already have, offline. `--help` for flags and exit codes.
+- `scripts/fetch-transcript.ts` — picks one caption track with yt-dlp, merges the rolling auto-caption
+  window, adds `[MM:SS]` markers; `--vtt <file>` cleans captions or whisper output you already have,
+  offline. `--help` for flags and exit codes.
+- `references/install-transcriber.md` — installing whisper.cpp and its model, per OS.
 - `references/precedents.md` — the measured cases behind the rulings (the Send no-op, `innerText`,
-  the two answer checks, the sandbox caption dead ends). Read a section when a ruling seems wrong.
+  the two answer checks, the sandbox caption dead ends, the caption-track fixes). Read a section when
+  a ruling seems wrong.
+- `references/trigger-tests.md` — should-fire / should-not prompts; re-run them after any edit to the
+  `description`.

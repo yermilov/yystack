@@ -3,14 +3,17 @@
  * fetch-transcript — fetch and clean a YouTube transcript with yt-dlp.
  *
  *   bun run "SKILLDIR/scripts/fetch-transcript.ts" <url> [--with-timestamps] [--output FILE]
- *                                                  [--sub-lang 'en.*,en'] [--keep-workdir]
+ *                                                  [--sub-lang 'de'] [--keep-workdir]
  *   bun run "SKILLDIR/scripts/fetch-transcript.ts" --vtt <captions.vtt> [--with-timestamps]
- *     (offline: clean a VTT you already have — no yt-dlp, no network; prints {transcript, word_count})
+ *     (offline: clean a VTT you already have — whisper's --output-vtt, or captions saved earlier; no
+ *     yt-dlp, no network; prints {transcript, word_count})
  *
  * YouTube auto-captions ship as VTT cues with a rolling display window: each cue repeats most of the
  * previous one as new words slide in, so naive concatenation duplicates every phrase 2-3x. This:
- *   1. runs yt-dlp for metadata + auto-subs (no video download),
- *   2. parses the VTT cues with timing,
+ *   1. reads the video's metadata with yt-dlp (no video download) and picks ONE caption track:
+ *      human captions first, then the auto-captions' original (never a machine translation when the
+ *      original exists), in the video's own language, else English;
+ *   2. downloads only that track, parses its cues with timing,
  *   3. merges the rolling-window overlap into clean prose,
  *   4. optionally inserts [MM:SS] markers every ~30 s so answers can cite timestamps.
  *
@@ -18,11 +21,12 @@
  * is left literal — auto-captions practically never carry one, and a literal is safer than a guess.
  *
  * Output: JSON with id, title, channel, duration_seconds, duration_string, url, language,
- * caption_source, transcript, word_count — to stdout, or to --output.
- * --sub-lang is passed to yt-dlp as-is (e.g. 'de.*,de' for German).
+ * caption_source ("manual:<lang>" or "auto:<lang>"), transcript, word_count — to stdout, or to --output.
+ * --sub-lang replaces the language order: comma-separated regexes tried in turn (e.g. 'de' or 'pt.*,en').
  *
- * Exit 0 = transcript written, 2 = the video has NO auto-captions (fall back to local transcription or
- * to Gemini alone), 1 = yt-dlp missing or failed (its stderr is printed), 3 = bad arguments.
+ * Exit 0 = transcript written, 2 = no captions in the wanted language(s) (fall back to local
+ * transcription or to Gemini alone), 1 = yt-dlp missing or failed (its stderr is printed), 3 = bad
+ * arguments.
  */
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
@@ -43,7 +47,7 @@ const vttFile = opt('--vtt', '')
 if (!url && !vttFile) { console.error('fetch-transcript: give a YouTube URL or video id'); process.exit(3) }
 const withTimestamps = flag('--with-timestamps')
 const output = opt('--output', '-')
-const subLang = opt('--sub-lang', 'en.*,en')
+const subLang = opt('--sub-lang', '')
 
 function findYtDlp(): string {
   for (const c of ['yt-dlp', join(homedir(), '.local/bin/yt-dlp')]) {
@@ -83,26 +87,31 @@ function parseVtt(content: string): Cue[] {
   return cues
 }
 
-/** For each cue, append only what extends past the longest suffix/prefix overlap with the previous
- *  merged text — cut on a word boundary on both sides, never mid-word. */
-function mergeRollingOverlap(cues: Cue[]): Cue[] {
-  if (!cues.length) return []
-  const merged: Cue[] = [cues[0]]
+/** Merge the rolling caption window into prose. For each cue, keep only what extends past the
+ *  longest suffix/prefix overlap with the text so far — cut on a word boundary on both sides, never
+ *  mid-word. Each appended chunk keeps ITS OWN cue start, so [MM:SS] markers can land anywhere in a
+ *  long run of overlapping cues (YouTube auto-captions are one unbroken run for the whole video). */
+type Piece = [start: number, text: string]
+function mergeRollingOverlap(cues: Cue[]): Piece[] {
+  const pieces: Piece[] = []
   const alnum = /[\p{L}\p{N}]/u
-  for (const [start, end, text] of cues.slice(1)) {
-    const [ps, , pt] = merged[merged.length - 1]
-    if (text === pt) { merged[merged.length - 1] = [ps, end, pt]; continue }
+  let tail = ''
+  for (const [start, , text] of cues) {
     let overlap = 0
-    for (let k = Math.min(pt.length, text.length); k > 0; k--) {
-      if (!pt.endsWith(text.slice(0, k))) continue
+    for (let k = Math.min(tail.length, text.length); k > 0; k--) {
+      if (!tail.endsWith(text.slice(0, k))) continue
       if (k < text.length && alnum.test(text[k - 1]) && alnum.test(text[k])) continue
       overlap = k
       break
     }
-    if (overlap > 0) merged[merged.length - 1] = [ps, end, pt + text.slice(overlap)]
-    else merged.push([start, end, text])
+    // No overlap starts a new sentence run, so it needs a separator; an overlapping cue continues
+    // the run and its remainder already carries whatever separator the captions had.
+    const added = overlap > 0 ? text.slice(overlap) : (tail ? ' ' : '') + text
+    if (!added.trim()) continue
+    pieces.push([start, added])
+    tail = overlap > 0 ? tail + added : text
   }
-  return merged
+  return pieces
 }
 
 const stamp = (s: number) => {
@@ -111,14 +120,16 @@ const stamp = (s: number) => {
   return h ? `${h}:${p(m)}:${p(x)}` : `${p(m)}:${p(x)}`
 }
 
-function assemble(segs: Cue[]): string {
-  if (!withTimestamps) return segs.map((s) => s[2]).join(' ')
-  const out: string[] = []
+function assemble(pieces: Piece[]): string {
+  let out = ''
   let last = -1e9
-  for (const [start, , text] of segs) {
-    if (start - last >= 30) { out.push(`[${stamp(start)}] ${text}`); last = start } else out.push(text)
+  for (const [start, text] of pieces) {
+    if (withTimestamps && start - last >= 30) {
+      out += `${out ? ' ' : ''}[${stamp(start)}] ${text.trimStart()}`
+      last = start
+    } else out += text
   }
-  return out.join(' ')
+  return out.replace(/\s+/g, ' ').trim()
 }
 
 if (vttFile) {
@@ -126,27 +137,67 @@ if (vttFile) {
   console.log(JSON.stringify({ transcript: body, word_count: body.split(/\s+/).filter(Boolean).length }))
   process.exit(0)
 }
+type Track = { kind: 'manual' | 'auto'; key: string }
+
+/** Pick ONE caption track, so yt-dlp downloads one file instead of every matching language (each extra
+ *  track is a request, and a 429 on any of them fails the whole run). Human captions beat auto ones;
+ *  among auto ones the ASR original (`<lang>-orig`, or the bare `<lang>` when the video's language is
+ *  known) beats a machine translation. --sub-lang overrides the language order with yt-dlp-style
+ *  regexes, comma-separated, tried in order. */
+function pickTrack(meta: Record<string, any>): Track | undefined {
+  const manual = Object.keys(meta.subtitles ?? {}).filter((k) => k !== 'live_chat')
+  const auto = Object.keys(meta.automatic_captions ?? {})
+  const orig: string | undefined = meta.language ?? auto.find((k) => k.endsWith('-orig'))?.slice(0, -5)
+  const wanted = subLang ? subLang.split(',').map((p) => p.trim()).filter(Boolean) : [orig, 'en'].filter(Boolean) as string[]
+  for (const p of wanted) {
+    const re = new RegExp(`^(?:${p})$`)
+    const m = manual.filter((k) => re.test(k)).sort((a, b) => a.length - b.length)[0]
+    if (m) return { kind: 'manual', key: m }
+    const asr = auto.find((k) => k.endsWith('-orig') && re.test(k.slice(0, -5)))
+    if (asr) return { kind: 'auto', key: asr }
+    // A bare key is the original only when it IS the video's language; otherwise it is a translation,
+    // still better than nothing when the user asked for that language.
+    const bare = auto.filter((k) => re.test(k)).sort((a, b) => a.length - b.length)[0]
+    if (bare) return { kind: 'auto', key: bare }
+  }
+  return undefined
+}
+
 function run(work: string): number {
-  const r = Bun.spawnSync([ytDlp, '--skip-download', '--write-auto-sub', '--sub-lang', subLang, '--sub-format', 'vtt',
-    '--write-info-json', '--no-playlist', '--no-warnings', '-o', '%(id)s.%(ext)s', url!], { cwd: work })
-  if (r.exitCode !== 0) { console.error(`fetch-transcript: yt-dlp failed: ${r.stderr.toString().trim()}`); return 1 }
-  const files = readdirSync(work)
-  const info = files.find((f) => f.endsWith('.info.json'))
-  if (!info) { console.error('fetch-transcript: yt-dlp produced no info.json'); return 1 }
-  const meta = JSON.parse(readFileSync(join(work, info), 'utf8'))
-  const vtt = files.filter((f) => f.endsWith('.vtt')).sort()[0]
-  if (!vtt) {
-    console.error('fetch-transcript: no auto-captions for this video — fall back to local transcription or Gemini alone.')
+  // 1. Metadata only — one request, which also lists every caption track.
+  const info = Bun.spawnSync([ytDlp, '--skip-download', '--write-info-json', '--no-playlist', '--no-warnings',
+    '-o', '%(id)s.%(ext)s', url!], { cwd: work })
+  const infoFile = readdirSync(work).find((f) => f.endsWith('.info.json'))
+  if (info.exitCode !== 0 || !infoFile) {
+    console.error(`fetch-transcript: yt-dlp failed: ${info.stderr.toString().trim() || 'no info.json'}`)
+    return 1
+  }
+  const meta = JSON.parse(readFileSync(join(work, infoFile), 'utf8'))
+  const track = pickTrack(meta)
+  if (!track) {
+    const have = [...Object.keys(meta.subtitles ?? {}), ...Object.keys(meta.automatic_captions ?? {})]
+    console.error(`fetch-transcript: no captions in ${subLang || 'the video\'s language or English'} for this video` +
+      (have.length ? ` (it has ${have.length} other track(s) — try --sub-lang)` : '') +
+      ' — fall back to local transcription or Gemini alone.')
     return 2
   }
+  // 2. Exactly that one track, reusing the metadata instead of fetching the page again.
+  const esc = track.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const dl = Bun.spawnSync([ytDlp, '--load-info-json', infoFile, '--skip-download',
+    track.kind === 'manual' ? '--write-sub' : '--write-auto-sub', '--sub-lang', `^${esc}$`, '--sub-format', 'vtt',
+    '--no-warnings', '-o', '%(id)s.%(ext)s'], { cwd: work })
+  const vtt = readdirSync(work).find((f) => f.endsWith('.vtt'))
+  if (!vtt) {
+    console.error(`fetch-transcript: yt-dlp could not fetch the ${track.kind} track '${track.key}': ${dl.stderr.toString().trim()}`)
+    return 1
+  }
   const body = assemble(mergeRollingOverlap(parseVtt(readFileSync(join(work, vtt), 'utf8'))))
-  const parts = vtt.split('.')
   const out = {
     id: meta.id, title: meta.title, channel: meta.uploader ?? meta.channel,
     duration_seconds: meta.duration, duration_string: meta.duration_string,
     url: meta.webpage_url ?? url,
-    language: meta.language ?? (parts.length >= 3 ? parts[parts.length - 2] : undefined) ?? 'en',
-    caption_source: vtt, transcript: body, word_count: body.split(/\s+/).filter(Boolean).length,
+    language: track.key.replace(/-orig$/, ''),
+    caption_source: `${track.kind}:${track.key}`, transcript: body, word_count: body.split(/\s+/).filter(Boolean).length,
   }
   if (output === '-') console.log(JSON.stringify(out))
   else writeFileSync(output, JSON.stringify(out, null, 2))

@@ -6,10 +6,10 @@ few months.
 
 ## Local file: the frames said one thing, the audio the opposite (2026-08)
 
-The frames of a phone clip showed a household thermometer being picked up, and the obvious reading was
-"the missing one was found". The narration said this was a *different* unit brought in from another
-room, and the missing one was still missing. One sentence of audio inverted the conclusion — which is
-why the transcript is read before anything is concluded from the frames.
+The frames of a phone clip showed a small household object being picked up, and the obvious reading
+was "the missing one was found". The narration said this was a *different* one brought in from
+elsewhere, and the missing one was still missing. One sentence of audio inverted the conclusion —
+which is why the transcript is read before anything is concluded from the frames.
 
 On an 80 s clip, `whisper-cli` with `large-v3-turbo` took seconds and produced clean segments. On
 short clips in a smaller language, `-l auto` drifted to a neighbouring larger language; a forced wrong
@@ -44,9 +44,9 @@ looking unrendered to the layout engine for a beat after the text is in the DOM.
 `ytInitialPlayerResponse.videoDetails.shortDescription` returned the description in full (1 342 chars)
 while the visible expander was truncated, and on that stream the description was the only timecode map:
 `ytInitialData` had zero `chapterRenderer` nodes. Combined with `meta[itemprop=startDate]` /
-`endDate` / `duration`, a wall-clock agenda slot converted to an offset into the recording (a slot at
-`15:30Z` on a stream that started `14:51:11Z` ≈ `00:38:49`), and a question about those 20 minutes got
-a pointed answer where "summarise the video" would not have.
+`endDate` / `duration`, a wall-clock agenda slot converted to an offset into the recording (slot
+start minus stream start — a slot ~39 minutes after the stream began is `00:39:00` in), and a
+question about those 20 minutes got a pointed answer where "summarise the video" would not have.
 
 ## Knowledge-file mode on a cloud sandbox (2026-09-11)
 
@@ -59,3 +59,17 @@ allowlist has varied between sessions. The obvious fallbacks were measured and f
   instrument not moving, not "no captions";
 - the UI transcript panel opened and still held zero segment nodes after 9 s;
 - scraping the player's caption segments at 2.5× playback collected 4 unique lines from 95 s.
+
+## The caption script: one marker, and every track at once (2026-11-14)
+
+Two defects in `fetch-transcript.ts`, both measured on live videos with yt-dlp 2026.06:
+
+- **`--with-timestamps` gave one marker per video.** YouTube auto-captions are one unbroken rolling
+  run, and the merge folded the whole run into a single segment stamped with its first cue: a 12-minute
+  talk came out as 2 254 words under one `[00:13]`. Each appended chunk now keeps its own cue time —
+  the same talk gives 24 markers, at most 33 s apart, with the words unchanged.
+- **The default `--sub-lang 'en.*,en'` asked for every English-prefixed track**, machine translations
+  included (`en-de`, …); a `429` on the second track failed the whole run after the first had already
+  downloaded, and the alphabetical pick could land on a translation. The script now reads the
+  metadata, picks ONE track (human captions, then the auto-captions' `<lang>-orig`), and downloads only
+  that — a human-captioned talk came back punctuated, a Ukrainian lecture as `auto:uk-orig`.
