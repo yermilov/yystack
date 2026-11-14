@@ -24,7 +24,7 @@ guide: how to make the prose itself good.
 > (`references/trigger-tests.md`). To review a skill, work the Pre-ship checklist at the end: it is the
 > review procedure. If you change this skill, keep it a worked example.
 
-Length verdict (§2): 2026-11-14 — 571 lines. Every section still inline is a ruling an author
+Length verdict (§2): 2026-11-14 — 572 lines. Every section still inline is a ruling an author
 applies while writing (§1 activation and the two-host flag table, §2 tiers, §3 voice, §4
 generalising, §5 bundling, §7 testing, §8 maintenance rulings, §9 portability); evidence, sources
 and mechanics live in `references/`. Three choices keep it over 500 on purpose: the Step-0 block
@@ -127,9 +127,10 @@ verified 2026-11):
 Setting both is the one unreachable combination — it leaves nobody who can run the skill.
 
 **These two keys are Claude Code frontmatter; Codex reads neither** (Codex CLI's migration notes,
-2026-11). Its nearest setting for `user-invocable` is `policy.allow_implicit_invocation` in the
-skill's `agents/openai.yaml` ("similar intent, not equivalent semantics"); `disable-model-invocation`
-has no equivalent. So for a skill shipping to both hosts, the confirmation stop in the body is the
+2026-11). Its `policy.allow_implicit_invocation: false` in the skill's `agents/openai.yaml` keeps the
+skill out of the model's context and leaves only explicit `$skill` invocation (codex-cli 0.169's own
+docs, 2026-11-14) — the nearest to `disable-model-invocation: true`; `user-invocable: false` has no
+equivalent, so a hidden knowledge skill stays visible in Codex's menu. So for a skill shipping to both hosts, the confirmation stop in the body is the
 only gate both read: set the flag where it exists, and keep the stop in the body either way.
 
 - **`disable-model-invocation: true` is the mechanical fix for the Surprise Skill (§6).** A skill that

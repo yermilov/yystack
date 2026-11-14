@@ -14,42 +14,61 @@
  *   6. every plugin whose files changed since <ref> has a GREATER version than at <ref>
  *   7. if the Claude marketplace manifest changed since <ref> (a plugin added or removed, or an
  *      entry edited), its metadata.version changed too
+ *   and it NOTES every skill or plugin that existed at <ref> and is gone now, wherever its old name is
+ *   still written (bare in backticks, or as <plugin>:<skill>) — a shortlist for pre-ship items 12–14.
  * It also prints NOTES (not defects): no LICENSE (required for a public repo, optional for a private
  * one, and the script cannot tell which this is); a plugin the root README never names; a skill its
  * plugin README never names. A README mention is prose, so these are a shortlist to read, not a verdict.
  *
- * Exit 0 = clean, 1 = a defect listed above (each printed with what to do), 2 = could not run.
+ * Exit 0 = clean, 1 = a defect listed above (each printed with what to do), 2 = could not run
+ * (including an unknown flag or a second root).
  * It only reads; it never edits a file.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 const args = process.argv.slice(2)
-if (args.includes('--help') || args.includes('-h') || args.length === 0) {
-  console.log(readFileSync(import.meta.path, 'utf8').replace(/^#!.*\n/, '').split('*/')[0].replace(/^\/\*\*?|^ \* ?/gm, ''))
+const usage = () => readFileSync(import.meta.path, 'utf8').replace(/^#!.*\n/, '').split('*/')[0].replace(/^\/\*\*?|^ \* ?/gm, '')
+function fail2(msg: string): never {
+  console.error(`check-manifests: cannot run — ${msg} (permanent: fix the command line or the path)`)
+  process.exit(2)
+}
+// One pass over the arguments, refusing anything we do not parse: a typo'd or repeated flag silently
+// ignored (`--bse origin/main`, a second `--base`) would skip the version check and still say "clean".
+// --help wins only when the rest of the line is valid.
+let base: string | undefined
+let help = false
+const positional: string[] = []
+for (let i = 0; i < args.length; i++) {
+  const a = args[i]
+  if (a === '--help' || a === '-h') help = true
+  else if (a === '--base') {
+    if (base !== undefined) fail2('--base given twice')
+    const v = args[i + 1]
+    if (v === undefined || v.trim() === '' || v.startsWith('-')) fail2('--base needs a git ref, e.g. --base origin/main')
+    base = v
+    i++
+  } else if (a.startsWith('-')) fail2(`unknown flag ${a}; the flags are --base <git-ref> and --help`)
+  else positional.push(a)
+}
+if (positional.length > 1) fail2(`expected exactly one MARKETPLACE_ROOT argument, got ${positional.length}: ${positional.join(' ')}`)
+if (help || args.length === 0) {
+  console.log(usage())
   process.exit(args.length === 0 ? 2 : 0)
 }
+if (positional.length !== 1) fail2('expected exactly one MARKETPLACE_ROOT argument, got (none)')
 // Bun.YAML is built in from Bun 1.3 — without it every SKILL.md would read as "invalid YAML" (exit 1),
 // which is a verdict about the runtime, not the repo. Say so and exit 2 instead.
 if (typeof (Bun as any).YAML?.parse !== 'function') {
   console.error(`check-manifests: cannot run — needs Bun >= 1.3 for its built-in YAML parser; you are on ${Bun.version}. Run \`bun upgrade\`.`)
   process.exit(2)
 }
-const baseIdx = args.indexOf('--base')
-const base = baseIdx >= 0 ? args[baseIdx + 1] : undefined
-if (baseIdx >= 0 && (!base || base.startsWith('-'))) fail2('--base needs a git ref, e.g. --base origin/main')
-// The root is the one positional argument, wherever it sits relative to --base <ref>.
-const positional = args.filter((a, i) => !a.startsWith('-') && !(baseIdx >= 0 && i === baseIdx + 1))
-if (positional.length !== 1) fail2(`expected exactly one MARKETPLACE_ROOT argument, got ${positional.length}: ${positional.join(' ') || '(none)'}`)
 const root = resolve(positional[0])
 
 const problems: string[] = []
 const notes: string[] = []
 const bad = (msg: string) => problems.push(msg)
-function fail2(msg: string): never {
-  console.error(`check-manifests: cannot run — ${msg}`)
-  process.exit(2)
-}
+
 function readJson(path: string, label: string): any {
   if (!existsSync(path)) { bad(`${label}: missing file ${path}`); return undefined }
   try { return JSON.parse(readFileSync(path, 'utf8')) } catch (e) {
@@ -171,6 +190,39 @@ if (base) {
     if (typeof old !== 'string') { notes.push(`plugin "${name}": its plugin.json at ${base} has no version, so the bump could not be compared`); continue }
     if (cmp(version, old) <= 0) bad(`plugin "${name}" changed since ${base} but its version ${version} is not greater than ${old} — installed clients will never re-pull it; bump both manifests upward`)
   }
+  // Stale references (pre-ship items 12–13): a skill or plugin that existed at base and is gone now
+  // leaves its old name behind in routing pointers, `Requires:` lines and qualified `<plugin>:<skill>`
+  // references. Read the tree at base, list what disappeared, and grep the working tree for it. These
+  // are NOTES (a shortlist to read): a name can legitimately survive in a changelog or a precedent.
+  const skillDirsAt = (lines: string[]) => new Set(lines.map((f) => f.match(/^plugins\/([^/]+)\/skills\/([^/]+)\/SKILL\.md$/)).filter(Boolean).map((m) => `${m![1]}/${m![2]}`))
+  const before = skillDirsAt(git('ls-tree', '-r', '--name-only', base, '--', 'plugins').split('\n'))
+  const nowFiles = git('ls-files', '--cached', '--others', '--exclude-standard', '--', 'plugins').split('\n').filter((f) => f && existsSync(join(root, f)))
+  const now = skillDirsAt(nowFiles)
+  const nowSkills = new Set([...now].map((s) => s.split('/')[1]))
+  // A plugin still exists if it is still listed or still has a manifest — not merely if it still has skills.
+  const nowPlugins = new Set([...versions.keys()].map((n) => srcOf(n).split('/').pop()!))
+  const goneSkills = [...before].filter((s) => !now.has(s))
+  if (goneSkills.length) {
+    const textFiles = git('ls-files', '--cached', '--others', '--exclude-standard').split('\n')
+      .filter((f) => /\.(md|json|ya?ml|ts|toml)$/.test(f) && existsSync(join(root, f)))
+    const texts = textFiles.map((f) => [f, readFileSync(join(root, f), 'utf8')] as const)
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const hits = (re: RegExp) => texts.filter(([, x]) => re.test(x)).map(([f]) => f)
+    const goneNoted = new Set<string>()
+    for (const s of goneSkills) {
+      const [plugin, skill] = s.split('/')
+      const qualified = hits(new RegExp(`(^|[^\\w-])${esc(plugin)}:${esc(skill)}(?![\\w-])`))
+      if (qualified.length) notes.push(`"${plugin}:${skill}" no longer exists but is still named in: ${qualified.join(', ')} — rewrite each (§6 rule G)`)
+      if (!nowSkills.has(skill)) {
+        const bare = hits(new RegExp(`\`${esc(skill)}\``)).filter((f) => !qualified.includes(f))
+        if (bare.length) notes.push(`skill "${skill}" no longer exists but \`${skill}\` is still named in: ${bare.join(', ')} — repair or point at its replacement (§6 rule G)`)
+      }
+      if (!nowPlugins.has(plugin) && !goneNoted.has(plugin)) {
+        goneNoted.add(plugin)
+        notes.push(`plugin "${plugin}" no longer exists — its installers keep a dead install: if its skills moved, tell them the new install command in the README; if it was retired, say so (§6 rule N)`)
+      }
+    }
+  }
   const r = Bun.spawnSync(['git', '-C', root, 'show', `${base}:.claude-plugin/marketplace.json`])
   if (r.exitCode === 0 && claudeMkt) {
     const old = parseAt(r.stdout.toString(), '.claude-plugin/marketplace.json')
@@ -186,7 +238,7 @@ if (base) {
 }
 
 const hasLicense = existsSync(root) && readdirSync(root).some((f) => /^(LICEN[CS]E|COPYING)(\.|$)/i.test(f))
-if (!hasLicense) notes.unshift('no LICENSE file; a PUBLIC marketplace needs one (pre-ship item 5), a private one may skip it')
+if (!hasLicense) notes.unshift('no LICENSE file; a PUBLIC marketplace needs one (pre-ship item 6), a private one may skip it')
 for (const n of notes) console.log(`check-manifests: note — ${n}`)
 if (problems.length) {
   console.log(`check-manifests: ${problems.length} problem(s) in ${root}`)

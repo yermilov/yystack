@@ -21,10 +21,29 @@ disallowed. "Fired" = a `Skill` call whose skill is exactly `plugin-dev` or `<pl
 | --- | --- | --- | --- | --- | --- |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | previous | 12/12 | 10/10 | prompts reworded to name the skill/plugin |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | interim | 14/14 | 10/10 | adds "release a plugin" and "where do hooks go"; the hook-script near-miss went to another plugin's hook skill |
-| 2026-11-14 | Claude Code · claude-fable-5-2 | current (shipped) | 14/14 | 10/10 | "a change that never reached clients" handed to marketplace-health (it was pulling that skill's prompts) |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | meta 0.7.43 (914 chars) | 14/14 | 10/10 | "a change that never reached clients" handed to marketplace-health (it was pulling that skill's prompts) |
+| 2026-11-14 | Claude Code · claude-fable-5-2 · full | trimmed to 883, without "from the canonical marketplace" | 13/14 | 10/10 | "set up the repo layout for a skills marketplace" went to clone-marketplace — the cut phrase was the distinction; restored |
+| 2026-11-14 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.50 (899 chars) | 14/14 | 10/10 | |
+| 2026-11-14 | Claude Code · claude-fable-5-2 · full | meta 0.7.50 (899 chars) | 14/14 | 10/10 | |
 
-What these runs do not establish: Codex routing (not run), other models, repeat stability, or
-whether the skill improves the work (no with-skill vs baseline task run).
+**Full** = the runner's other installed plugins loaded too (they compete for the prompt);
+**isolated** = `--setting-sources project`, only this plugin. Rows without either were not recorded.
+
+What these runs do not establish: Codex routing (not run — Codex routes from the INSTALLED copy, so
+a run counts for this description only once the installed text matches it), other models, or repeat
+stability (each prompt ran once per row).
+
+## With the skill vs without it
+
+One task prompt, run once with the skill available and once with `Skill` disallowed; isolated,
+`--max-turns 4`, read-only tools (no shell, no web).
+
+| Date | Host · model | Prompt | With the skill | Without it |
+| --- | --- | --- | --- | --- |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | "…I'm renaming the plugin `tools` to `dev-tools`. Other plugins' skills reference `tools:lint-check`… Give me the exact checklist of every change before I push, so installed users actually get it." | loaded the skill; grep first (qualified, `Requires:`, bare); both plugin manifests bumped in lockstep; both marketplace entries; **the Claude marketplace `metadata.version` bump**; prefer bare names over a new qualified one | a careful checklist, but no `metadata.version` bump — the step whose omission leaves the renamed plugin invisible to Claude clients |
+
+Reading: the skill's difference here is one silent-failure step the bare model did not know. That
+does not establish the other flows, or other models.
 
 ## Should fire
 
