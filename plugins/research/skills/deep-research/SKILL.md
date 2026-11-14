@@ -1,16 +1,16 @@
 ---
 name: deep-research
 description: >-
-  Convene a multi-vendor research council — drive the user's own logged-in ChatGPT and Gemini web
-  UIs in a browser, cross-examine their answers anonymously, and write a chairman's brief with
-  verified sources. Use when the user asks for deep or outside research on a contested or
-  high-stakes question across several models — "get a second opinion from other models", "ask
-  ChatGPT and Gemini", "cross-check with other AIs", "run a council", «зроби рісерч з іншими
-  моделями», «спитай інші моделі» — or when a decision is expensive to get subtly wrong. On a bare
-  "deep research this", offer the council beside the host's single-agent research tool. Not for a
-  quick factual lookup, a second opinion on code in front of you, or a video's content (that's
-  `watch-video`). Needs a browser profile signed in to the vendors; spends paid quotas, so it runs on
-  an explicit ask and proposes otherwise.
+  Put one question to ChatGPT and Gemini through the user's own logged-in web UIs, cross-examine
+  their answers anonymously, and write a chairman's brief with verified sources (an LLM council).
+  Use whenever the user wants OTHER AI models' views, even on a plan, claim or document in front of
+  you: "second opinion from ChatGPT and Gemini", "what do other models think", "ChatGPT's and
+  Gemini's take on this", "have several AIs debate", "cross-check with other AIs", "run a council",
+  «спитай інші моделі», «зроби рісерч з іншими моделями»; and on a bare "deep research this", to
+  offer the council beside the host's own deep-research tool. Not for a quick lookup, a review by
+  you alone, reading one web page, or a video (`watch-video`). Needs a browser signed in
+  to both vendors; it spends their paid quotas, so it runs on an explicit ask and only proposes
+  otherwise.
 ---
 
 # Deep research — an LLM council
@@ -34,9 +34,9 @@ Reply in the user's language.
 Research ≈75–120 min). So:
 
 - **An explicit ask for other models** ("second opinion", "council", "ask ChatGPT and Gemini",
-  "cross-check with other AIs") → it runs. A bare "deep research this" is not that ask when the host
-  has its own single-agent research tool: offer the council in one line as the multi-model option, and
-  run whichever the user picks. What scales with the topic is the **depth tier**, never whether the council happens —
+  "cross-check with other AIs") → it runs. A bare "deep research this" is never that ask: offer the
+  council in one line as the multi-model option (beside the host's own deep-research tool, if it has
+  one) and run whichever the user picks. What scales with the topic is the **depth tier**, never whether the council happens —
   don't quietly downgrade an explicit ask to a solo web search.
 - **No explicit ask, but the question is hard** — experts disagree, being subtly wrong is costly, or
   the topic post-dates your knowledge → **propose** the council (one line: why, which tier, how long)
@@ -62,26 +62,33 @@ choice that does not block: state the assumption you made and continue.
 
 Register these as todo items now, before doing anything else, in whatever todo/plan tool this host
 gives you — and while work remains keep exactly one in progress:
-1. Pre-flight — browser connected, each vendor logged in (avatar seen), banners dismissed
-2. Pre-flight — read each tier and set the mode (ChatGPT High by default; Gemini Pro or Thinking)
-3. Phase 0 — topic-safety pre-check (and AUP rephrasing where the topic needs it)
-4. Phase 0 — frame, council size, depth, output format; write `00_question.md`
-5. Phase 1 — self-grounding note `01_self_grounding.md`
-6. Phase 2 — Stage 1 prompt to every member; save each `02_*_round1.md` as it lands
-7. Phase 2 — diagnose Round 1 (it decides whether Phase 3 runs)
-8. Phase 3 — deliberation round (conditional)
-9. Phase 4 — Chairman synthesis into `brief.md`
-10. Phase 4 — verify every load-bearing citation; drop the unverified
-11. Phase 4 — pre-handoff check, all five lines (name each in the close)
-12. Phase 5 — output and handoff
-13. Phase 5b — operationalize time-bound recommendations (conditional)
-Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never left
-open (a pre-flight that finds no browser completes 2–13 with that reason). No such tool? SEARCH for one
-first — on hosts with deferred tools it exists but is not loaded, and its name differs per host;
-anything that creates items and marks them in progress and completed IS that tool. It must be the
-SESSION's own planner, never an external tracker. If there truly is none, keep the list in your
-replies and account for every item at the end. Invoked from another workflow, these items ADD to the
-caller's list; the calling item stays open until your last one closes.
+1. Pre-flight — the browser-automation tool is connected
+2. Pre-flight — each vendor logged in, by avatar, on the USER's account; banners dismissed
+3. Pre-flight — read each tier and set the mode (ChatGPT High by default; Gemini's research-grade model)
+4. Phase 0 — topic-safety pre-check (and AUP rephrasing where the topic needs it)
+5. Phase 0 — frame, council size, depth, output format confirmed
+6. Phase 0 — `00_question.md` written (the first checkpoint)
+7. Phase 1 — self-grounding note `01_self_grounding.md`
+8. Phase 2 — Stage 1 prompt to every member; save each `02_*_round1.md` as it lands
+9. Phase 2 — diagnose Round 1 (it decides whether Phase 3 runs)
+10. Phase 3 — deliberation round (conditional)
+11. Phase 4 — Chairman synthesis into `brief.md`
+12. Phase 4 — verify every load-bearing citation; drop the unverified
+13. Phase 4 — pre-handoff check, all five lines (name each in the close)
+14. Phase 5 — output and handoff
+15. Phase 5b — operationalize time-bound recommendations (conditional)
+Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
+left open — an unfinished list at the end must mean something really is unfinished.
+No such tool? SEARCH for one first — on hosts with deferred tools it exists but is not loaded, and
+its name differs per host. Anything that creates items and marks them in progress and completed IS
+that tool, whatever it is called. Search by that capability, then by any name you remember: one empty
+result is evidence about the name; two are a real absence on this host — say so plainly, it is not
+your mistake. It must be the SESSION's own planner, never an external tracker (Jira, Linear, a task
+app): your bookkeeping is not their backlog. If there truly is none, keep the list in your
+replies — state it once, name each item as you start it, account for every one at the end.
+
+A pre-flight that finds no browser completes 2–15 with that reason. Invoked from another workflow,
+these items ADD to the caller's list; the calling item stays open until your last one closes.
 
 ## Pre-flight (≤ 2 minutes, never skip)
 
@@ -95,13 +102,14 @@ caller's list; the calling item stays open until your last one closes.
    **Never sign in yourself.** If a second connected browser could drive a vendor, check whose account
    it is first — a council on someone else's account spends their quota.
 4. Decline non-essential cookies and dismiss first-load banners.
-5. **Read the tier and pick the mode — the two vendors' "Pro" mean different things** (verified as of
-   2026-09; layouts change, trust the current screen for WHERE the control is):
+5. **Read the tier and pick the mode** (seen 2026-11-14; layouts change, so trust the current screen
+   for WHERE the control is):
    - **ChatGPT:** default to the strongest thinking model at **High** reasoning effort, not the
      heaviest "Pro" setting — Pro hung for hours in one measurement (`references/landmines.md`), so
      re-test it before relying on it. If a run stalls, re-ask at High in a fresh chat.
-   - **Gemini:** **Pro** is a *model* here, and the right pick for technical/research questions; the
-     thinking model for prose-heavy ones. Deep Research is a separate toggle, not a model.
+   - **Gemini:** the picker names its entries by task; take the one for detailed research (or code and
+     analysis, for a technical question) at the highest reasoning level offered. Deep Research is a
+     separate tool, not a model.
    - **A free tier on either vendor** → no council on it: search and model choice are too limited.
      Tell the user, and run with the other vendor only if they agree.
 
@@ -112,9 +120,10 @@ caller's list; the calling item stays open until your last one closes.
 
 1. **Restate the question** in one or two sentences; surface ambiguity.
 2. **Topic-safety pre-check — narrow scope.** Stop and reframe only when the *content itself* is
-   policy-relevant: operational weapons/CBRN detail; drug synthesis or dosing how-to; working malware,
-   live exploits, phishing; fabricated quotes from named public figures; self-harm methods; any sexual
-   content involving minors; targeted attack research on a specific living person. Then offer the user:
+   policy-relevant: the list in `references/AUP_TRIGGERS.md` § «When this reference can't save you»
+   (weapons/CBRN detail, drug synthesis or dosing how-to, working malware or phishing, fabricated
+   quotes from named people, self-harm or eating-disorder methods, any sexual content involving
+   minors, targeted attack research on a specific living person). Then offer the user:
    (1) reframe to a legitimate angle ("the policy debate around X", "high-level threat modelling"),
    (2) members only, no Chairman synthesis, or (3) drop the council for a primary source (a doctor, a
    lawyer, a security professional).
@@ -124,8 +133,11 @@ caller's list; the calling item stays open until your last one closes.
    misreads and five rephrasing rules ("trends in X" not "procedure for X"; understand the form, don't
    ask how to fill it "so that…").
 3. **Council size** — ChatGPT + Gemini by default; add Claude.ai only when the stakes justify the time.
+   It runs under the same rules, with no recipe of its own here: verify its login by the account
+   avatar, read its last answer the same way, and trust the current screen for where things are.
+   It is the same model family as you, so weigh its agreement with you accordingly.
 4. **Depth** — **Quick** (chat answers, no cross-review, ~10 min) · **Standard** (default: chat answers
-   + one cross-review round + synthesis, ~20–30 min) · **Deep Research** (DR mode on both, 1–2 rounds,
+   + one cross-review round + synthesis, ~20–30 min) · **Deep Research** (DR mode on both, 1–2 cross-reviews,
    full brief, ~75–120 min including a likely mid-flight retry). Tell the user the time up front so the
    run isn't killed early.
 5. **Output** — a one-shot decision → a tl;dr plus a short brief; a topic they'll re-read → a full brief
@@ -143,7 +155,9 @@ what you think the answer is with a confidence per claim, and the 2–4 places y
 
 ## Phase 2 — Stage 1: the open question, in parallel
 
-Pose the same question to every member in fresh chats, in parallel. Don't sit and wait: set the user's
+Pose the same question to every member in fresh chats, in parallel. **Record each conversation URL
+as you create it** (it is how a lost tab is recovered), and tell Gemini to ignore prior context:
+it carries memory from the account's past chats. Don't sit and wait: set the user's
 expectation on timing and check back. **Keep the session alive while you wait.** A Deep Research
 council outruns an hour by design and its middle is pure waiting, so if your host or task system ends
 sessions that go quiet, send its liveness ping at every poll of a pending answer, in this phase and
@@ -154,6 +168,11 @@ questions and Gemini can show a research plan to approve. Answer or approve only
 `00_question.md` already settles; anything else is a question for the user, not a guess.
 
 ### Sending the prompt
+
+**Before any typing or paste, wait for the real editor (ChatGPT can show a fallback UI whose editor is
+wiped when the app loads), focus the target tab, and read the composer back before Send.** On some
+browser bridges typing lands in whatever tab is in front, and right after a navigation it can drop
+characters while reporting success; either way a prompt can go to the wrong member or arrive mangled.
 
 Both vendors use React-managed rich editors; setting a value programmatically does not reach them. In
 order of preference:
@@ -173,36 +192,34 @@ order of preference:
    tool may read, upload it, type a one-line instruction.
 
 **Fallback only:** injecting text with `execCommand('insertText')` from a page script. Each injection
-raises usage-policy risk ("one AI driving another through a non-standard channel"), and stacking three
-or more reliably triggers a refusal. **After any usage-policy refusal in this run, skip it entirely** —
-on one sandboxed host a refusal blocked every later page-script call for the rest of the run;
-ask the user to paste instead. Otherwise use it once, only if 1–4 all failed — and if it fails too, ask the user to paste.
+raises usage-policy risk ("one AI driving another through a non-standard channel"), and a prior run
+that used it landed on a usage-policy refusal (`references/prompt-delivery.md`). **Skip it entirely after any usage-policy refusal in this run, and
+on a sandboxed cloud host** (a refusal there can block every later page-script call): ask the user to
+paste instead. Otherwise use it once, only if 1–4 all failed — and if it fails too, ask the user to paste.
 📖 Rationale and snippets → `references/prompt-delivery.md`.
 
 ### Capturing responses
 
-- **Read the LAST answer element only** (last `div.markdown` on ChatGPT, last `model-response` on
-  Gemini): a page script returning that element's `textContent`, or the host's page-text read when it
-  can be scoped to an element. A whole-page read mixes in every earlier turn. Generic reads lie: `body.innerText` truncates and freezes mid-stream, and
-  a role-attribute selector can return only the citation chips of a complete answer. A suspiciously
-  empty read is a claim about the instrument until a second instrument agrees.
-- **ChatGPT Deep Research renders in a cross-origin iframe** (as of 2026-08) — no script can read it. Expand the report
-  to fullscreen, triple-click inside it, select all, copy, and read the clipboard.
-- **Completion:** on ChatGPT chat, length stable ~10 s and no Stop button is workable. **ChatGPT Deep
-  Research** is done when the "Research completed in…" header appears above the report; page length
-  is useless there (the iframe keeps it flat). **On Gemini, neither
-  length nor the Stop-button selector can be trusted** — judge from the text of the last answer itself.
-- **Long dumps get filtered** — some browser bridges block chunks that look like `key: "value"` code and
-  cap each return at ~1.5 KB: store the text in a page variable and pull slices of ≤1 000 characters
-  for Latin text, ≤700 for non-Latin (2 bytes a character).
-- **Gemini A/B tests** ("Which response is more helpful?") hide two answers — capture both, attribute
-  them separately, and feed their contradiction into Round 2.
+The selectors, slice sizes, completion signals and the clipboard path for ChatGPT Deep Research are
+in `references/ui-tactics.md` §5. The rulings:
+
+- **Read the last answer element only**, through a page variable read in slices; never a whole-page
+  read, which mixes in earlier turns, truncates and freezes mid-stream. A suspiciously empty read is a
+  claim about the instrument until a second instrument agrees.
+- **ChatGPT Deep Research cannot be read by any script** (it sits in a cross-origin iframe): copy it
+  through the clipboard.
+- **Judge completion per vendor**, not by one rule: on Gemini neither length nor the Stop button can be
+  trusted, only the text of the last answer.
+- **Gemini A/B tests** ("Which response is more helpful?") hide two answers: capture both, attribute
+  them separately, and feed their contradiction into round 2 (on a Quick run, which has no round 2,
+  weigh it in the synthesis instead).
 
 **Write each response to disk the moment it lands** (`02_chatgpt_round1.md`, `02_gemini_round1.md`) —
 no paraphrasing into chat first. The disk file is the source of truth.
 
 ### Diagnose Round 1 before going on
 
+- **Quick tier** → skip Phase 3 and synthesize; complete item 10 with that reason. Otherwise:
 - **Both substantive** (≳1 500 chars, specific) → Phase 3.
 - **Both brief** (≲1 000 chars, conversational, echoing the framing) → either the topic is too soft for a
   council (skip Phase 3, synthesize) or the prompt was too open (go straight to a sharp adversarial
@@ -213,8 +230,8 @@ no paraphrasing into chat first. The disk file is the source of truth.
 ## Phase 3 — Stage 2: anonymous cross-pressure
 
 **Decide first whether a round is worth it:** real disagreement on a load-bearing claim → run it;
-stylistic difference only → skip, and note the unanimity in the brief (flag it if it looks suspicious);
-one member much weaker → push only that one with the stronger one's points.
+stylistic difference only → skip, and note the unanimity in the brief (flag it if it looks suspicious).
+An asymmetric Round 1 is handled in «Diagnose Round 1» above.
 
 **Template** — quote 1–3 load-bearing points from one member (read the file from disk; 3–6 sentences
 each, not the whole answer) into the other's chat:
@@ -236,18 +253,22 @@ position, say so explicitly.
 ```
 
 Rules: **anonymize** (never "ChatGPT said" — identity triggers sycophancy between sibling models);
-**frame as a challenge**, not an invitation; **one round by default**. Save `03_*_round2.md` at once. The Phase 2 keep-alive applies to every wait here
-too.
+**frame as a challenge**, not an invitation; **one cross-review by default**. Rounds are counted
+overall: Stage 1 is round 1, the cross-review is round 2. A second cross-review (round 3) runs only in a
+Deep Research council, and only when round 2 moved a member off a load-bearing position without
+settling it (a new disagreement, not the old one restated). Save each answer at once
+(`03_*_round2.md`, `04_*_round3.md`). The Phase 2 keep-alive applies to every wait here too.
 
-**Stop after one round** when you see explicit position change, convergence on a merged answer, hardened
-disagreement (present it as such — a third round won't move it), or fake convergence (stop and flag it
-as performative). Honest disagreement is more useful than forced consensus.
+**Stop after the cross-review** when you see a position change that settles the point, convergence on a
+merged answer, hardened disagreement (present it as such — another round won't move it), or fake
+convergence (stop and flag it as performative), unless the round-3 condition above holds. Honest
+disagreement is more useful than forced consensus.
 
 ## Phase 4 — Stage 3: Chairman synthesis
 
 The synthesis is your read of the council, not a vote. **Synthesize from the files on disk**, not by
 re-reading the browser. Use the template in `references/brief-template.md` for `brief.md`: header
-(question, council, DR, rounds, date) · tl;dr · agreed · disagreed and converged · what the Chairman
+(question, council, depth, rounds, date) · tl;dr · agreed · disagreed and converged · what the Chairman
 checked or pushed back on · recommendation · open questions · sources (verified only).
 
 **Chairman discipline:**
@@ -259,7 +280,11 @@ checked or pushed back on · recommendation · open questions · sources (verifi
 - **Don't smuggle your prior in** — if your self-grounding note was wrong, say that.
 - **Keep it lean** — 1–2 dense pages.
 
-**Pre-handoff check** — before Phase 5, confirm each line and fix what fails:
+**Pre-handoff check** — before Phase 5, confirm each line and fix what fails. With Bun available,
+`bun run "<skill dir>/scripts/check-brief.ts" "<output>/council/<slug>/brief.md"` (`<skill dir>` is the
+directory you loaded this SKILL.md from) checks the mechanical
+part (sections, header fields, rounds against the files, a URL on every source; exit 1 = findings);
+the source-content and judgement lines stay yours:
 - every section of the template is present, or says why it is empty;
 - every source in «Sources» was opened by you and carries the claim it is cited for;
 - a unanimous council is flagged as such, with your read on whether it looks performative;
@@ -285,12 +310,14 @@ council insight that isn't scheduled usually doesn't change behaviour.
 ├── 01_self_grounding.md    ← your private pre-council note
 ├── 02_<member>_round1.md   ← Stage 1, raw
 ├── 03_<member>_round2.md   ← Stage 2, if used
+├── 04_<member>_round3.md   ← a second cross-review, Deep Research only
 └── brief.md                ← Stage 3 — the headline
 ```
 
 ## Usage-policy refusals
 
-**Diagnose the flavour first.** A refusal in the first 3–4 tool calls is **substance-side** — the
+**Diagnose the flavour first** (a rule of thumb from past runs, not a measured threshold). A refusal
+in the first 3–4 tool calls is **substance-side** — the
 wording of what you asked; reframe it with `references/AUP_TRIGGERS.md`. A refusal 8–15 calls in, deep
 in an extract/paste loop, is **pattern-side** — the hygiene below is the fix.
 
@@ -314,8 +341,8 @@ across runs, record it in `references/landmines.md`.
   Gemini's extra specificity, or tell it to ignore prior context.
 - **ChatGPT may load a degraded fallback UI** whose editor is wiped when the real app hydrates — wait for
   the real editor before typing.
-- **On some browser bridges (as of 2026-09) typing goes to the foreground tab whatever tab you
-  named**, and right after navigation it can drop characters while reporting success — focus the target tab and read the composer back before Send.
+- **Typing can go to the foreground tab, or drop characters, while reporting success** (some
+  bridges, 2026-09) — hence the focus-and-read-back rule at the top of «Sending the prompt».
 - **Submit on Gemini by clicking coordinates from a screenshot taken after the text is in place** —
   the method that worked when Enter and element-reference clicks no-op'd (one host, 2026-08). A Send button stuck after Stop → reload the
   conversation URL and re-send.
@@ -349,5 +376,8 @@ across runs, record it in `references/landmines.md`.
 - `references/AUP_TRIGGERS.md` — wording that trips usage-policy classifiers on benign legal, tax,
   medical and form-filling topics, and how to rephrase. Read before drafting a prompt on those topics.
 - `references/brief-template.md` — the brief's exact structure. Read at Phase 4.
+- `scripts/check-brief.ts` — the mechanical half of the pre-handoff check (Bun; read-only).
 - `references/landmines.md` — the measured case behind each landmine above. Read when one bites, or
   before you trust a workaround that contradicts a line here.
+- `references/trigger-tests.md` — the prompts that should and should not load this skill, and the
+  run record. Read when you change the description.

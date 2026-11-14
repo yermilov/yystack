@@ -1,70 +1,99 @@
-# Landmines — measured precedents behind SKILL.md «Other landmines» and «Usage-policy refusals»
+# Landmines — the measured cases behind SKILL.md «Other landmines» and «Usage-policy refusals»
 
 > **UI language.** Control labels are given in English. A localized UI shows them translated, so
 > match a control by its position and role first; labels also drift between releases.
 
-The dated measurements behind each one-line ruling in SKILL.md «Other landmines» and «Usage-policy refusals». Read when a ruling there does not cover what you are seeing, or before arguing with one.
+The dated measurements behind each one-line ruling in SKILL.md. Read when a ruling there does not
+cover what you see, or before arguing with one. The rulings live in SKILL.md and the
+how-to in `ui-tactics.md`; each entry here is the evidence and its limits. A measurement on one host and date
+is not a standing contract: re-test before relying on it, and when a re-test disagrees, replace the
+entry rather than stacking a rebuttal on it.
 
-## AUP — subagent option (history)
+## Usage-policy refusals
 
-**Subagent option, deprecated.** Earlier versions of this skill ran Phases 1–4 in a subagent specifically to isolate AUP risk. The tradeoff went against it: long opaque waits, no mid-flight visibility for the user, structured-return parsing overhead, and when a refusal fires inside the subagent the synthesis is typically lost while the raw rounds survive. The skill no longer does this by default. SKILL.md «When one fires anyway» keeps it as option (d), for refusals that repeat despite the hygiene rules there — never the default path.
+**Running Phases 1–4 inside a subagent** (SKILL.md option (d)) isolates a refusal but costs long
+opaque waits, no mid-flight visibility, and, when a refusal fires inside it, usually the synthesis
+while the raw rounds survive. That is why it is a last resort, not the default.
 
-## Other landmines
+**A refusal can poison a sandboxed host's session.** On one sandboxed cloud host (2026-08), an
+`execCommand` injection was refused by a safety classifier, and every later batch containing page-script
+calls was blocked for the rest of the run. One-paragraph typing still worked there.
 
-**Gemini bleeds in cross-session memory; ChatGPT new chat is sterile.** Gemini Pro has chat history enabled by default and will reference details from earlier conversations even when you start a fresh chat — sometimes helpfully (carrying over context the user gave it earlier), sometimes wrongly (filling in specifics from old chats that don't apply to the current question). In a real run Gemini named a specific product model in a Round 1 answer although the prompt only named the general category — the identifier came from an earlier chat in the same account. ChatGPT does NOT do this in fresh chats by default. Two implications: (a) when comparing Round 1 outputs, Gemini's "extra specificity" may be hallucinated continuity, not real reasoning — verify before trusting it; (b) when the user asks a question where you DON'T want any prior framing leaking in (e.g. testing whether models converge from scratch), explicitly tell Gemini "ignore prior context, answer this from scratch" or just open ChatGPT-only for that round.
+## Reading answers
 
-**Bridge content filter blocks DOM dumps containing `key: "value"`.** Any TypeScript object literal, JSON snippet, or anything that pattern-matches a cookie string gets blocked when extracted by a page script. Workaround: take small slices and stitch around the blocked chunks. ⚠️ Older revisions suggested falling back to `body.innerText` here; prefer the host's page-text read of the last answer element (last `div.markdown` on ChatGPT, last `model-response` on Gemini) — `body.innerText` silently truncates long answers (~3.6k of a 26k answer, measured 2026-08-23) and freezes mid-stream on Gemini, so it trades a visible block for an invisible one.
+**`[data-message-author-role]` returns citation chips, not the answer** (ChatGPT, 2026-08-22). On two
+completed answers the selector returned 372 characters (three source names) while the full answer was
+on screen; `querySelectorAll('p')` inside it found 1. A run trusting it would have reported a failed
+council. The last `div.markdown` returned the whole answer.
 
-**Bridge truncates JS return values around 1500 chars for Cyrillic content.** This is separate from the content filter above — it's a hard byte limit on the response payload. Latin text gets ~1500 chars per slice; Cyrillic (UTF-8 2 bytes/char) gets cut at ~750 visible chars. Practical pattern: store the full response in `window.__resp = …` once, then extract via repeated `slice(start, end)` calls of ≤1000 characters for Latin text and ≤700 for non-Latin. After the first slice you may see a `[TRUNCATED]` marker — drop that, take the next slice from where the _unmarked_ text ended, not where you asked. For large responses (40k+ chars), build a section-offset map first by regexing on `\n\d\. ` headers, then sample only the load-bearing sections. **Write the assembled full text to disk immediately and synthesize from there**, not from the in-chat slices.
+**`document.body.innerText` truncates without a mark** (2026-08-23): it stopped at ~3.6k characters
+of a 26k answer and froze mid-stream on Gemini. A truncated read looks like a complete short answer.
 
-**⚠️ ChatGPT chat responses are NOT reliably readable via `[data-message-author-role]` — read the last answer element.** An earlier version of this skill said a Thinking-tier response sits in those divs "accessible via plain `innerText`". **Measured 2026-08-22 that is false, and it is the dangerous kind of false:** on two separate COMPLETED GPT-5 answers, `[data-message-author-role="assistant"]` returned **372 characters — the citation chips alone** (three source names and nothing else), while the full multi-thousand-word answer was rendered on screen. `el.querySelectorAll('p')` inside that same element returned **1**, and `innerHTML` was 34 KB of chip markup. A run that trusts the selector concludes the council returned nothing and reports a failed council — which is exactly what nearly happened. **A page-text read of the last answer element returns the whole answer**; make it the default extractor for chat-mode responses and keep the clipboard pattern for Deep Research only. This is the general "confirm the instrument" rule in its nastiest form: a suspiciously empty result is a claim about your INSTRUMENT until a second instrument disagrees.
+**Gemini's progress signals freeze while it is still streaming** (2026-08-23): `body.innerText.length`,
+`model-response.innerText` and the Stop-button selector (which stays truthy after completion) all
+stopped moving. Only the text of the last `model-response` told completion apart from a stall. An
+**empty** `model-response` for several minutes on a follow-up turn was a stall; reloading `/app/<id>`
+recovered it.
 
-⚠️ **And `document.body.innerText` has the same failure with a different number — it TRUNCATES rather than empties, which is far harder to notice.** Measured 2026-08-23: it stalled at ~3.6k characters on an answer that was actually **26k**. A truncated read looks like a complete short answer; nothing marks the cut. Read the **last `div.markdown`** instead, and on a long answer build a heading-offset map so you can pull sections without re-reading the whole thing.
+**Gemini A/B tests hide two answers** (2026-08-22): `body.innerText` froze at ~1 700 characters while
+`querySelectorAll('message-content, model-response')` returned both variants in full. They
+contradicted each other (two numeric limits for one rule) and each held exactly one error, so pushing
+on the divergence beat either variant.
 
-**ChatGPT's heaviest "Pro" setting can hang indefinitely; High is the working default for council runs.** Measured 2026-08-22: both council questions sent at Pro browsed extensively (27 and 23 websites, one downloaded a PDF study), emitted a reasoning trace, and then produced **nothing for ~2.5 hours** — stop-button still present, trace frozen, zero assistant output. Reloading the conversation URL, the documented websocket recovery, did not help. Re-sent at High, both returned complete, densely-cited answers in **3–4 minutes**. So: default council prompts to High. A stalled run costs only minutes if you re-ask at High in a fresh chat. (Two prompts on one account, 2026-08 — a measurement, not a standing contract; re-test before relying on Pro either way.)
+**ChatGPT DR renders in a cross-origin iframe** (2026-08): `body.innerText.length` stayed ~3 000
+whatever the report size, and `iframe.contentDocument` is blocked. Only the clipboard path worked.
 
-**The ChatGPT model control is now a reasoning-effort SLIDER, not a model dropdown.** The composer shows the current tier as a word (`Pro`, `High`, …). Clicking it opens a small popover holding the slider plus a "More ›" link; click/drag left of the knob to lower the effort. The setting **persists into new chats in the same browser**, so set it once per session. There is no «GPT-5 Thinking» menu item to hunt for any more — don't waste a screenshot looking for one.
+**The bridge filter and size cap** (2026-08): results dense in `key: "value"` came back
+`[BLOCKED: …]`; each return was capped at ~1.5 KB, which is ~750 visible Cyrillic characters.
 
-**`?q=` URL pre-fill works on ChatGPT and NOT on Gemini — the split matters, so don't apply either half to the other.** An earlier version of this file called it dead on *both* after a 2026-08-22 run; **re-measured 2026-08-23 that is wrong for ChatGPT**, and two independent sessions found the same thing. On `chatgpt.com/?q=<ENCODED>` the prompt does land in the composer (with a short delay — check the composer, don't judge on the first screenshot). On `gemini.google.com/app?q=<ENCODED>` it genuinely does nothing: the composer stays at `innerText.length === 1`. So: keep the URL path for ChatGPT, type into the real editor for Gemini.
+## Driving the composer
 
-⚠️ **After a `?q=` navigation, make sure the QUERY STRING is gone but keep the real path.** On 2026-11-13 ChatGPT stripped it by itself once the prompt landed; if it is still there, the whole encoded prompt echoes back through every tab-context read (~1.2k tokens per read, for the rest of the session), so strip it:
+**`?q=` pre-fill works on ChatGPT, not on Gemini** (2026-08-23, two sessions). On
+`chatgpt.com/?q=<encoded>` the prompt lands in the composer after a short delay. On
+`gemini.google.com/app?q=…` the composer stays empty. On 2026-11-13 ChatGPT removed the query string
+itself after the prompt landed; when it does not, the encoded prompt echoes into every later tab read
+(~1.2k tokens each), hence the `history.replaceState` strip. Keep the real path: the
+reload-the-conversation recovery depends on it.
 
-```js
-history.replaceState({}, '', location.pathname);
-```
+**Gemini submission** (2026-08-23, one host): Enter did not send and a `ref`-based click on Send
+no-op'd; a coordinate click from a screenshot taken after the text was in place worked. Typed `\n` was
+swallowed (`line one\nline two` → `line oneline two`), and right after a navigation the composer
+dropped every space and digit while the typing call reported success. A day earlier, the same browser
+had Gemini behind a site-permission wall that did not reproduce, which is why none of this is
+Gemini's permanent contract.
 
-Do **not** replace the pathname with a made-up one like `/c/x`: once ChatGPT has redirected to the real conversation URL that path is what the reload-the-conversation recovery below depends on, and a fabricated one breaks it.
+**Typing ignored its tab** (2026-09-10, one bridge): clicks and screenshots respected the named tab,
+typing went to the foreground one. Text meant for Gemini landed in ChatGPT twice, and that council's
+cross-round never happened.
 
-**The conversation URL is the durable handle; the tab is not.** The browser closed the automation tab group out from under the session mid-run, and page-script calls timed out at 45 s repeatedly while long generations were open. Both conversations survived server-side. **Record every `/c/<id>` URL as you create it** and recover by navigating back to it — never by re-asking the question.
+**Plain typing submits early on ChatGPT**: the first `\n` acts as Enter, so a seven-section prompt
+arrived as its intro paragraph, and the reply looked responsive while answering a question it never
+received.
 
-**Gemini IS driveable — a 2026-08-22 entry here declared it "logged in and still undriveable" behind an extension site-permission wall, and that did not reproduce on 2026-08-23 in the same browser and profile**, so the claim has been removed rather than argued with.
+**A second connected browser** drove `gemini.google.com` fine because it was signed in to a different
+person's account; a council through it would spend their quota.
 
-What the 2026-08-23 run measured instead is below. ⚠️ **Scope it as one host on one date, not as Gemini's permanent contract** — the two runs a day apart disagreed, which is itself the reason to distrust any standing claim here. Treat each item as the *verified working method* and the first thing to try, not as the only thing that can possibly work; if a submission path outside this list works for you, that is new evidence, not a violation.
+## Models and modes
 
-- **Enter did not send, and a `ref`-based click on the send button silently no-opped.** What did submit was a **mouse click on coordinates taken from a screenshot captured AFTER the text is in place** — the button moves as the composer grows, so a coordinate from an earlier screenshot misses. Reach for that first.
-- **Typing silently swallows `\n`.** `line one\nline two` arrives as `line oneline two`. Send multi-paragraph prompts as separate typing calls with `shift+Return` between them — or, simplest, **write the prompt as ONE paragraph with no newlines at all**, which needs neither the clipboard nor a page script.
-- **Right after a navigation, the composer can drop every space and digit** while the typing call still reports success. Read the composer back before submitting; never submit on the strength of a success return.
-- **All three progress indicators freeze while the answer is still streaming** — `body.innerText.length`, `model-response.innerText`, and the Stop-button selector (which stays truthy after completion). A page-text read is the only reliable reader; take the LAST `model-response` element.
-- An **empty** `model-response` for several minutes on a follow-up turn is a stall, not the Pro-tier hang documented above: reload the `/app/<id>` URL.
-- ⚠️ **On one browser bridge, typing IGNORED its own tab argument and went into whatever tab was
-  foreground.** Clicks and screenshots respected the tab; typing did not (measured 2026-09-10). Text meant for a Gemini tab landed in the ChatGPT composer twice in one
-  session, and the whole cross-round council never happened because of it. Before any typing call in
-  a multi-tab council, confirm the TARGET tab is actually focused/foreground, and **read the
-  composer back** before submitting.
+**ChatGPT's heaviest "Pro" setting hung** (2026-08-22, two prompts on one account): both browsed
+(27 and 23 sites), emitted a reasoning trace, then produced nothing for ~2.5 h with the Stop button up;
+reloading did not help. Re-sent at High, both returned complete cited answers in 3–4 minutes.
 
-⚠️ **On one sandboxed cloud host (2026-08), `execCommand` injection was refused by a safety classifier — and the refusal poisoned the session:** every later batch containing page-script calls was blocked for the rest of the run. So on such a host, do not reach for the injection fallback at all; the one-paragraph typing path above is what works there.
-⚠️ And know the trap next door: a machine's *other* connected browser may drive gemini.google.com perfectly well — because it is signed into **a different person's account**. Running a council through it would spend someone else's quota on this user's question. Check whose account it is before treating a second browser as the fix.
+**ChatGPT DR failed mid-flight** (2026-08, Plus): "Research failed" after ~50 min; the retry through
+"Change model → Try again → Start" finished in ~25 min (cached search reused), ~75 min in all.
 
-**Gemini's submit button gets stuck after a Stop click.** When you press Stop on a still-streaming response and immediately try to send a new prompt, the button stays in "Stop response" mode. **Recovery:** navigate to the same conversation URL (it preserves the conversation history) and re-send the prompt — submitting via a **coordinate click on a screenshot taken after the text is in place** — the verified method above. (An earlier version of this line said "press Enter"; Enter did not submit in the measured run.)
+**Gemini memory bleeds into fresh chats**: with chat history on, a Round 1 answer named a specific
+product model that the prompt never mentioned; it came from an earlier chat in the same account. A
+fresh ChatGPT chat did not do this.
 
-**ChatGPT Plus DR can fail mid-flight after 30–60 min.** Symptom: report card shows "Research failed" with all plan items unchecked. **Recovery:** click "Change model" icon (5th of 6 action icons), then "Try again • <current thinking model>" in the popover, then "Start" on the re-shown plan. Retry is usually faster than the original (cached search context). Don't auto-retry a second time without telling the user. Real-run total: ~50 min fail + ~25 min successful retry = ~75 min wall clock for one ChatGPT Plus DR.
+**Gemini hung on "continue" turns** (Thinking mode, long generations): the second answer container
+stayed empty and the tab stopped answering screenshots after 30 s.
 
-**ChatGPT DR report sits in a cross-origin iframe.** This is the single most surprising landmine for someone who has only used Gemini before. `document.body.innerText.length` stays at ~3000 chars _no matter how big the report_ — the report is rendered inside `<iframe title="internal://deep-research">` which is CORS-isolated. JavaScript extraction is impossible. Use the clipboard pattern: expand to fullscreen → triple-click inside the iframe → select all, copy → the host's clipboard-read capability. Don't waste time trying to find a JS workaround — there isn't one. Step-by-step in `references/ui-tactics.md` §5b.
+## Bridges
 
-**Streaming completion is not just "stop button gone".** Both UIs sometimes leave the stop button visible after generation completes; conversely, length can plateau during DR phase transitions while the stop is still active. On **ChatGPT**, combining the two (length stable ~10s AND stop-button selector empty) is still a workable test. On **Gemini it is not** — both halves were measured unreliable on 2026-08-23 (see the Gemini notes above), so read the last `model-response` with a page-text read and judge completion from the content.
+**Page-script calls are capped at ~45 s** on some bridges (a remote-debugging evaluate call). Long
+loops in one call exceeded it even when each step was short; the completed steps stuck.
 
-**Gemini sometimes serves an A/B experiment ("Which response is more helpful?") with TWO answers — and `innerText` shows you neither.** Measured 2026-08-22: `document.body.innerText` froze at ~1700 characters while `document.querySelectorAll('message-content, model-response')` returned both variants in full. So the familiar symptom — a response that will not grow — has a second cause besides a stalled stream, and the two look identical from `innerText` alone. ⚠️ **Do not pick one and discard the other: the disagreement is free cross-pressure material.** In that run the two variants contradicted each other (two different numeric limits for the same rule, in two currencies) and **each contained exactly one error** — so keeping both and pushing on the divergence produced a better answer than either variant, and no extra round was needed to get it. Capture both, attribute them separately in the brief, and feed the contradiction into Round 2 rather than resolving it yourself.
-
-**Gemini Pro Thinking can hang indefinitely on follow-up "continue" turns.** Symptom: you ask Gemini to continue from a truncated section, the streaming indicator appears, the second response container shows up empty (length 0), and the tab eventually stops answering screenshot requests (timeout after 30 s). This isn't a council failure — it's a Gemini-side issue specific to long Thinking generations on continuation turns. **Recovery:** don't keep waiting. If you have ChatGPT's full response and substantive convergence on the spine, synthesize from what you have and note the partial Gemini coverage in the brief. The marginal value of Gemini's missing sections is rarely worth a 10-minute wait that may never resolve.
-
-**Page-script calls have a ~45-second cap on some browser bridges** (a remote-debugging evaluate call). A long loop inside one call — sending several prompts, polling a stream — can exceed it even when each step is short; after a timeout the completed steps did stick, so re-run only the remainder, and keep each call under ~25 s.
+**The browser closed the automation tab group mid-run** and page-script calls timed out repeatedly
+while long generations were open; both conversations survived server-side and were recovered from
+their recorded URLs.

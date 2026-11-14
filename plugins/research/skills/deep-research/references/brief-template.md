@@ -6,7 +6,7 @@ Use this exact template for `<output>/council/<slug>/brief.md`, then run the pre
 # [Topic] — Council Brief
 
 **Question:** [the framed question from phase 0]
-**Council:** [each member + its model and mode]; **Depth:** [Quick / Standard / Deep Research]; **Rounds:** [1 or 2]
+**Council:** [each member + its model and mode]; **Depth:** [Quick / Standard / Deep Research]; **Rounds:** [1, 2 or 3 — Stage 1 counts as round 1]
 **Date:** [YYYY-MM-DD]
 
 ## tl;dr
