@@ -100,7 +100,7 @@ function main() {
   const sources = blocks.get("Sources");
   if (sources !== undefined) {
     const entries = sources.split("\n").filter((l) => /^\s*([-*]|\d+\.)\s+/.test(l));
-    if (!entries.length && !/no (verified )?sources|none verified|empty/i.test(sources)) {
+    if (!entries.length && !/no (verified )?sources|none (were |was )?verified|sources? (list )?(is |was )?empty/i.test(sources)) {
       findings.push("«Sources» has no list entries and does not say why it is empty");
     }
     for (const e of entries) {

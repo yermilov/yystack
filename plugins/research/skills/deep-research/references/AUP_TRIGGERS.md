@@ -1,6 +1,6 @@
 # AUP Triggers — substance-side reference
 
-Quick reference for council prompts on benign-but-classifier-adjacent topics — legal, financial, medical, government procedures, filling in official forms. The Anthropic AUP defines «Universal Usage Standards» and «High-risk Use Case Requirements»; the classifier tends to fire _early_ in a session (within the first few tool calls, by past runs, not a measured threshold) when wording in the council prompt lands too close to one of them. Read this before drafting Phase-0 wording when the topic touches any of these areas. The quotes below are from Anthropic's policy, the one a Claude host enforces; other vendors' policies draw the same four lines, so the rephrasing rules carry over.
+Quick reference for council prompts on benign-but-classifier-adjacent topics — legal, financial, medical, government procedures, filling in official forms. The Anthropic AUP defines «Universal Usage Standards» and «High-risk Use Case Requirements»; the classifier tends to fire _early_ in a session (within the first few tool calls, by past runs, not a measured threshold) when wording in the council prompt lands too close to one of them. Read this before drafting Phase-0 wording when the topic touches any of these areas. The quotes below are from Anthropic's policy, the one a Claude host enforces; other vendors' policies draw the same four lines, so the rephrasing rules carry over. The refusal diagnostic below was observed on a Claude host only; on another host the refusal looks different and the timing rule is untested.
 
 For _mechanism-side_ triggers (pattern-stacking late in the run, JS injection into other LLM frontends, repeated extractions), see Phase 2 «Sending the prompt» and «Usage-policy refusals» in SKILL.md — different problem, different fix.
 
@@ -74,14 +74,13 @@ Some topics are policy-relevant in their core substance and no rephrasing will l
 - Sexualization / grooming / abuse content involving minors, any framing
 - Targeted attack research on specific living people
 
-For these, SKILL.md Phase 0 documents the stop-and-reframe protocol with three escape options (narrow the angle, skip Chairman synthesis, drop the council entirely). Don't try to rephrase a CBRN question into landscape research — it doesn't pass, and shouldn't.
+For these, SKILL.md Phase 0 documents the stop-and-reframe protocol with two escape options (narrow the angle, or drop the council for a primary source; the unreframed question never goes to the members). Don't try to rephrase a CBRN question into landscape research — it doesn't pass, and shouldn't.
 
 ## Diagnostic: substance-side vs. mechanism-side refusal
 
-When the host reports a usage-policy refusal (for example, one host shows `API Error: … is unable to respond…`), the timing usually tells you which side fired. This is a rule of thumb from past runs, not a measured threshold, so if the first fix does not stop the refusals, try the other side's:
+When the host reports a usage-policy refusal (for example, one host shows `API Error: … is unable to respond…`), the timing usually tells you which side fired. This is a rule of thumb from past runs, not a measured threshold.
 
-- **Early refusal (≤ 3-4 tool calls)** — usually substance-side. Classifier didn't like _what_ you asked. This file is the right response: reframe against the 4 categories above using the 5 rules, then retry.
-- **Late refusal (8-15+ cumulative tool calls, deep in extraction / paste-back loop)** — mechanism-side. This file won't help; go to SKILL.md «Usage-policy refusals» (the hygiene rules).
+SKILL.md «Usage-policy refusals» owns the early-vs-late rule. An early, substance-side refusal is what this file answers: reframe against the 4 categories above using the 5 rules, then retry. A late, mechanism-side one is not; use the hygiene rules there.
 
 ## Source
 

@@ -43,5 +43,5 @@ If it's a learning topic, the 1–3 things the reader should walk away with.]
 ## Sources
 
 [Real URLs the council cited that I verified. Drop hallucinated sources
-entirely — better empty than wrong.]
+entirely — better empty than wrong. If none survive, write "No verified sources:" and why.]
 ```

@@ -28,10 +28,12 @@ don't compliment each other, when to stop, how to recover when a UI misbehaves.
 
 Reply in the user's language.
 
+(Length: ~380 lines because it is a 15-step workflow whose branch conditions must stay inline; each
+step's depth is in `references/`.)
+
 ## When to run it — and the consent it needs
 
-**A council spends the user's paid quotas and real time** (Quick ≈10 min · Standard ≈20–30 min · Deep
-Research ≈75–120 min). So:
+**A council spends the user's paid quotas and real time** (the timings per depth tier are in Phase 0 step 4). So:
 
 - **An explicit ask for other models** ("second opinion", "council", "ask ChatGPT and Gemini",
   "cross-check with other AIs") → it runs. A bare "deep research this" is never that ask: offer the
@@ -54,7 +56,8 @@ to a solo search. **Record every skip** in one line with its reason.
 
 **Host differences.** The workflow needs a browser-automation tool with access to a signed-in profile
 and, for some steps, the host's clipboard. Hosts without browser automation (some coding-agent hosts
-have none) cannot run it at all — say so. A choice that blocks the run (a login, scope you cannot
+have none) cannot run it at all — say so. Its trigger runs so far are Claude Code only; Codex routing
+is untested (`references/trigger-tests.md`). A choice that blocks the run (a login, scope you cannot
 settle): ask where the host can ask; where it cannot, put the choice in your report and stop. A
 choice that does not block: state the assumption you made and continue.
 
@@ -66,10 +69,11 @@ gives you — and while work remains keep exactly one in progress:
 2. Pre-flight — each vendor logged in, by avatar, on the USER's account; banners dismissed
 3. Pre-flight — read each tier and set the mode (ChatGPT High by default; Gemini's research-grade model)
 4. Phase 0 — topic-safety pre-check (and AUP rephrasing where the topic needs it)
-5. Phase 0 — frame, council size, depth, output format confirmed
+5. Phase 0 — frame, council size, depth, output format settled (asked where unclear, else assumed and stated)
 6. Phase 0 — `00_question.md` written (the first checkpoint)
 7. Phase 1 — self-grounding note `01_self_grounding.md`
-8. Phase 2 — Stage 1 prompt to every member; save each `02_*_round1.md` as it lands
+8. Phase 2 — Stage 1 prompt to every member (name each in the close: what was left out of it, read-back
+   before Send, conversation URL recorded, Gemini told to ignore prior context, `02_*_round1.md` saved)
 9. Phase 2 — diagnose Round 1 (it decides whether Phase 3 runs)
 10. Phase 3 — deliberation round (conditional)
 11. Phase 4 — Chairman synthesis into `brief.md`
@@ -118,15 +122,17 @@ these items ADD to the caller's list; the calling item stays open until your las
 
 ## Phase 0 — Frame and confirm
 
-1. **Restate the question** in one or two sentences; surface ambiguity.
+1. **Restate the question** in one or two sentences; surface ambiguity. Note which parts of the
+   material are confidential: Phase 2 sends the prompt to two outside vendors.
 2. **Topic-safety pre-check — narrow scope.** Stop and reframe only when the *content itself* is
    policy-relevant: the list in `references/AUP_TRIGGERS.md` § «When this reference can't save you»
    (weapons/CBRN detail, drug synthesis or dosing how-to, working malware or phishing, fabricated
    quotes from named people, self-harm or eating-disorder methods, any sexual content involving
-   minors, targeted attack research on a specific living person). Then offer the user:
+   minors, targeted attack research on a specific living person). Then offer the user two options:
    (1) reframe to a legitimate angle ("the policy debate around X", "high-level threat modelling"),
-   (2) members only, no Chairman synthesis, or (3) drop the council for a primary source (a doctor, a
-   lawyer, a security professional).
+   or (2) drop the council for a primary source (a doctor, a lawyer, a security professional). Never
+   send the unreframed question to the members instead: asking other AIs for what you would not
+   write yourself is the same request.
    **Do NOT pre-reject benign topics on a hunch** — tax, legal, financial, medical-information and
    immigration questions are normal council material. For those, read `references/AUP_TRIGGERS.md`
    before drafting the prompt: it covers the four categories a usage-policy classifier most often
@@ -156,7 +162,7 @@ what you think the answer is with a confidence per claim, and the 2–4 places y
 ## Phase 2 — Stage 1: the open question, in parallel
 
 Pose the same question to every member in fresh chats, in parallel. **Record each conversation URL
-as you create it** (it is how a lost tab is recovered), and tell Gemini to ignore prior context:
+as you create it** (a lost tab is recovered by navigating back to it, never by re-asking), and tell Gemini to ignore prior context:
 it carries memory from the account's past chats. Don't sit and wait: set the user's
 expectation on timing and check back. **Keep the session alive while you wait.** A Deep Research
 council outruns an hour by design and its middle is pure waiting, so if your host or task system ends
@@ -168,6 +174,13 @@ questions and Gemini can show a research plan to approve. Answer or approve only
 `00_question.md` already settles; anything else is a question for the user, not a guess.
 
 ### Sending the prompt
+
+**What leaves goes to two other companies.** The prompt, and any document or file you attach, is
+stored by each vendor under the user's account and may be used under its terms. Before sending, strip
+credentials, keys and tokens, other people's personal data, and anything the user marked private. When
+the question cannot be asked without confidential material (an employer's code, a client contract,
+someone's health record), say what would leave and send it only on the user's explicit yes, in this
+session or in the request itself.
 
 **Before any typing or paste, wait for the real editor (ChatGPT can show a fallback UI whose editor is
 wiped when the app loads), focus the target tab, and read the composer back before Send.** On some
@@ -220,7 +233,8 @@ no paraphrasing into chat first. The disk file is the source of truth.
 ### Diagnose Round 1 before going on
 
 - **Quick tier** → skip Phase 3 and synthesize; complete item 10 with that reason. Otherwise:
-- **Both substantive** (≳1 500 chars, specific) → Phase 3.
+- **Both substantive** (rule of thumb from past runs: ≳1 500 chars, specific; between that and the
+  brief band, specificity decides) → Phase 3.
 - **Both brief** (≲1 000 chars, conversational, echoing the framing) → either the topic is too soft for a
   council (skip Phase 3, synthesize) or the prompt was too open (go straight to a sharp adversarial
   Round 2 — the pushback becomes the content-generating step). Don't pretend a thin Round 1 was
@@ -337,17 +351,8 @@ across runs, record it in `references/landmines.md`.
 
 - **Sibling sycophancy** — GPT and Gemini can share the same wrong consensus; treat the other as an
   adversary to check, not a peer to respect.
-- **Gemini carries memory from the account's past chats; a fresh ChatGPT chat is sterile** — verify
-  Gemini's extra specificity, or tell it to ignore prior context.
-- **ChatGPT may load a degraded fallback UI** whose editor is wiped when the real app hydrates — wait for
-  the real editor before typing.
-- **Typing can go to the foreground tab, or drop characters, while reporting success** (some
-  bridges, 2026-09) — hence the focus-and-read-back rule at the top of «Sending the prompt».
-- **Submit on Gemini by clicking coordinates from a screenshot taken after the text is in place** —
-  the method that worked when Enter and element-reference clicks no-op'd (one host, 2026-08). A Send button stuck after Stop → reload the
-  conversation URL and re-send.
-- **Record every conversation URL as you create it**; recover a lost tab by navigating back, never by
-  re-asking.
+- **Gemini's Send no-ops, or sticks after Stop** → `references/ui-tactics.md` §7 (click coordinates
+  from a fresh screenshot; reload the conversation URL and re-send).
 - **ChatGPT DR can fail mid-flight after 30–60 min** — change model → try again → start, once. A second
   failure: tell the user before spending more quota.
 - **Quota exhausted** → say so; run DR on the other vendor or wait. Never quietly downgrade to chat mode
@@ -355,7 +360,7 @@ across runs, record it in `references/landmines.md`.
 - **Long-idle tabs drop their connection** and the answer stalls — scroll the answer area, or reload the
   conversation URL (history is kept).
 - **Gemini can hang on "continue" turns** — synthesize from what you have and note the partial coverage.
-- **Page-script calls have a ~45 s cap** on some browser bridges — keep each under ~25 s; after a timeout
+- **Page-script calls have a ~45 s cap** on some browser bridges (2026-08) — keep each under ~25 s; after a timeout
   re-run only what didn't complete.
 - **Login expiry mid-run** → stop and ask the user; never re-authenticate yourself.
 

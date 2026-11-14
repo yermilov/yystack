@@ -82,7 +82,7 @@ separate toggle.
 - Gemini may show a research plan to confirm first: approve or edit only what `00_question.md`
   already settles; any other change to the plan is the user's call.
 
-Timing: a single vendor's DR answer took 5–30 minutes on paid tiers (2026-08); on ChatGPT Plus it can
+Timing: a single vendor's DR answer took 5–30 minutes on paid tiers (2026-08); on a mid-tier paid ChatGPT plan it can
 take over an hour and fail mid-flight (§7). The body's ≈75–120 min is the whole DR council. Don't wait
 synchronously: check back with a read at each keep-alive ping.
 
@@ -184,7 +184,7 @@ approval.
 2. Scroll inside the answer area to force a render.
 3. **Navigate to the same conversation URL**: if the run finished or moved on server-side, the
    reload shows it (a dropped websocket freezes the counters while the server keeps working).
-4. Still running after the reload → wait; ChatGPT DR on Plus can spend 20+ minutes writing citations
+4. Still running after the reload → wait; ChatGPT DR on a mid-tier paid plan can spend 20+ minutes writing citations
    with no visible change.
 
 ## 8. Round 2 challenge prompt — why the template is worded as it is

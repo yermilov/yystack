@@ -79,7 +79,7 @@ person's account; a council through it would spend their quota.
 (27 and 23 sites), emitted a reasoning trace, then produced nothing for ~2.5 h with the Stop button up;
 reloading did not help. Re-sent at High, both returned complete cited answers in 3–4 minutes.
 
-**ChatGPT DR failed mid-flight** (2026-08, Plus): "Research failed" after ~50 min; the retry through
+**ChatGPT DR failed mid-flight** (2026-08, mid-tier paid plan): "Research failed" after ~50 min; the retry through
 "Change model → Try again → Start" finished in ~25 min (cached search reused), ~75 min in all.
 
 **Gemini memory bleeds into fresh chats**: with chat history on, a Round 1 answer named a specific
