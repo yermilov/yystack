@@ -109,7 +109,6 @@ In order of preference:
    works on every host — and note that it is not an exception to the rule above but the second half
    of it: what the rule forbids is depending on state that is not there, and a value the agent holds
    is not that.
-3. **A resolver line you have actually executed** — never a variable you assume is set.
 
 ⚠️ **Do not assume a plugin's `bin/` directory lands on `PATH`.** It is host-specific: one host adds
 plugin `bin/` directories automatically, and another does not — measured 2026-08-26, where a Codex

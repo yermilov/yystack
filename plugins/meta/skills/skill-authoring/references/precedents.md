@@ -23,7 +23,8 @@ discover the gap. The fix was free and had simply never been looked for.
 ## 2. The authoring skill audited everyone but itself (§1)
 
 A marketplace-wide grep for `/do not use for|not for\b/i` turned up two things. The big number: only a
-minority of skills had any boundary at all — "no boundary" is the default defect, not the exception.
+minority of skills had any boundary at all — "no boundary" is the default defect, not the exception
+(one library at one date, which does not establish the share anywhere else).
 And the embarrassing one: **this authoring skill shipped without a `Do not use for…` for months**,
 against an obvious near-miss (`plugin-dev` — same plugin, both about "skills and plugins").
 
@@ -94,8 +95,8 @@ beats the version that stalls on a password prompt, especially on an unattended 
 
 ## 8. Source for the Claude 5 reversals (§3)
 
-Anthropic, "The new rules of context engineering for Claude 5 models" (Thariq / @trq212, published
-2026-07-24; read in full 2026-08-08).
+Anthropic, "The new rules of context engineering for Claude 5 models" (published 2026-07-24; read in
+full 2026-08-08).
 
 Headline finding: **over 80% of Claude Code's system prompt was removed** for Claude Opus 5 and Claude
 Fable 5 **with no measurable loss on their coding evaluations**.
@@ -123,8 +124,8 @@ Their per-surface guidance, condensed:
   a description of the design or a screenshot." A spec may be a detailed **test suite**, or a function
   in a different codebase to port. **Rubrics** let verifier agents check your taste in a domain.
 
-They also shipped `claude doctor` / the `/doctor` command to apply these practices automatically to
-skills and CLAUDE.md files.
+The post also said a `/doctor` command applies these practices to skills and CLAUDE.md files. Run, it
+did not — §12 records what the command actually did.
 
 **This section is generation-specific — re-verify it when a new model family ships.** Several of these
 reversals invert advice that was correct for older models; the next generation may move them again.
@@ -135,13 +136,9 @@ An audit of a mature marketplace. A heading scan **shortlists** candidates — t
 numbered step headings, or a `## Workflow` section — and a second sweep asks which skills say
 anything at all about tracking the run:
 
-```
-find . -name SKILL.md | while read f; do            # accept . ) : - — after the number
-  s=$(grep -cE "^#{2,3} *(Step )?[0-9]+ *[-—:.)]" "$f"); w=$(grep -ciE "^#{2,3} +workflow" "$f")
-  { [ "$s" -ge 3 ] || [ "$w" -ge 1 ]; } && echo "$f"
-done
-grep -rilE "TODOs|todo list|todo item|todowrite|task list|track (the )?steps" --include=SKILL.md .
-```
+(The original was a shell loop counting numbered `##`/`###` step headings per file, plus a recursive
+grep for todo vocabulary; today `scripts/audit-markers.ts` lists which skills carry a Step-0 marker,
+and the inventory, not any scan, decides which skills are workflows.)
 
 **The scan is a shortlist, not a classifier — read the matches.** It returned a few dozen files, and
 reading them separates genuine procedures from *knowledge* skills that merely number their sections
@@ -183,7 +180,7 @@ the capability is not merely renamed-and-deferred; on that host it is **gated of
 careful search then returns nothing because there is nothing.
 
 Which is the trap this precedent creates for its own readers. The finding above was written as a fact
-about a host, and it is the shape §9 warns about — an accurate observation of external state, recorded
+about a host, and it is the shape §8 warns about — an accurate observation of external state, recorded
 without a date, that the next agent obeys without testing. Its literal descendant, *"an empty result is
 evidence about the name, not about the host,"* tells an agent facing a REAL absence that its own
 correct answer is a mistake, and the honest report becomes indistinguishable from the failure the block
@@ -251,6 +248,13 @@ wired to `$?` therefore inverts depending on which implementation is on `PATH`, 
 printing the correct answer on screen. This bit the review that wrote the rule: its own negative
 control reported the audit broken when only the control was. Read the filenames.
 
+**The `Length verdict (§2):` hand-grep has two more traps, which is why `scripts/audit-markers.ts`
+now does it.** The pattern must be anchored (`^Length verdict …`): unanchored, any file that merely
+quotes the rule passes. And the parentheses must be bracketed (`[(]§2[)]`) to mean the same literal
+in both regex dialects; written bare, they are grouping under ERE, and the audit then reports every
+conforming file as missing. The script sidesteps both, and also skips a verdict that sits only
+inside a code fence.
+
 **A second miss in the same pass came from the standard itself moving.** Several of the rules the
 review was meant to apply had been added to this guide *after* the file under review was written —
 and after its previous review. An agent applying "the standard" from memory applies the rules it
@@ -262,7 +266,8 @@ standard's history since that version before starting the next one.
 not enough.** Eighty-five completed runs of one task-runner workflow were read from the host's own
 transcripts — tool calls, not self-report; the in-flight run doing the reading is excluded. Before
 the search line shipped, **4 of 52** registered anything. After it, **33 of 33** did, a median 14
-seconds after opening the skill, and 573 of 578 items were closed by the end. So the device holds;
+seconds after opening the skill, and 573 of 578 items were closed by the end. That is one workflow
+on one host, and does not establish the rate for other skills or hosts. So the device holds there;
 what follows is the residue, not a retraction.
 
 In **3 of those 33** the runner still announced *"No todo tool in this session, so I'll track the run
@@ -308,8 +313,8 @@ agreeing with itself.
 
 **The mirrored half, and the reason the rule insists on a date.** The same library's todo-tool
 guidance ran the other way — it asserted the capability existed and offered no way to conclude
-otherwise, so agents meeting a genuine absence were told they had not looked hard enough. That claim
-has now moved three times on ONE host, which is the whole argument for stamping it:
+otherwise, so agents meeting a genuine absence were told they had not looked hard enough. On ONE
+host that claim has been in three different states, which is the whole argument for stamping it:
 
 | Measured | State |
 | --- | --- |
@@ -326,7 +331,7 @@ mistake) — then date the row so the next reader knows to re-measure rather tha
 
 ## 11. Distance to the action — the external measurement behind §2's safeguard rule (§2)
 
-Anthropic, «An alignment assessment of recent cybersecurity incidents» (09.09.2026): a scope reminder
+Anthropic, «An alignment assessment of recent cybersecurity incidents» (2026-09-09): a scope reminder
 placed **last in context** stopped the behaviour **90%** of the time; the *same* reminder inserted
 **three turns before** the action stopped it **40%** of the time. That is a measurement on models taking
 harmful actions in a CTF setting — **it does not establish** any particular rate for agents reading a

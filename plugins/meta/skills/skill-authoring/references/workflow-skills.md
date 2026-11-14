@@ -2,8 +2,8 @@
 
 > Reference for the `skill-authoring` skill. Every **ruling** about workflow skills is already inline
 > in `SKILL.md` §2 — the mandate, the marker sentences, the granularity test, the length rule. This
-> file holds the parts you copy or consult: the worked Step-0 block, why each of its lines is there,
-> and the nesting wording for both shapes of todo tool. Read it when you are writing or fixing a
+> file holds what you consult: why each line of the Step-0 block is there, the body skeleton, and
+> the nesting wording for both shapes of todo tool. Read it when you are writing or fixing a
 > workflow skill's step list; you never need it to know *whether* to write one.
 
 ## 1. Why the block has to be in the skill, not in this guide
@@ -20,38 +20,18 @@ skimmable prose. Every line of the copyable block exists because a real run fail
 | "register the **conditional** steps too, completing a moot one with that reason" | a branch quietly dropping items, or skipped steps left open — either way an unfinished list stops meaning unfinished work |
 | "**SEARCH** for the tool first" | a host that defers or renames its planner reading as a host that has none |
 | "**anything that creates items** and marks them in progress/completed IS that tool" | the search running, returning the planner, and the runner not recognising it — measured in 3 of 33 runs after the search line alone shipped |
+| "**two** empty results are a real absence on this host — say so plainly" | the opposite failure: a host that really has no planner, where an agent told only "you searched for the wrong name" can never conclude so, and its honest report reads as not having looked |
 | "the **SESSION's** own planner, never an external tracker" | run bookkeeping written into somebody's real backlog — an outward action nobody asked for |
 | the reply-list **fallback** | the runner improvising "I'll track it inline", which is indistinguishable in the report from tracking nothing |
 
-## 2. The worked block
+## 2. Where the block lives, and what you may change in it
 
-Copy this, replace the angle-bracket parts, and keep one of the two marker sentences verbatim —
-`Register these as todo items` (as below) or `Register them in this session's own todo/plan tool`
-(the prose form, when your skill states the rule in a sentence rather than a block) — so a `grep -L`
-can find it:
-
-```
-## Step 0 — register the run
-Register these as todo items now, before doing anything else, in whatever todo/plan tool this host
-gives you — and while work remains keep exactly one in progress:
-1. <step 1 title>   2. <step 2 title>   3. …
-Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
-left open — an unfinished list at the end must mean something really is unfinished.
-No such tool? SEARCH for one first — on hosts with deferred tools it exists but is not loaded, and
-its name differs per host. Anything that creates items and marks them in progress and completed IS
-that tool, whatever it is called; an empty result for one remembered name is evidence about the name,
-not about the host. It must be the SESSION's own planner, never an external tracker (Jira, Linear, a
-task app): your bookkeeping is not their backlog. If there truly is none, keep the list in your
-replies — state it once, name each item as you start it, account for every one at the end.
-```
-
-The heading is yours to pick, and so is the sentence that opens the block — a `## Workflow` section
-starting "Register these as TODOs and work the list" reads fine. What is **not** free is that one of
-the two marker sentences appears somewhere in the block, and that the conditional-step, planner-search
-and fallback lines survive: they are the load-bearing part, and a block without them reproduces the
-failure this whole device exists to prevent. The skills that open with "Register these as TODOs" carry
-`Register them in this session's own todo/plan tool` a line later, which is what makes them
-conforming — copy that shape, not just the opening.
+The block to copy lives once, in `SKILL.md` §2 — copy it from there and replace the angle-bracket
+parts. The heading is yours to pick, and so is the sentence that opens the block: a `## Workflow`
+section starting "Register these as TODOs and work the list" reads fine. Skills that open that way
+carry `Register them in this session's own todo/plan tool` a line later, and that sentence is what
+makes them conforming — copy that shape, not just the opening. What is not free is the rest of the
+block: the conditional-step, planner-search, floor and fallback lines are the load-bearing part.
 
 ## 3. Granularity — why the bound is half the rule
 

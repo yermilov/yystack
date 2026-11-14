@@ -5,7 +5,7 @@
  * Parses every SKILL.md frontmatter as YAML (never a `description:` line-grep, which bleeds into the
  * keys that follow and over-reports length) and reports, per skill:
  *   - description length in CODE POINTS against the 1024-character cap (the skill validator refuses
- *     a longer one; the runtime accepts it and truncates the tail, where the boundary lives)
+ *     a longer one; the runtime accepts it and truncates the tail, so keep only capability prose there)
  *   - whether the DESCRIPTION carries a `Do not use for…` boundary — read off the parsed field, not
  *     the file, because the same phrase in the body is not a boundary
  *   - `name` vs its directory
@@ -135,7 +135,7 @@ if (asJson) {
     )
 
   // The runtime accepts an over-cap description and silently truncates it — it is the packaged-skill
-  // validator that refuses one. Either way the tail, where the boundary lives, is what you lose.
+  // validator that refuses one. Either way the tail is what you lose, so nothing but capability prose belongs there.
   console.log(`over the ${CAP}-char cap — validator refuses, runtime truncates: ${overCap.length}`)
   overCap.forEach((r) => console.log(line(r)))
 

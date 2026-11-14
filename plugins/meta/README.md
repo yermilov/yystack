@@ -22,8 +22,10 @@ itself. It ships six skills and a session-start hook:
   independently-skippable check** so a partly-done step can't close as done, a per-kind skeleton, and
   length budgeted per step with each deep step's evidence in `references/`. Carries the **Claude 5
   context-engineering reversals** — under-constrain on purpose, design interfaces instead of giving
-  examples, prefer references in code form — with the measured precedents in `references/` and a
-  `scripts/audit-frontmatter.ts` that measures every description against the loader's cap.
+  examples, prefer references in code form — with the measured precedents in `references/`, a
+  trigger-test set for itself, `scripts/audit-frontmatter.ts` (every description against the loader's
+  cap) and `scripts/audit-markers.ts` (the `Length verdict` line and the Step-0 marker, ignoring
+  quotes inside code).
 - **marketplace-health** — diagnose an already-installed marketplace on **Claude Code or Codex**: is
   the latest published version of each plugin actually installed (vs a stale cached copy), and is
   auto-update active so it stays current? Trigger on "am I on the latest?", "why didn't my new skill
