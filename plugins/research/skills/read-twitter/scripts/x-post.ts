@@ -56,17 +56,30 @@ function expand(text: string, urls: any[] | undefined): string {
 
 async function main() {
   const args = process.argv.slice(2);
-  if (args.includes("-h") || args.includes("--help")) { console.log(USAGE); process.exit(0); }
-  const json = args.includes("--json");
-  const rest = args.filter((a) => a !== "--json");
-  const id = rest.length === 1 ? parseId(rest[0]) : null;
-  if (!id) { console.error(`x-post: expected one x.com (or mirror) status URL, or a status id\n\n${USAGE}`); process.exit(2); }
+  const usage = (why: string): never => { console.error(`x-post: ${why}\n\n${USAGE}`); process.exit(2); };
+  if (args.length === 1 && (args[0] === "-h" || args[0] === "--help")) { console.log(USAGE); process.exit(0); }
+  // One pass: every argument is either --json or the single target; anything else is refused, so a
+  // typo such as --jsn is never read as the post to fetch.
+  let json = false;
+  const positionals: string[] = [];
+  for (const a of args) {
+    if (a === "--json") { if (json) usage("--json given twice"); json = true; }
+    else if (a.startsWith("-")) usage(`unknown flag ${a}`);
+    else positionals.push(a);
+  }
+  if (positionals.length !== 1) usage(`expected exactly one status URL or id, got ${positionals.length}`);
+  const id = parseId(positionals[0]);
+  if (!id) usage(`not an x.com (or mirror) status URL or a status id: ${positionals[0]}`);
 
   let synd;
   try { synd = await getJson(`https://cdn.syndication.twimg.com/tweet-result?id=${id}&lang=en&token=a`); }
   catch (e: any) { console.error(`x-post: syndication endpoint unreachable (${e?.message ?? e})`); process.exit(2); }
   const t = synd.body;
   if (synd.status === 404) { console.error("x-post: post not found (404)"); process.exit(1); }
+  if (synd.status >= 400) {
+    console.error(`x-post: the syndication endpoint answered HTTP ${synd.status} — a claim about the endpoint (rate limit or outage), not the post; retry later`);
+    process.exit(2);
+  }
   if (!t || typeof t !== "object" || Object.keys(t).length === 0) {
     console.error(`x-post: the syndication endpoint returned an empty body (HTTP ${synd.status}) — a claim about the endpoint, not proof the post is empty`);
     process.exit(2);

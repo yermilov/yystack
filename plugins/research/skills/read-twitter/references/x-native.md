@@ -1,11 +1,14 @@
 # X-native recipes — the depth behind read-twitter's Steps 3–6
 
-Read the section you need when the body sends you here: an X Article, the reply counter, the
-self-thread search, the syndication endpoint, CDN media. The rulings that choose a branch are in
+One `##` section per topic — jump to the one the body sends you to: X Articles, what a page-text
+read returns (and the reply counter), an old post with fresh replies, the self-thread and
+conversation search, CDN media, the syndication endpoint and api.fxtwitter.com. The rulings that choose a branch are in
 `SKILL.md`; this file has the measured mechanics behind them. X's selectors and endpoints drift — the dates
 say when each was true.
 
-- **An X Article** (the long-form format) lives in `article.innerText`. Cache it in a `window`
+## X Articles
+
+**An X Article** (the long-form format) lives in `article.innerText`. Cache it in a `window`
   variable and slice it out in reads of ≤1200 characters.
   **No browser needed for the BODY and the FIGURES: `curl https://api.fxtwitter.com/<handle>/status/<id>`
   carries the whole article under `.tweet.article`** — `bun run "SKILLDIR/scripts/x-article.ts"
@@ -36,35 +39,30 @@ say when each was true.
   comparable to the public leaderboard). Same rule as «the linked material is a retelling»: read the
   fuller twin, tag which copy each caveat came from.
 
-- ⚠️ **A page-text read returns ONLY the root article on an X status page — never the replies.**
+## What a page-text read returns
+
+⚠️ **A page-text read returns ONLY the root article on an X status page — never the replies.**
   Measured 2026-09-04 on a 1.4K-reply thread: after scrolling until two author self-replies were
   plainly visible in the viewport, the page-text read still returned the root post verbatim and
   nothing else (`Source element: <article>`). It is not a mounting delay — the extractor picks
   one article by construction (Readability takes the largest/main node). So an empty `## Thread`
   section derived from a page-text read is a fact about the TOOL, not about the thread. Harvest the
-  self-thread with a screenshot after each scroll, or with an accessibility-tree read (depth ~12)
-  over the `Timeline: Conversation` region; use the page-text read only for the root body — and only
+  self-thread with SKILL.md Step 5.2's collector (a short page script sweeping every `article` into
+  `sessionStorage` after each real-input scroll); a screenshot per scroll or an accessibility-tree
+  read (depth ~12) over the `Timeline: Conversation` region is the fallback where page scripts are
+  unavailable; use the page-text read only for the root body — and only
   when the root is **not** a quote-tweet: Readability has no notion of Step 4's "stop at the nested
   `article`" rule, so on a quote-tweet root it merges the quoted post's text into the root body,
   duplicating and misattributing it exactly as Step 4 already warns against for a raw DOM-subtree
   walk. On a quote-tweet root, extract the body via Step 4's own nested-article-aware walk instead.
 
-  ⚠️ **Replies specifically need a REAL scroll event — `window.scrollBy`/`window.scrollTo` from a
-  page script do NOT trigger X's reply-loading; a real-input scroll does.** Measured 2026-08-29 on
-  a 671-reply status page: 18s wait + **three** passes of
-  `window.scrollTo(0, document.body.scrollHeight)` with 4–6s sleeps between them still left exactly
-  **1** `article` in the DOM, `docH` unchanged, spinner still up — looked exactly like "no replies"
-  or "logged-in mode blocks them," which would have been a false answer. One real-input scroll (8
-  wheel steps at a point on the feed) + 6s mounted the timeline, and the very next `window.scrollBy`
-  pass then read **12** `article`s. Programmatic scroll doesn't fire the events X gates its
-  reply-loading on. **This confirms Step 5's procedure** (a real-input scroll first) — treat it as
-  load-bearing, not optional: use a real-input scroll for **every** pagination step on a conversation
-  page, not just the first — the `window.scrollBy` entry in `references/browser-traps.md` (it did not
-  scroll an X status page at all) means a `window.scrollBy` "fine-tune" pass can silently do nothing
-  and read as false convergence, dropping later self-thread posts or replies. Reserve page scripts and
-  accessibility-tree reads for reading what's already mounted, never for advancing it.
+  **Replies need a real-input scroll for every pagination step** — a page-script
+  `window.scrollBy`/`scrollTo` does not fire the events X loads replies on, and reads as "no replies"
+  or as false convergence (both measurements: `references/browser-traps.md`). Page scripts and
+  accessibility-tree reads are for reading what is already mounted, never for advancing it.
   **Wait a few seconds and re-poll after EACH real-input scroll before checking whether the article
-  count grew** — the measured recovery above needed a ~6s pause between the scroll and the next read;
+  count grew** — the measured recovery (`references/browser-traps.md`, the `scrollBy` bullet) needed a ~6 s
+  pause between the scroll and the next read;
   checking immediately after the scroll call risks reading the pre-load DOM and wrongly declaring
   convergence one scroll too early. (This is the same symptom the conversation_id fallback in Step 5
   covers — see there.)
@@ -91,7 +89,9 @@ say when each was true.
   liked it, `removeBookmark` (not `bookmark`) means it's already bookmarked. Example read:
   `reply:900`, `retweet:5K`, `unlike:50K`, `removeBookmark:20K` (rounded).
 
-- **An OLD post whose replies suddenly restart months later: search `quoted_tweet_id:<root id>`
+## An old post whose replies restart months later
+
+**An OLD post whose replies suddenly restart months later: search `quoted_tweet_id:<root id>`
   first.** `x.com/search?q=quoted_tweet_id%3A<root id>&f=top` lists the posts that QUOTE the root,
   which is usually why it resurfaced — often the author re-posting it. Measured 2026-09-25 on
   one six-month-old root: one search returned about ten quotes, among them the author's own recent
@@ -103,7 +103,9 @@ say when each was true.
   `curl`. On the post above that took ~25 fetches, no browser scrolling, and gave every parent/answer
   pair.
 
-- **Self-thread search:** `x.com/search?q=from%3A<handle>%20since%3A..%20until%3A..&f=live`.
+## Self-thread and conversation search
+
+**Self-thread search:** `x.com/search?q=from%3A<handle>%20since%3A..%20until%3A..&f=live`.
   **The handle must be exact** — `from:<handle>_` (one stray trailing underscore) returned 0
   articles where `from:<handle>` returned 5. A wrong handle is the FIRST thing a 0-article search means; it is
   not the only thing (see the date-window trap immediately below), so rule the handle out before you
@@ -123,10 +125,10 @@ say when each was true.
   windows older than roughly 2–3 weeks came back empty on known-existing tweets.
 
   **The replacement that works is the PROFILE FEED, `x.com/<handle>`, scrolled with real input** —
-  the same run walked back from today to 2026-08-14 and collected 65 posts that way. Read the
-  `window.scrollBy` bullet in `references/browser-traps.md` before you script that scroll: on the
-  profile feed it works for a few iterations and then silently stops loading, which reads as the end
-  of the feed.
+  the same run walked back from today to 2026-08-14 and collected 65 posts that way. Scroll it with
+  real input only, never from a script: on the profile feed a scripted `window.scrollBy` works for a
+  few iterations and then silently stops loading, which reads as the end of the feed (measured:
+  `references/browser-traps.md`, the `scrollBy` bullet).
 
   ⚠️ **That form alone will NOT reconstruct a thread, and the way it fails looks like an answer.**
   Search results mount a recycled window of about 5 articles, so a thread posted in one burst returns
@@ -162,9 +164,8 @@ say when each was true.
      | E | — | 5 items | a GitHub repo link "with prompt and skills" |
 
      In all five cases the artifact the dive exists to find (a repo, a link, the prompts used) was
-     sitting in the author's own self-reply, invisible on the status page. **Treat this as the
-     default next step after Step 5 on a dive into someone else's tweet, not an emergency
-     fallback** — the hit rate is too high to reserve for a broken page. Details worth keeping with
+     sitting in the author's own self-reply, invisible on the status page. That is why SKILL.md
+     runs it as Step 5.3 on every read, not as an emergency fallback. Details worth keeping with
      the recipe: these searches returned **4–18** `article` nodes directly — the "every window
      still returns at most 5 items" limit below is a property of the self-thread RECONSTRUCTION
      search, not of this conversation_id query; `since_time:`/`until_time:` were not needed at all
@@ -185,10 +186,10 @@ say when each was true.
      because it was quote-tweeted inside a two-word reply to a third party. **When the root is a
      demo/claim and the thread is asking "what was the prompt / how long / what harness", run BOTH
      `from:<handle> conversation_id:<root id>` (the self-thread) AND `from:<handle> since:<root
-     date> -filter:replies` (top-level posts by the author after the root) before concluding the
-     author never explained** — the first tells you whether the self-thread is thin, the second
-     finds the follow-up when it is. `since:<date>` alone is day-granular, unbounded going forward,
-     and includes replies — `-filter:replies` is what actually restricts it to top-level posts
+     date> until:<root date + 2 days> -filter:replies` (top-level posts by the author just after the
+     root) before concluding the author never explained** — the first tells you whether the
+     self-thread is thin, the second finds the follow-up when it is. `since:<date>` alone is
+     day-granular, unbounded going forward, and includes replies — `-filter:replies` is what actually restricts it to top-level posts
      (untested here, since the run that found this found the follow-up via a quote-tweet link rather
      than by scrolling the raw `since:` results; if it over- or under-filters on a given account,
      fall back to plain `since:<root date>` and eyeball which results are replies).
@@ -213,17 +214,26 @@ say when each was true.
   navigating between searches costs you, and **stop when three consecutive windows add nothing to
   the union** — the same stopping rule as SKILL.md Step 5.4, for the same reason.
 
-- **Media pixels straight off the CDN** (a native X video, or a media node with no `/photo/<N>`
+## Media pixels off the CDN
+
+**Media pixels straight off the CDN** (a native X video, or a media node with no `/photo/<N>`
   link) → `references/native-video.md`.
 
-- **To check one tweet's text against the DOM:**
+## The syndication endpoint and api.fxtwitter.com
+
+**To check one tweet's text against the DOM:**
   `cdn.syndication.twimg.com/tweet-result?id=<id>&lang=en&token=a` returns the post as JSON to a
   plain `curl`. ⚠️ **The `token` parameter is required, and its absence fails silently** — measured
   2026-11-13: without `token` the endpoint returns **HTTP 200 with the body `{}`**; with any token
   (`&token=a`) it returns the tweet. So an empty `{}` means the token is missing, not that the post
-  is empty or gone. This is a **narrow exception** to "the browser is the only way in" — it serves
-  only individually addressed, publicly embeddable posts, so search and anything protected still
-  need the logged-in browser.
+  is empty or gone. It is the core of the no-browser path (`scripts/x-post.ts`), and it serves
+  only individually addressed, publicly embeddable posts — search, replies and anything protected
+  still need the logged-in browser.
+  A post the endpoint will not serve (protected, withheld, deleted with a tombstone) comes back as
+  `{"__typename": "TweetTombstone", "tombstone": {"text": {"text": …}}}` — the shape both bundled
+  scripts check, and exit 1 on; a plain 404 is "not found" (measured 2026-11-14 on a non-existent
+  id). No protected-account capture is recorded here, so confirm a tombstone verdict with a positive
+  control on a known-public id, as SKILL.md's Edge cases say.
   **A page-side `fetch()` — a page script running INSIDE an x.com tab — is not a substitute, and it
   fails on CORS, not on the endpoint being down.** Measured 2026-08-26: calling this endpoint via
   `fetch()` from a script executing in the x.com page context threw `TypeError: Failed to fetch`.
@@ -264,7 +274,8 @@ say when each was true.
   `-A 'Mozilla/5.0'` it returns a Cloudflare «Just a moment…» page (HTTP 200, HTML, not JSON) —
   easy to misread as a malformed response rather than a bot wall. Without `-A` it does return JSON,
   but its `text` for that same long post was **63 characters** — shorter than even `tweet-result`.
-  (Both measured 2026-09-19 from a local shell.) Go to fxtwitter or the page.
+  (Both measured 2026-09-19 from a local shell; on 2026-11-14 it served a SHORT post intact without
+  `-A`, which says nothing about long ones.) Go to fxtwitter or the page.
 
   **In the browser, FIRST try the tweet's own permalink — a truncated `note_tweet` is a property of
   the CONTEXT it is embedded in, not of being logged out.** Measured in both directions on one pair
@@ -275,8 +286,8 @@ say when each was true.
   way this skill already does elsewhere (`.replace(/[?&=]/g,' ')` plus stripping URLs) — the
   `[BLOCKED: …]` response below is the driver reacting to that text, not a hard block. That
   sanitiser also eats the prose's own question marks, and any surviving `?` blocks the whole return
-  (see `references/browser-traps.md`) — so for a verbatim body swap them for a sentinel instead
-  (`.replace(/\?/g,'⟨Q⟩')`, likewise `&`/`=`) and turn it back on your side. **Only if the permalink
+  — so for a verbatim body use the reversible sentinels `references/browser-traps.md` names as
+  canonical (`«` first, then `?`, `&`, `=`) and undo them on your side in that order. **Only if the permalink
   still truncates** do you need the checks and the expansion steps below.
   Second measurement, 2026-09-19 on another post (`note_tweet` = `{id}` only): the logged-in
   permalink's `[data-testid="tweetText"]`.innerText gave the full **426** characters with no "Show

@@ -10,7 +10,7 @@ believed from an instrument that never moved.
 
 - **A window resize can return success and change nothing** (one host's driver, as of 2026-09). Asked
   for 1440×1300, got "Successfully resized", and `innerWidth`/`innerHeight` stayed at their old
-  values. **Always read `innerHeight` back.** You cannot force more content to mount by resizing.
+  values. **Always read `innerWidth` and `innerHeight` back.** You cannot force more content to mount by resizing.
 - **A page-script call times out at ~45s even with only ~11–13s of declared sleeps** — the grabs and
   X's own rendering cost real time on top. Keep any loop inside one page-script call short and
   resumable. **An ordinary timeout like this one is not the same as the renderer HANGING** (last
@@ -83,6 +83,11 @@ believed from an instrument that never moved.
   actually moves the feed. Re-measured 2026-09-05 on a different status page: eight
   `scrollBy(0, 1400)` calls with 1.8 s sleeps left `scrollY` at **53** and `scrollHeight` at
   **959** on every iteration, article count frozen at 1; the real-input scroll took it to `scrollY 1053 → 2053 → 3053` and 1 → 19 → 26 → 32 articles.
+  `window.scrollTo` fails the same way: measured 2026-08-29 on a 671-reply status page, an 18 s wait
+  plus three `scrollTo(0, document.body.scrollHeight)` passes with 4–6 s sleeps left exactly **1**
+  `article`, `docH` unchanged and the spinner up — which reads as "no replies" or "logged-in mode
+  blocks them". One real-input scroll (8 wheel steps on the feed) + 6 s mounted the timeline (12
+  articles on the next read).
   **On the PROFILE FEED (`x.com/<handle>`) the same call is worse, because it works FIRST and fails
   later.** Measured the same day: four `scrollBy` iterations advanced normally to `y = 7577`,
   `docH = 8483`, 7 posts — then five further iterations changed neither `y` nor the count, with no

@@ -2,12 +2,12 @@
 // Render one X Article (the long-form post format) as Markdown, with every figure resolved to its
 // image URL and every link kept. Read-only: one GET to api.fxtwitter.com, no browser needed.
 //
-//   bun run x-article.ts <x.com status URL | handle/status id>
+//   bun run x-article.ts <x.com status URL | handle/status id | status id>
 //
 // Exit codes: 0 = article rendered; 1 = the post was read but is not an X Article (read it with the
 // normal steps); 2 = the post could not be read — the message on stderr says why.
 
-const USAGE = `usage: bun run "SKILLDIR/scripts/x-article.ts" <x.com status URL | <handle>/<status id>>
+const USAGE = `usage: bun run "SKILLDIR/scripts/x-article.ts" <x.com status URL | <handle>/<status id> | <status id>>
   Prints the article as Markdown: title, paragraphs, headings, lists, figures as image links (in
   their place in the prose), and inline links. Figures are pbs.twimg.com URLs — download and read each.
 exit 0 = rendered, 1 = not an X Article, 2 = the post could not be read`;
@@ -28,14 +28,33 @@ function fail(message: string): never {
   process.exit(2);
 }
 
-function parseTarget(arg: string | undefined): { handle: string; id: string } {
-  if (!arg || arg === "--help" || arg === "-h") {
-    console.log(USAGE);
-    process.exit(arg ? 0 : 2);
-  }
-  const m = arg.match(/(?:x\.com|twitter\.com)\/([^/]+)\/status(?:es)?\/(\d+)/) ?? arg.match(/^([^/]+)\/(\d+)$/);
-  if (!m) fail(`expected an x.com status URL or <handle>/<id>, got: ${arg}`);
-  return { handle: m![1], id: m![2] };
+// X itself and the mirror hosts that keep X's path — the same list as x-post.ts, so a URL on any
+// other host (fox.com/a/status/1) is refused rather than read as an X post.
+const X_HOSTS = /^(?:(?:www|mobile)\.)?(?:x|twitter)\.com$|^(?:fxtwitter|fixupx|vxtwitter|fixvx)\.com$|^nitter\.net$/i;
+
+function parseTarget(argv: string[]): { handle: string; id: string } {
+  const usage = (why: string): never => { console.error(`x-article: ${why}\n\n${USAGE}`); process.exit(2); };
+  if (argv.length === 1 && (argv[0] === "--help" || argv[0] === "-h")) { console.log(USAGE); process.exit(0); }
+  const flag = argv.find((a) => a.startsWith("-"));
+  if (flag) usage(`unknown flag ${flag}`);
+  if (argv.length !== 1) usage(`expected exactly one status URL, <handle>/<id> or id, got ${argv.length}`);
+  const arg = argv[0];
+  // A bare id has no handle; api.fxtwitter.com answers /i/status/<id> for any post.
+  if (/^\d{1,25}$/.test(arg)) return { handle: "i", id: arg };
+  const pair = arg.match(/^([A-Za-z0-9_]{1,15})\/(\d{1,25})$/);
+  if (pair) return { handle: pair[1], id: pair[2] };
+  try {
+    const u = new URL(arg.startsWith("http") ? arg : `https://${arg}`);
+    // Any path carrying /status/<id> (x.com/<handle>/status/<id>, x.com/i/web/status/<id>), as in
+    // x-post.ts; the first segment is the handle only when it is one ("i" otherwise, which fxtwitter
+    // accepts for any post).
+    const m = X_HOSTS.test(u.hostname) ? u.pathname.match(/\/status(?:es)?\/(\d{1,25})/) : null;
+    if (m) {
+      const first = u.pathname.split("/")[1] ?? "";
+      return { handle: /^[A-Za-z0-9_]{1,15}$/.test(first) && first !== "i" ? first : "i", id: m[1] };
+    }
+  } catch {}
+  return usage(`not an x.com (or mirror) status URL, <handle>/<id> or status id: ${arg}`);
 }
 
 // entityMap arrives as an array of {key: "<string>", value} entries NOT in key order (as of
@@ -102,10 +121,10 @@ export function render(article: Article): { markdown: string; unresolved: number
 }
 
 if (import.meta.main) {
-  const { handle, id } = parseTarget(process.argv[2]);
+  const { handle, id } = parseTarget(process.argv.slice(2));
   let res: Response;
   try {
-    res = await fetch(`https://api.fxtwitter.com/${handle}/status/${id}`);
+    res = await fetch(`https://api.fxtwitter.com/${handle}/status/${id}`, { signal: AbortSignal.timeout(15000) });
   } catch (e) {
     fail(`request failed: ${(e as Error).message}`);
   }

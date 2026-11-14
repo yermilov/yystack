@@ -102,13 +102,17 @@ page unread rather than the read as done.
 ### §1.4 No browser, or it is blocked too — an archived copy
 
 A page that 403s every fetcher can still exist in the Internet Archive. Find the closest snapshot,
-then take its raw capture — `id_` after the timestamp returns the page as captured, without the
-archive's toolbar:
+then take the plain capture (the page wrapped in the archive's toolbar):
 
 ```bash
 curl -sS --fail-with-body --get 'https://archive.org/wayback/available' --data-urlencode 'url=<url>'
-curl -sSL --fail-with-body -o <scratch>/snap.html 'https://web.archive.org/web/<timestamp>id_/<url>'
+curl -sSL --fail-with-body -A 'Mozilla/5.0' -o <scratch>/snap.html 'https://web.archive.org/web/<timestamp>/<url>'
 ```
+
+The raw form (`<timestamp>id_/`, no toolbar) is the cleaner read when it works, but on 2026-11-14 it
+answered HTTP 429 with a «suspected abusive bot traffic» page for the same snapshot the plain form
+served with 200 (three tries, one public page). Try it only after the plain form, and check the
+body either way.
 
 The first answers `archived_snapshots.closest.timestamp`. An empty `archived_snapshots` means no
 capture ONLY when the reply has no `error` key: the lookup can answer 200 with an empty result and

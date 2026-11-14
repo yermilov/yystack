@@ -13,7 +13,8 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
   /pbs\.twimg\.com\/media\/([A-Za-z0-9_\-]+)/
   ```
 
-  then `curl "https://pbs.twimg.com/media/<ID>?format=png&name=4096x4096"` and read the image.
+  then `curl "https://pbs.twimg.com/media/<ID>?name=orig"` (the original upload, the same form
+  `x-post.ts` prints) and read the image.
 
   **Native X video — read it as SAMPLED FRAMES via `ffmpeg`, not just a poster.** The primary path
   is the same `tweet-result` endpoint this skill already uses for text (see «To check one tweet's
@@ -194,8 +195,8 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
   transcribed" — the latter implies a gap that doesn't exist here.
 
   ⚠️ **A PRESENT audio stream is not the same as AUDIBLE audio — measure the level before you
-  report a gap.** A macOS screen recording routinely ships a real AAC track that is digitally
-  silent, and `ffprobe` cannot tell you that: it reports `aac (LC), 48000 Hz, stereo, 128 kb/s`
+  report a gap.** A screen recording can ship a real AAC track that is digitally silent (one post
+  measured, below; how often it happens is not established), and `ffprobe` cannot tell you that: it reports `aac (LC), 48000 Hz, stereo, 128 kb/s`
   exactly as it would for speech, so a stream-exists test produces a confident false caveat. One
   extra command settles it:
 
@@ -393,6 +394,7 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
   If the fetch 404s, the URL shape may have changed for that post — read the real `src` off the
   `video`/`img` element and use it verbatim rather than pattern-building.
 
-  One browser driver redacts a bare media id or a `src` carrying a query string (see
-  `references/browser-traps.md`), so return it from
-  the page defanged — `{kind, url: url.split('').join('.')}` — and strip the dots on your side.
+  One browser driver redacts a bare media id or a `src` carrying a query string, with two different
+  messages that need two different defangs — a dot-defang works only for the bare id, not for a `src`
+  with `?`, `&` or `=`. Return either one through the matching recipe in
+  `references/browser-traps.md`.

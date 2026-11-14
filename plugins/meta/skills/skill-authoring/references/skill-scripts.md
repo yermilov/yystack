@@ -170,3 +170,7 @@ cannot see your source.
   (measured 2026-11-14). Under `bun run`, a leading `--` right after the script name never reaches
   it, so do not offer `--` as the way to pass a value that starts with `--`: give that value a flag
   of its own.
+- **Check a URL argument by parsing it and matching the host exactly**, never with a regex over the
+  raw string. An unanchored `x\.com/<handle>/status/<id>` pattern accepted `fox.com/a/status/1` as
+  an X post (measured 2026-11-14). When several scripts in one skill take the same kind of URL, give
+  them the same host list, so one cannot accept what another refuses.

@@ -31,20 +31,26 @@ type Media = {
 type Tweet = { id_str?: string; mediaDetails?: Media[]; quoted_tweet?: Tweet };
 
 function parseArgs(argv: string[]): { id: string; fps: number | null } {
-  if (argv.length === 0 || argv.includes("--help") || argv.includes("-h")) {
-    console.log(USAGE);
-    process.exit(argv.length === 0 ? 2 : 0);
-  }
+  if (argv.length === 1 && (argv[0] === "--help" || argv[0] === "-h")) { console.log(USAGE); process.exit(0); }
+  // One pass: --fps <n> and a single target; an unknown flag, a repeated --fps or a second target is
+  // refused rather than silently dropped.
   let fps: number | null = null;
-  const fpsAt = argv.indexOf("--fps");
-  if (fpsAt >= 0) {
-    const raw = argv[fpsAt + 1] ?? "";
-    const [n, d] = raw.split("/").map(Number);
-    fps = d ? n / d : n;
-    if (!Number.isFinite(fps!) || fps! <= 0) fail(`--fps must be a positive number or fraction, got "${raw}"`);
-    argv = argv.filter((_, i) => i !== fpsAt && i !== fpsAt + 1);
+  const positionals: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--fps") {
+      if (fps !== null) fail("--fps given twice");
+      const raw = argv[++i] ?? "";
+      const [n, d] = raw.split("/").map(Number);
+      if (raw.includes("/") && !(d > 0)) fail(`--fps denominator must be positive, got "${raw}"`);
+      fps = raw.includes("/") ? n / d : n;
+      if (!/^\d+(?:\.\d+)?(?:\/\d+)?$/.test(raw) || !Number.isFinite(fps) || fps <= 0)
+        fail(`--fps must be a positive number or fraction, got "${raw}"`);
+    } else if (a.startsWith("-")) fail(`unknown flag ${a}\n\n${USAGE}`);
+    else positionals.push(a);
   }
-  const target = argv[0];
+  if (positionals.length !== 1) fail(`expected exactly one status id or URL, got ${positionals.length}\n\n${USAGE}`);
+  const target = positionals[0];
   // Same host rule as x-post.ts: a non-X URL is never read as an X post id.
   let id: string | undefined;
   if (/^\d+$/.test(target)) id = target;
@@ -108,16 +114,23 @@ if (import.meta.main) {
   const url = `https://cdn.syndication.twimg.com/tweet-result?id=${id}&lang=en&token=a`;
   let res: Response;
   try {
-    res = await fetch(url);
+    res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   } catch (e) {
     fail(`request failed: ${(e as Error).message}`);
   }
+  // Same exit contract as x-post.ts: a missing or protected post is a fact about the POST (exit 1),
+  // not about the endpoint.
+  if (res!.status === 404) { console.error(`x-video-variants: post ${id} not found (404)`); process.exit(1); }
   if (!res!.ok) fail(`HTTP ${res!.status} from the syndication endpoint`);
-  let body: Tweet;
+  let body: Tweet & { __typename?: string };
   try {
     body = await res!.json();
   } catch {
     fail("the endpoint answered with something other than JSON");
+  }
+  if (body!.__typename === "TweetTombstone") {
+    console.error(`x-video-variants: tombstone — post ${id} is protected, withheld or deleted`);
+    process.exit(1);
   }
   if (!body.id_str) fail("empty payload — the post is missing, protected, or the endpoint changed");
   if (body.id_str !== id) fail(`asked for ${id} but the endpoint served ${body.id_str} — do not trust it`);
