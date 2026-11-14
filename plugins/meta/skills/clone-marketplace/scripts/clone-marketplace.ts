@@ -143,7 +143,8 @@ try {
   say(`fetching latest meta plugin + structure from ${source}`);
   try {
     execFileSync('git', ['clone', '--depth', '1', source, upstream], { stdio: 'ignore' });
-  } catch {
+  } catch (e: any) {
+    if (e?.code === 'ENOENT') die('git is not installed (or not on PATH) — install git, then rerun.');
     die(`could not clone ${source} (check the URL / network)`);
   }
   if (!existsSync(join(upstream, 'plugins/meta'))) {
@@ -317,7 +318,7 @@ Everything else in ${toName} is yours.
     }
 
     say(`done. new marketplace scaffolded at ${target} (meta v${upstreamVersion}).`);
-    say('next (human steps): create the GitHub repo, then push; add your own plugins with plugin-dev.');
+    say('next (human steps): check LICENSE + manifest owner, commit, create the GitHub repo, push; add your own plugins with plugin-dev.');
   } else {
     if (!existsSync(target)) die(`target ${target} does not exist`);
     if (!existsSync(join(target, '.claude-plugin/marketplace.json'))) {
@@ -376,16 +377,29 @@ Everything else in ${toName} is yours.
         linkAgentsMd(target);
         say('added AGENTS.md → CLAUDE.md symlink (was missing)');
       }
-      // The refreshed plugin is only discoverable if `meta` is registered.
-      if (!/"meta"/.test(readFileSync(join(target, '.claude-plugin/marketplace.json'), 'utf8'))) {
+    }
+    // Read-only checks, so they run in --dry-run too: the preview shows them before anything changes.
+    // The refreshed plugin is only discoverable if `meta` is registered.
+    // Parsed, not grepped: a marketplace itself named "meta" must not pass for a registered plugin.
+    if (metaEntryDescription(join(target, '.claude-plugin/marketplace.json')) === undefined) {
+      say(
+        "WARNING: 'meta' is not listed in .claude-plugin/marketplace.json — clients won't discover it. Add a meta plugin entry (see plugin-dev) and bump metadata.version before committing.",
+      );
+    }
+    const codexMkt = join(target, '.agents/plugins/marketplace.json');
+    if (existsSync(codexMkt) && metaEntryDescription(codexMkt) === undefined) {
+      say(
+        "WARNING: 'meta' is not listed in .agents/plugins/marketplace.json (Codex) — add its entry too (plugin-dev).",
+      );
+    }
+    // The copied plugin may describe itself differently now; the manifests' meta entries and the
+    // README row are the target's own files, so the script only says when they have drifted.
+    for (const rel of ['.claude-plugin/marketplace.json', '.agents/plugins/marketplace.json']) {
+      // metaDescription is exactly what --new writes into both entries, so a fresh scaffold is clean.
+      const have = metaEntryDescription(join(target, rel));
+      if (metaDescription && have !== undefined && have !== metaDescription) {
         say(
-          "WARNING: 'meta' is not listed in .claude-plugin/marketplace.json — clients won't discover it. Add a meta plugin entry (see plugin-dev) and bump metadata.version before committing.",
-        );
-      }
-      const codexMkt = join(target, '.agents/plugins/marketplace.json');
-      if (existsSync(codexMkt) && !/"meta"/.test(readFileSync(codexMkt, 'utf8'))) {
-        say(
-          "WARNING: 'meta' is not listed in .agents/plugins/marketplace.json (Codex) — add its entry too (plugin-dev).",
+          `WARNING: the meta entry's description in ${rel} ${have === '' ? 'is missing' : 'differs from the refreshed meta plugin'} — set it to the text below (and update the README's meta row to match), then bump metadata.version (plugin-dev, Version discipline):\n  ${metaDescription}`,
         );
       }
     }
@@ -399,9 +413,19 @@ Everything else in ${toName} is yours.
   rmSync(tmp, { recursive: true, force: true });
 }
 
-// AGENTS.md is a symlink to CLAUDE.md so every host reads one guide. Where symlinks are not
-// allowed (Windows without the privilege), write a copy instead and say so, rather than dying
-// halfway through a scaffold.
+// The `description` of the `meta` entry in a marketplace manifest: '' when the entry has none,
+// undefined when the file or the entry is missing or unreadable (the caller reports that as unlisted).
+function metaEntryDescription(file: string): string | undefined {
+  try {
+    const m = JSON.parse(readFileSync(file, 'utf8'));
+    const e = (m.plugins ?? []).find((p: any) => p?.name === 'meta');
+    if (!e) return undefined;
+    return typeof e.description === 'string' ? e.description : '';
+  } catch {
+    return undefined;
+  }
+}
+
 // lstat, not existsSync: a dangling symlink "does not exist" to existsSync, and writing through
 // it would create a file wherever it points — possibly outside the marketplace.
 function present(p: string): boolean {
@@ -413,6 +437,9 @@ function present(p: string): boolean {
   }
 }
 
+// AGENTS.md is a symlink to CLAUDE.md so every host reads one guide. Where symlinks are not
+// allowed (Windows without the privilege), write a copy instead and say so, rather than dying
+// halfway through a scaffold.
 function linkAgentsMd(dir: string): void {
   try {
     symlinkSync('CLAUDE.md', join(dir, 'AGENTS.md'));
