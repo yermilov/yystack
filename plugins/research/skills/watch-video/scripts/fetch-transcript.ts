@@ -4,9 +4,10 @@
  *
  *   bun run "SKILLDIR/scripts/fetch-transcript.ts" <url> [--with-timestamps] [--output FILE]
  *                                                  [--sub-lang 'de'] [--keep-workdir]
- *   bun run "SKILLDIR/scripts/fetch-transcript.ts" --vtt <captions.vtt> [--with-timestamps]
+ *   bun run "SKILLDIR/scripts/fetch-transcript.ts" --vtt <captions.vtt> [--with-timestamps] [--output FILE]
  *     (offline: clean a VTT you already have — whisper's --output-vtt, or captions saved earlier; no
- *     yt-dlp, no network; prints {transcript, word_count})
+ *     yt-dlp, no network; writes {transcript, word_count} to stdout or --output. CRLF line ends, cue
+ *     times without hours, and comma milliseconds are accepted)
  *
  * YouTube auto-captions ship as VTT cues with a rolling display window: each cue repeats most of the
  * previous one as new words slide in, so naive concatenation duplicates every phrase 2-3x. This:
@@ -26,7 +27,7 @@
  *
  * Exit 0 = transcript written, 2 = no captions in the wanted language(s) (fall back to local
  * transcription or to Gemini alone), 1 = yt-dlp missing or failed (its stderr is printed), 3 = bad
- * arguments.
+ * arguments, 4 = a --vtt file with text but no cue it could read (never reported as an empty transcript).
  */
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
@@ -62,8 +63,11 @@ function findYtDlp(): string {
 }
 
 type Cue = [start: number, end: number, text: string]
-const TIMING = /(\d+):(\d+):(\d+)\.(\d+)\s*-->\s*(\d+):(\d+):(\d+)\.(\d+)/
-const secs = (h: string, m: string, s: string, ms: string) => +h * 3600 + +m * 60 + +s + +ms / 1000
+// WebVTT allows the hours to be omitted (mm:ss.ttt); a comma before the milliseconds is SRT style,
+// common in files saved as .vtt anyway. Both are read rather than silently yielding no cues.
+const TIMING = /(?:(\d+):)?(\d+):(\d+)[.,](\d+)\s*-->\s*(?:(\d+):)?(\d+):(\d+)[.,](\d+)/
+const secs = (h: string | undefined, m: string, s: string, ms: string) =>
+  +(h ?? 0) * 3600 + +m * 60 + +s + +`0.${ms}`
 // Decodes every NUMERIC entity (decimal and hex) and the common NAMED ones auto-captions actually emit.
 // This is NOT a full HTML5 decoder (unlike Python's html.unescape): an unlisted named entity such as
 // &eacute; is left as literal text rather than guessed. &amp; goes last so "&amp;lt;" stays "&lt;".
@@ -79,7 +83,7 @@ const unescape = (t: string) =>
 
 function parseVtt(content: string): Cue[] {
   const cues: Cue[] = []
-  for (const block of content.split(/\n\n+/)) {
+  for (const block of content.replace(/\r\n?/g, '\n').split(/\n\n+/)) {
     const m = block.match(TIMING)
     if (!m) continue
     const lines = block.split('\n')
@@ -118,6 +122,18 @@ function mergeRollingOverlap(cues: Cue[]): Piece[] {
   return pieces
 }
 
+/** Only YouTube's rolling auto-captions repeat the previous cue's words; their raw VTT carries inline
+ *  word timings (`<00:00:01.000>`) — a `<c>` span alone is styling any caption file may use. Human captions and whisper output do not overlap,
+ *  so the merge would delete words that really are repeated across a cue boundary ("…I said yes" +
+ *  "yes is the only answer"). Those cues are joined as they are. */
+const isRolling = (raw: string) => /<\d{2}:\d{2}:\d{2}\.\d{3}>/.test(raw)
+// 'auto' / 'manual' come from the chosen YouTube track; 'detect' is a --vtt file of unknown origin.
+function toPieces(raw: string, kind: 'auto' | 'manual' | 'detect'): Piece[] {
+  const cues = parseVtt(raw)
+  if (kind === 'auto' || (kind === 'detect' && isRolling(raw))) return mergeRollingOverlap(cues)
+  return cues.map(([start, , text], i) => [start, (i ? ' ' : '') + text] as Piece)
+}
+
 const stamp = (s: number) => {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = Math.floor(s % 60)
   const p = (n: number) => String(n).padStart(2, '0')
@@ -138,8 +154,15 @@ function assemble(pieces: Piece[]): string {
 
 if (vttFile) {
   if (!existsSync(vttFile)) { console.error(`fetch-transcript: VTT not found: ${vttFile}`); process.exit(3) }
-  const body = assemble(mergeRollingOverlap(parseVtt(readFileSync(vttFile, 'utf8'))))
-  console.log(JSON.stringify({ transcript: body, word_count: body.split(/\s+/).filter(Boolean).length }))
+  const raw = readFileSync(vttFile, 'utf8')
+  if (parseVtt(raw).length === 0 && raw.replace(/^\uFEFF?WEBVTT[^\n]*/, '').trim()) {
+    console.error(`fetch-transcript: no cue in ${vttFile} could be read (expected "00:00:01.000 --> 00:00:02.000" timing lines) — it is not an empty transcript`)
+    process.exit(4)
+  }
+  const body = assemble(toPieces(raw, 'detect'))
+  const res = { transcript: body, word_count: body.split(/\s+/).filter(Boolean).length }
+  if (output === '-') console.log(JSON.stringify(res))
+  else writeFileSync(output, JSON.stringify(res, null, 2))
   process.exit(0)
 }
 type Track = { kind: 'manual' | 'auto'; key: string }
@@ -200,7 +223,7 @@ function run(work: string): number {
     console.error(`fetch-transcript: yt-dlp could not fetch the ${track.kind} track '${track.key}': ${dl.stderr.toString().trim()}`)
     return 1
   }
-  const body = assemble(mergeRollingOverlap(parseVtt(readFileSync(join(work, vtt), 'utf8'))))
+  const body = assemble(toPieces(readFileSync(join(work, vtt), 'utf8'), track.kind))
   const out = {
     id: meta.id, title: meta.title, channel: meta.uploader ?? meta.channel,
     duration_seconds: meta.duration, duration_string: meta.duration_string,
@@ -221,5 +244,6 @@ try {
   code = run(work)
 } finally {
   if (!flag('--keep-workdir')) rmSync(work, { recursive: true, force: true })
+  else console.error(`fetch-transcript: kept the work directory: ${work}`)
 }
 process.exit(code)

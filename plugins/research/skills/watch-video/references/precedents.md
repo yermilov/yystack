@@ -73,3 +73,19 @@ Two defects in `fetch-transcript.ts`, both measured on live videos with yt-dlp 2
   downloaded, and the alphabetical pick could land on a translation. The script now reads the
   metadata, picks ONE track (human captions, then the auto-captions' `<lang>-orig`), and downloads only
   that — a human-captioned talk came back punctuated, a Ukrainian lecture as `auto:uk-orig`.
+
+## The caption script: the overlap merge deleted real words (2026-11-14)
+
+The merge that collapses YouTube's rolling auto-captions ran on every track, whisper output included.
+Two plain cues, "…and I said yes" then "yes is the only answer", came out as "…I said yes is the only
+answer"; "I was there in a" + "a minute." lost its second "a". Human captions and whisper cues do not
+overlap, so any word really repeated across a cue boundary was cut. Now the merge runs only on
+auto tracks, or on a `--vtt` file carrying the rolling format's inline word timings (`<c>` alone is styling
+any caption file may use, so it does not count).
+Controls: both cases keep their words; a rolling sample still collapses to one copy; two real
+auto-captioned talks (1 h and 2 h) still read as prose.
+
+The same day, the `--vtt` parser returned an empty transcript with exit 0 on cue times without hours
+(`00:01.000 --> …`, valid WebVTT) and on comma milliseconds, and leaked a cue's timing line into the
+prose on a CRLF file. All three now parse; a file with text but no readable cue exits 4 instead of
+reporting an empty transcript.

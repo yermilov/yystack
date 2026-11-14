@@ -6,15 +6,16 @@ description: >-
   whisper.cpp, never uploaded. A YOUTUBE URL (youtu.be, watch, /shorts/) with intent to extract —
   "summarise this video", "what's in it", "get the transcript/captions", "extract the steps", "chat
   with this video": a quick one-shot via Gemini, or a saved knowledge file (captions + Gemini's
-  timestamped visual overview) answered from with [MM:SS] citations. Not for a multi-model second
-  opinion (deep-research, where installed), a video posted on X (read-twitter fetches the mp4, then
-  uses this skill's file mode). Hosted non-YouTube video (Loom, Vimeo): ask for the file and use the
-  file mode.
+  timestamped visual overview) answered from with [MM:SS] citations. Hosted non-YouTube video (Loom,
+  Vimeo): ask for the file and use the file mode. Not for an audio-only file (a voice memo,
+  .m4a/.mp3 — answer it directly), a multi-model second opinion (deep-research, where installed),
+  or a video posted on X (read-twitter fetches the mp4, then uses this skill's file mode).
 ---
 
 # Watch Video
 
-Get what a video says and shows. Three modes; pick one before anything else:
+Get what a video says and shows. Three modes (plus a transcript-only path); pick one before anything
+else:
 
 - **Local video file** — anything you can put on disk (a path, a task or chat attachment, a clip the
   user recorded). Offline: `ffmpeg` frames + a `whisper.cpp` transcript. No browser, no Gemini — do
@@ -23,7 +24,10 @@ Get what a video says and shows. Three modes; pick one before anything else:
   "extract the steps". About a minute or two per video.
 - **Knowledge file + chat** — a saved markdown file (the captions + Gemini's timestamped visual
   overview), then follow-ups answered from it with `[MM:SS]` citations. "Chat with this video", "let's
-  discuss this talk", "get me the transcript", a URL plus an obvious series of follow-ups.
+  discuss this talk", a URL plus an obvious series of follow-ups. **The transcript alone** ("get me
+  the transcript / captions") is Knowledge file step 4 by itself — the script, no browser, no Gemini;
+  then hand over the script's JSON from `$WORK` (attach it, or paste `transcript` when short) and offer
+  the visual overview.
 
 Unsure between the two YouTube modes: one concrete question → quick; "discuss / ingest / transcript /
 remember" → knowledge file. If Gemini's answer is thin or load-bearing for a real decision, say it
@@ -44,8 +48,10 @@ whatever todo/plan tool this host gives you, and while work remains keep exactly
   captions-only route) · 2. Open a fresh chat · 3. Pick the model · 4. Insert the prompt · 5. Submit
   and confirm it sent · 6. Wait for the response · 7. Extract it · 8. Check Gemini's answer (the close
   names both controls, or which was skipped and why)
-- **Knowledge file + chat:** 1. Before you start — existing file, live stream, `yt-dlp` (the close
-  names each) · 2. Egress probe · 3. A browser tool + Gemini login verified · 4. Fetch the captions · 5. Gemini's overview —
+- **Transcript only:** 1. Knowledge file step 1 — live stream, `yt-dlp`, `$WORK` · 2. Egress probe
+  · 3. Fetch the captions (step 4) · 4. Hand over the transcript and offer the visual overview
+- **Knowledge file + chat:** 1. Before you start — existing file, live stream, `yt-dlp`, `$WORK` (the
+  close names each) · 2. Egress probe · 3. A browser tool + Gemini login verified · 4. Fetch the captions · 5. Gemini's overview —
   Quick extract steps 2–7 (the close names each, or why one was skipped) · 6. Check the overview —
   timecode + numbers · 7. Assemble the file · 8. Reply short + hand over the file · 9. Answer
   follow-ups from the file
@@ -66,8 +72,9 @@ until your last one closes.
 
 ## Local video file
 
-Use this whenever the video is a **file**. Such a file is usually **private** (a home walk-through, a screen recording, a family member) — **never upload it to a video
-or AI service.** "Local" is not total privacy: the transcript lines and the frames you look at enter
+Use this whenever the video is a **file**. Such a file is usually **private** (a home walk-through,
+a screen recording, a family member) — **never upload it to a video or AI service.** "Local" is
+not total privacy: the transcript lines and the frames you look at enter
 your own context like any file you read, so quote onward only what the task needs.
 
 **1. Work in a scratch directory, never in a repo checkout** — frames run to hundreds of files. On a
@@ -149,7 +156,9 @@ doesn't match, screenshot and find its current equivalent.
    a new conversation.
 3. **Pick the model** — the strongest **Pro**/thinking model for steps and structured output; Flash
    only when speed matters.
-4. **Insert the prompt with `execCommand`, not by typing** — the box is a `contenteditable`, and typed
+4. **Insert the prompt with `execCommand`, not by typing** (a browser tool that cannot run page
+   scripts: paste the prompt from the clipboard instead, and in step 6 judge completion from
+   screenshots — the Stop button gone, the answer no longer growing) — the box is a `contenteditable`, and typed
    characters may not reach the app's state (Send stays disabled):
 
    ```js
@@ -194,7 +203,7 @@ Watch these YouTube videos and extract the steps for <task>.
 Videos:
 1. https://www.youtube.com/watch?v=<ID> — "<short title>"
 
-Context: <what the user is trying to do, with the specifics that matter — product, account type, goal>
+Context: <what the user is trying to do, with the specifics that matter — product, plan tier, goal>
 
 I need concrete UI steps:
 - <bullet>
@@ -202,7 +211,9 @@ I need concrete UI steps:
 Flag anything that looks outdated (the interface may have changed). Structured, no filler, 600–800 words.
 ```
 
-Write the prompt in the user's language if they want the answer in it. Be specific about context —
+Write the prompt in the user's language if they want the answer in it. The prompt goes to a third
+party: put in only context the user would be fine sending to Gemini — never account ids, credentials
+or personal data. Within that, be specific about context —
 the specifics are what extract the useful 5% — cap the length (Pro over-elaborates), ask it to flag
 stale UI, and keep to 2–4 videos per chat.
 
@@ -219,6 +230,8 @@ see (slides, on-screen code, diagrams). Follow-ups are then answered from the fi
 - **A live stream or premiere** → wait for the recording. **Age-gated, private or paywalled** → don't
   bypass; say so.
 - `yt-dlp` on `PATH` — if missing, the script's error says how to install it.
+- A scratch directory for everything below, never a repo checkout:
+  `WORK=$(mktemp -d "${TMPDIR:-/tmp}/watchvideo.XXXXXX") && cd "$WORK"`
 
 ### 2. The egress probe
 
@@ -236,7 +249,7 @@ say what it lacks.
 ### 4. Fetch the captions
 
 ```bash
-bun run "SKILLDIR/scripts/fetch-transcript.ts" "<url>" --with-timestamps --output <scratch>/transcript.json
+bun run "SKILLDIR/scripts/fetch-transcript.ts" "<url>" --with-timestamps --output "$WORK/transcript.json"
 ```
 
 A video with no speech (music, a silent demo) → skip this step; the file is Gemini-only.
@@ -246,8 +259,8 @@ language, else English. `--sub-lang 'de'` (comma-separated regexes, tried in ord
 Exit 1 prints yt-dlp's error (a `429` is YouTube rate-limiting this IP: wait, or use Quick extract).
 Exit **2** = no captions in that language: tell the user and offer local transcription (a first run
 installs whisper.cpp and downloads a 1.6 GB model — Local video file step 3) or a Gemini-only file —
-ask which; picking local transcription without knowing that is not a yes to the install. Local transcription, in a scratch directory (whisper as in Local
-video file step 3):
+ask which; picking local transcription without knowing that is not a yes to the install. Local
+transcription, in the same `$WORK` (whisper as in Local video file step 3):
 
 ```bash
 MODEL=~/.cache/whisper.cpp/ggml-large-v3-turbo.bin
@@ -283,7 +296,8 @@ number you will quote. Record the result in `timecodes_verified` below.
 
 ### 7. Assemble the file
 
-Save under the session's working output directory as `video-knowledge/<id>-<slug>.md` (`<slug>` =
+Save as `video-knowledge/<id>-<slug>.md` in the directory the user names, else the session's output
+directory, else `$WORK` (step 1) — never inside a repo checkout unless the user asks (`<slug>` =
 3–6 ASCII words; the video id is the key). The caption route's JSON carries `title`, `channel` and
 `duration`; on the whisper or Gemini-only routes, read them with
 `yt-dlp --print '%(title)s|%(uploader)s|%(duration_string)s' "<url>"`, or off the video page.
@@ -325,18 +339,20 @@ Read the file rather than re-ingesting; ground every answer in it; cite timecode
 overview's, which are Gemini's and unverified unless the frontmatter says otherwise; say which one an
 answer rests on. If something isn't in the file, say so and offer to re-run — never fabricate.
 
-
 ---
 
 ## What this skill does NOT do
 
 - Save a YouTube video's picture, or build a cross-video library — one file per video. (Fetching a
   local file into scratch, or a video's audio for transcription, is in scope.)
+- Transcribe an audio-only file (a voice memo, a podcast episode): no frames to read, so it is not
+  this skill's workflow — answer it directly. If a transcript is what was asked, you may borrow Local
+  video file step 3 (ffmpeg → wav → whisper), with the same install consent.
 - Fetch hosted non-YouTube video (Loom, Vimeo, Wistia): pulling it off someone else's player is not
   this skill's call. Ask the user for the file (their own export or
   download) and use Local video file mode.
-- Vouch for the content: Gemini and auto-captions both err. Step 8 checks the answer against the
-  video; whether what the video *claims* is true is a separate check — caveat surprising claims.
+- Vouch for the content: Gemini and auto-captions both err. Quick extract step 8 (and Knowledge file step 6)
+  check Gemini's answer against the video; whether what the video *claims* is true is a separate check — caveat surprising claims.
 
 When another skill finds a tutorial video relevant to its task, it hands the URL plus a context block
 here for the extraction.
