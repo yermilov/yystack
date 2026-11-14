@@ -24,7 +24,7 @@ guide: how to make the prose itself good.
 > (`references/trigger-tests.md`). To review a skill, work the Pre-ship checklist at the end: it is the
 > review procedure. If you change this skill, keep it a worked example.
 
-Length verdict (§2): 2026-11-14 — 575 lines. Every section still inline is a ruling an author
+Length verdict (§2): 2026-11-14 — 578 lines. Every section still inline is a ruling an author
 applies while writing (§1 activation and the two-host flag table, §2 tiers, §3 voice, §4
 generalising, §5 bundling, §7 testing, §8 maintenance rulings, §9 portability); evidence, sources
 and mechanics live in `references/`. Three choices keep it over 500 on purpose: the Step-0 block
@@ -393,6 +393,9 @@ You don't know a skill helps until you compare **with-skill vs. no-skill** on th
   phrasings, and above all near-misses sharing a keyword — + a handful of real task prompts, each with its expected behaviour and what it must
   _not_ do. Run baseline vs. with-skill (vs. the previous version if you're improving one): did it
   trigger? avoid false triggers? produce leaner output? use bundled files right? stay safe?
+- **A skill whose job is getting past a block** (a 403, a login, a limit) can license workarounds
+  the bare model refuses. Run the pair on the blocked case and compare what each side was willing to
+  send where — a third-party service the baseline declined is a finding (`references/precedents.md` §15).
 - **Heavyweight (shared/production skills):** blind A/B against a rubric (task success, correctness,
   completeness, brevity, intent, tool use, safety, recoverability). Worth building a harness once
   rather than hand-scoring every time.

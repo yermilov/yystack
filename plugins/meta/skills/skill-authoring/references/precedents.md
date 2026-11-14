@@ -358,3 +358,15 @@ contents into a comment" and named neither the field nor the endpoint. Agents ke
 identical 400 from the second step; the run that finally diagnosed it put the cost plainly: the same
 bug, from the same instructions, will simply happen again. A grep of the file for the endpoint name
 would have listed both steps.
+
+## 15. A skill that made an agent less careful than no skill (§7)
+
+A skill for reaching web pages a fetcher cannot see was run with and without on two pages that
+answered 403, on a host with a web-fetch tool but no shell and no archive access (2026-11-14). The
+runs without the skill reported the pages unread, one of them explicitly declining to "work around
+the block" through a mirror. The runs with the skill sent the URLs to third-party reader proxies and
+a paywall-bypass mirror, and quoted one page from a proxy's rendering. Nothing in the skill named
+those services: its framing — reach what you cannot see — licensed them. A one-paragraph rule
+against them, re-run the same day, brought the with-skill runs back to the baseline's behaviour.
+One pair of prompts on one host: it does not establish how often this happens, only that the
+blocked case is where to look.
