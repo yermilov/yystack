@@ -3,7 +3,8 @@
 > Reference for the `fetch-web-sources` skill. Read it when you change this skill's `description`,
 > and re-run the prompts below against the new text. The near-misses aim at the siblings that share
 > its words: `link-rot-checker` (are these links alive), `read-twitter` (an X post), `watch-video` (a
-> video's content), and an ordinary web search that already works.
+> video's content), `deep-research` (other models' opinion of a page), and an ordinary web search
+> that already works.
 
 Run each prompt in a fresh session that loads this skill from the working tree (see **How it was
 run**), and record whether this skill loads. Use realistic URLs: a `<url>` placeholder gets answered
@@ -28,6 +29,10 @@ this marketplace alone would see.
 | 2026-11-14 | Claude Code · claude-fable-5-2 | full | same | 12/12 | 10/10 | |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | isolated | same, + an OpenAI-announcement prompt | 13/13 | 10/10 | |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | full | same | 13/13 | 10/10 | |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | isolated | research 0.2.22 (871 chars): + 403 / bot-check and archived-copy situations; five new should-fire rows (403, archive, Typeform, Luma, SEC) and a `deep-research` near-miss | 18/18 | 11/11 | |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | full, installed `research@yystack` disabled | same | 18/18 | 11/11 | one copy of the skill in `init` |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | isolated | same description; + a vendor-blog row, the Luma row on a live calendar | 19/19 | 11/11 | |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | full, installed `research@yystack` disabled | same | 18/19 | 11/11 | the Hugging Face memory prompt was answered from memory once; alone ×3 it fired 2/3 (the harness gives the session no fetch tool, which invites a from-memory answer) |
 
 What these runs do not establish: Codex routing (not run — Codex routes from the INSTALLED copy, so
 a run counts for this description only once the installed text matches the working tree), other
@@ -44,16 +49,15 @@ Recorded is what changed in the answer, not a score.
 | --- | --- | --- | --- | --- |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | "Find public GitHub repositories whose code contains the literal string `CLAUDE_CODE_ENABLE_TODO_TOOLS`. I don't have a GitHub token." | loaded the skill, one `sg-search.ts` run: 66 repos / 509 matches, and said the stream finished with no result limit hit | also reached Sourcegraph (three hand-built calls), same 66 repos, no statement on whether the stream finished |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | "What sources does https://www.anthropic.com/research/building-effective-agents link to? List the outbound links in the article body exactly." | did NOT load the skill — a plain `curl` worked — and listed 17 links / 14 unique | same: `curl` + a parser, same 17 / 14 |
-
-| 2026-11-14 | Claude Code · claude-fable-5-2 | "Quote the first two sentences of https://openai.com/index/introducing-gpt-4o/ word for word. I need the exact text, not a paraphrase." | loaded the skill; live page 403; found the slug had no snapshot, located the real announcement in the Internet Archive and quoted it with the snapshot date and a "not the live page" caveat | ran out of turns (10) retrying the archive by hand; no answer |
+| 2026-11-14 | Claude Code · claude-fable-5-2 | "Quote the first two sentences of https://openai.com/index/introducing-gpt-4o/ word for word. I need the exact text, not a paraphrase." | loaded the skill; live page 403; found the slug had no snapshot (the prompt's slug was wrong — the announcement is `/index/hello-gpt-4o/`), located the real announcement in the Internet Archive and quoted it with the snapshot date and a "not the live page" caveat | ran out of turns (10) retrying the archive by hand; no answer |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | "Get me the full text of https://medium.com/@karpathy/software-2-0-a64152b37c35 — I want to quote its third paragraph exactly." | loaded the skill; Medium 403 to `curl` and web fetch; quoted the paragraph from a dated archive snapshot and flagged that the live text may differ | ran out of turns (10); no answer |
 
 Reading: where the plain route works, the bare model already knows it, and the skill's value is in
 the guards (a completeness statement, the floor-not-total count); the second prompt is correctly
 outside the skill and measures nothing about it. Where the plain fetch FAILS, the skill turned two
 dead ends into dated, caveated answers within the turn budget. Both with-skill runs reached for the
-Internet Archive on their own; that rung is now §1.4 in SKILL.md, so the next pair measures it as
-written.
+Internet Archive on their own; that rung is now §1.4 in SKILL.md and `scripts/wayback.ts`, which
+no with/without pair has measured as written (open as of 2026-11-14).
 
 ## Should fire
 
@@ -71,7 +75,13 @@ written.
 | «знайди рядок `X-Stainless-Retry-Count` у публічних репозиторіях» | native-language repo search |
 | "curl on https://medium.com/@karpathy/software-2-0-a64152b37c35 gives 403 — get me the full post" | a known host: Medium |
 | "how much memory do I need for the weights in https://huggingface.co/Qwen/Qwen2.5-72B-Instruct? check the file sizes" | a known host: Hugging Face |
-| "pull the exact numbers from the charts in https://openai.com/index/introducing-gpt-4o/ — a summary isn't enough" | a known host: an OpenAI announcement |
+| "pull the exact numbers from the charts in https://openai.com/index/hello-gpt-4o/ — a summary isn't enough" | a known host: an OpenAI announcement |
+| "curl on https://www.reuters.com/technology/ returns 403 with a 'Just a moment…' page — how do I read it?" | a generic 403 / bot-check page |
+| "find an archived copy of https://www.anandtech.com/show/21445 — the site took its articles down" | an archived copy |
+| "what questions does the form at https://form.typeform.com/to/q7Xb2LcN ask? list them without submitting anything" | a known host: Typeform |
+| "list the upcoming events on https://luma.com/aitinkerers with their dates" | a known host: Luma |
+| "pull the revenue line from Figma's S-1 on EDGAR" | a known host: SEC filings |
+| "a web fetch of https://www.anthropic.com/research/building-effective-agents gave me a summary — I need the exact wording and every link it cites" | a known host: a vendor blog |
 
 ## Should NOT fire
 
@@ -87,3 +97,4 @@ written.
 | "clone https://github.com/oven-sh/bun and build it" | a clone and build, not a fetch |
 | "what's the GitHub API rate limit without a token?" | a fact question |
 | "log in to my bank and download the statement" | a private, credentialed site |
+| "ask ChatGPT and Gemini whether the claims in https://www.anthropic.com/research/building-effective-agents hold up" | other models' opinion → `deep-research` |

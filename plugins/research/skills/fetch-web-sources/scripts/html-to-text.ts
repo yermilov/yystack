@@ -43,6 +43,17 @@ if (unknown.length || positional.length !== 1) {
   process.exit(2)
 }
 const base = valueOf('--base')
+if (base !== undefined) {
+  let ok = false
+  try {
+    const u = new URL(base)
+    ok = u.protocol === 'https:' || u.protocol === 'http:'
+  } catch {}
+  if (!ok) {
+    console.log(`--base must be an absolute http(s) URL (the page's final URL), got: ${base}`)
+    process.exit(2)
+  }
+}
 let grepRe: RegExp | undefined
 try {
   const g = valueOf('--grep')

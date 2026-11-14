@@ -69,7 +69,17 @@ if (res.status !== 200) {
   console.log(`HTTP ${res.status} — not a result. Body: ${body.slice(0, 300)}`)
   process.exit(1)
 }
-const d = JSON.parse(body)
+let d: { incomplete_results?: boolean; total_count?: number; items?: any[] }
+try {
+  d = JSON.parse(body)
+} catch {
+  console.log(`HTTP 200 but not JSON — likely a proxy or interstitial page, not a result. Body: ${body.slice(0, 300)}`)
+  process.exit(1)
+}
+if (!Array.isArray(d.items)) {
+  console.log(`HTTP 200 JSON without an items list — not a search result. Body: ${body.slice(0, 300)}`)
+  process.exit(1)
+}
 if (d.incomplete_results) {
   console.log('INCOMPLETE: GitHub timed out internally; this page is partial. Narrow the query and re-run; do not cite it.')
   process.exit(1)

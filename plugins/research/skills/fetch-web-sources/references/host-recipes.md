@@ -4,7 +4,7 @@ Per-host recipes for the material a link points at: a vendor blog, a docs page, 
 release, a demo, a form, a filing. Read only the section for the host in front of you. Many were
 first measured on pages a social post linked to, and where a recipe says "the post" it means
 whatever page sent you here; the recipes hold for any link to that host. Each section states its
-ruling and its command. The longer measured cases are in `precedents.md` under the same heading;
+ruling and its command. The longer measured cases are in `precedents.md` under a matching heading;
 a short one stays beside its recipe, dated. Hosts change, so re-check a recipe that has stopped
 matching.
 
@@ -42,8 +42,9 @@ AI-built-demo recipes below both depend on this.
 
 ## Vendor blogs (`claude.com/blog`, `anthropic.com/research`)
 
-**A web-fetch tool here returns a GENERATED SUMMARY, not the page's bytes** — and the same applies to
-any vendor announcement page. Measured 2026-09-20: asked to reproduce the page it refused, it
+**A web-fetch tool here MAY return a generated summary rather than the page's bytes** — one article,
+2026-09-20 (a plain `curl` of another post on 2026-11-14 read cleanly). Take the bytes whenever a
+number, a quote or an attribution matters. Measured 2026-09-20: asked to reproduce the page it refused, it
 invented a source attribution, and it said no technologies were named when the article's figures
 showed a Kubernetes command and pod memory limits (`precedents.md` § Vendor blogs). It was right
 about the prose and blind to the pictures. (That is the observed behaviour; what produces it is not
@@ -53,8 +54,8 @@ established, so do not repeat a guess about the implementation.)
 error page and writes it to the file:
 
 ```bash
-curl -sSL --fail-with-body -A "Mozilla/5.0" -o "<scratch>/post.html" "<url>"   # check the exit status
-bun run "SKILLDIR/scripts/html-to-text.ts" "<scratch>/post.html" --links --base "<url>"
+curl -sSL --fail-with-body -o "<scratch>/post.html" "<url>"   # check the exit status
+bun run "SKILLDIR/scripts/html-to-text.ts" "<scratch>/post.html" --links --base "<final url>"   # SKILL.md §1.2
 ```
 
 The text is the article; the `links:` list carries the post's real citations, which the summary
@@ -75,7 +76,8 @@ grep -oE 'https://cdn\.prod\.website-files\.com/[^"?]+\.(png|jpe?g|webp)' "<scra
 The social card's marker is `_og_` mid-filename, so a `/og_` pattern silently misses it. `curl` each
 figure and read it.
 
-**Fallback if `curl` is blocked:** a DOM walk of `.blog_post_layout` — there are **several** such
+**Fallback if `curl` is blocked:** a DOM walk of the post's text elements — on 2026-11-14 an `anthropic.com/research` post carried them as
+`.post-text` / `.post-heading` / `.post-section` (CSS-module-prefixed; `.blog_post_layout` was gone) — there are **several** such
 elements, so take the **longest**, and walk `h1..h4, p, li, pre` `textContent` rather than trusting
 `innerText`.
 
@@ -98,7 +100,7 @@ page.** The page's `<head>` carries
 `<meta name="framer-search-index" content="https://framerusercontent.com/sites/<siteId>/searchIndex-<hash>.json">`;
 that JSON is keyed by route and holds each page's `h1`/`h2`/`h3`/`p` arrays. Measured 2026-09-19 on one
 startup's launch site: 122 KB, covering its manifesto, team and blog pages and the launch post in
-one fetch. Grep the URL out of any page you already have:
+one fetch — which does not establish that every Framer site emits the tag; check the `<head>`. Grep the URL out of any page you already have:
 `grep -o 'https://framerusercontent.com/sites/[^"]*searchIndex-[^"]*\.json' "<scratch>/page.html" | head -1`.
 
 **Accordion / FAQ answers are in neither the static HTML nor the search index** — same run: six
@@ -134,18 +136,20 @@ Measured 2026-09-23 on one model-release announcement. Two halves, and the secon
 the trip:
 
 - **Prose:** navigate, then a page-text read returns the whole article — headings, both pricing
-  tables, every chart's caption — in ONE call (14 KB here). Do not reach for a web-fetch tool: the
-  «Vendor blogs» warning above (a generated summary, blind to figures) applies to any announcement
-  page, and here the browser costs the same one call.
+  tables, every chart's caption — in ONE call (14 KB here). Do not reach for a web-fetch tool: it
+  may return a generated summary blind to figures («Vendor blogs» above), and here the browser
+  costs the same one call.
 - **Charts:** each one is a **Vega-Lite spec inlined in the Next.js RSC payload**, so the complete
   `data.values` array — every model × every effort level, with `score`, `cost` and `scoreLabel` —
   is already in `document.documentElement.innerHTML`. Only the chart currently scrolled into view
   mounts an `<svg>`, so an svg-text sweep sees one chart and a screenshot walk sees the rendered
-  labels; the payload has all of them regardless of scroll position. This run pulled **11 complete
-  datasets** without scrolling or clicking a single chart tab. The RSC payload is double-escaped —
+  labels; the payload has all of them regardless of scroll position. That run (one announcement,
+  2026-09) pulled **11 complete datasets** without scrolling or clicking a single chart tab; it does
+  not establish that every announcement inlines its charts this way — check `innerHTML` first. The RSC payload is double-escaped —
   unescape before matching:
 
   ```js
+  (() => {
   const u = document.documentElement.innerHTML.replace(/\\\\"/g,'"').replace(/\\"/g,'"');
   const out = [], re = /"title":\{"text":"([^"]+)"\}[\s\S]{0,400}?"values":\[/g;
   let m; while ((m = re.exec(u))) {
@@ -154,7 +158,8 @@ the trip:
     out.push({ t: m[1], v: u.slice(start, i - 1) });
   }
   window.__CH = out;                                       // park it — the return has a cap
-  ({ n: out.length, titles: out.map(o => o.t) })
+  return { n: out.length, titles: out.map(o => o.t) }
+  })()
   ```
 
   Then return **one chart at a time, FILTERED** — `JSON.parse('['+o.v+']')` and project to
@@ -165,7 +170,8 @@ the trip:
   datasets the prose quotes selectively carry the rows it omits: on one release (2026-09) the prose
   compared its score against a weaker competitor while the chart's own data held a stronger one, and
   a chart whose numbers never appear in the prose showed a metric barely moving under a blanket
-  "both show improvements". Read the arrays before repeating a vendor's comparison.
+  "both show improvements". One release, so not a claim about vendors in general — but where the
+  data is in the page, read the arrays before repeating a vendor's comparison.
 
 ---
 
@@ -226,10 +232,8 @@ All verified on those runs.
   (`#repo-stars-counter-star[title]`, `#repo-network-counter[title]`, `a[href*="/blob/"]`).
   **CORS:** `fetch()` on `api.github.com` from a tab open on **another** domain fails
   (`TypeError: Failed to fetch`) — navigate to `github.com` first, and fetch from there.
-  **Output cap:** if you fetch the tree this way with a page script (rather than navigate + a
-  page-text read), its ~950–1000 char output cap still applies — a tree of any real size (6,610
-  blobs measured on one; a handful of files is fine as-is) blows straight through it. Reduce to
-  AGGREGATES inside the page before returning anything: per-top-level-directory counts, an
+  **Output cap:** fetched by a page script, the tree meets the cap of the bullet above (a 6,610-blob
+  tree, measured on one). Reduce to AGGREGATES inside the page before returning anything: per-top-level-directory counts, an
   extension histogram, a filtered path list — never the raw tree. A `window` accumulator holding
   intermediate results does **not** survive the next navigate (`read-twitter`'s `references/browser-traps.md`, «`window`
   accumulators do not survive a navigate or a reload»); `sessionStorage` does survive a same-origin
@@ -241,13 +245,14 @@ All verified on those runs.
 - **The whole GitHub REST API from an open `github.com` tab — the general form of the CORS note
   above, and on a sandbox session that the probe found gated, the channel that still works.**
   `api.github.com` sends `Access-Control-Allow-Origin: *`, so a page-side `fetch()` from a
-  `github.com` tab passes (unlike x.com, where the same move is blocked); and the browser runs on
-  the user's own machine, outside the sandbox's egress proxy, which is why it reaches what `curl`
-  cannot. Measured 2026-09-20 on the sandbox host, every call first-try:
+  `github.com` tab passes (unlike x.com, where the same move is blocked); and where the browser runs
+  on the user's own machine, outside the sandbox's egress proxy (a browser inside the sandbox would
+  meet the same proxy), it reaches what `curl` cannot. Measured 2026-09-20 on the sandbox host, every call first-try:
 
   ```js
   // Open https://github.com/<owner>/<repo> in the browser, then run this as one page script.
   // Declare these in the same call — a fresh page-script call shares no variables:
+  (async () => {
   const O = '<owner>', R = '<repo>', path = '<path/in/repo.ext>'
   const h = {'Accept':'application/vnd.github+json'}
   const get = async (u, as) => {                    // never parse an unchecked response
@@ -269,6 +274,7 @@ All verified on those runs.
   //   .replace(/«Q»/g,'?').replace(/«A»/g,'&').replace(/«E»/g,'=').replace(/«L»/g,'«')
   const sf = t => t.replace(/«/g,'«L»').replace(/\?/g,'«Q»').replace(/&/g,'«A»').replace(/=/g,'«E»')
   return {sha, n: tree.tree.length, head: sf(file.slice(0, 600))}   // a bounded projection
+  })()
   ```
 
   ⚠️ **Check `res.ok` on every one of those calls.** The page-side `fetch` carries no GitHub
@@ -279,16 +285,13 @@ All verified on those runs.
 
   `raw.githubusercontent.com` works from that tab too, and so does comment pagination
   (`/issues/<n>/comments?per_page=100&page=N` — 203 comments in 3 calls).
-  **Accumulate into `window.__X` and return only a narrow slice.** Same run: a
-  `git/trees?recursive=1` over a 1 699-path repo is **85 341 characters**, and returning it whole
-  fails the call with *«exceeds maximum allowed tokens»*, spilling the lot into a file — the output
-  cap of the bullet above, in another host's spelling.
-  **Defang whatever you do return**, or one host's classifier drops the **entire** result as
-  `[BLOCKED: Cookie/query string data]` — a bare `?`, `&` or `=` alone trips it. Use the reversible
-  sentinels in the snippet above (`«`→`«L»` first, then `?`→`«Q»`, `&`→`«A»`, `=`→`«E»`) and undo
-  them on your side in the order its comment gives (round-trip checked on 200 000 random strings,
-  2026-11-14): they keep source code exact, where stripping `=` turns assignments and comparisons into different code.
-  This is the canonical defang for source code in both this file and `read-twitter`.
+  **Accumulate into `window.__X` and return only a narrow slice** — the same output cap: an
+  85 341-character tree of a 1 699-path repo failed the call outright on another host (2026-09-20).
+  **Defang whatever you do return** with the snippet's sentinels, or one host's classifier drops the
+  **entire** result as `[BLOCKED: Cookie/query string data]` on a bare `?`, `&` or `=`. They are
+  reversible (round-trip checked on 200 000 random strings, 2026-11-14), so source code stays exact,
+  where stripping `=` would change it. This is the canonical defang for source code in both this
+  file and `read-twitter`.
 - **A link to `…/issues/<n>#issuecomment-<id>` points at ONE community comment, and a
   web-fetch tool cannot reach it — fetch it by id instead.** Measured 2026-09-20 on an issue with
   **203 comments**: a web-fetch tool on the anchored URL returned the issue body plus the earliest
@@ -298,10 +301,8 @@ All verified on those runs.
   `https://api.github.com/repos/<o>/<r>/issues/comments/<id>` through the browser `fetch` above (a
   web-fetch tool on `api.github.com` is 403 as well) — returning `body`, `user.login`, `created_at`
   and `html_url`. **Assume the anchor, not the issue, is the subject.**
-- **README, when `curl` cannot reach `/repos/:o/:r/readme`** — the BROWSER can, so resolve it there
-  rather than guessing. Navigate to `github.com` and fetch
-  `api.github.com/repos/<o>/<r>/readme?ref=<sha>` from that tab, exactly as the tree bullet above
-  does; the response's `path` is the answer whatever the file is called. Only if that route fails
+- **README, when `curl` cannot reach `/repos/:o/:r/readme`** — make the same `/readme?ref=<sha>` call
+  (§ Reading the code with `curl` → README) from a `github.com` tab; its `path` is the answer. Only if that route fails
   too, enumerate against `raw` **by DIRECTORY in GitHub's own precedence order — `.github/`, then
   the repo root, then `docs/` — trying every spelling (`README.md`, `readme.md`, `README.rst`,
   `README.txt`) inside one directory before moving to the next**, and take the first 200. Order it
@@ -369,8 +370,9 @@ other image.
 
 ### Reading the code with `curl`, pinned to a SHA
 
-- **Pin to a commit SHA first** — the rule and the two calls are in SKILL.md §2.3. A ref or tag the
-  linking post names wins over the default branch. Quote the SHA in the report.
+- **Pin to a commit SHA first** — the rule and the two calls are in SKILL.md §2.3; never hardcode
+  `main` (a wrong ref 404s in a way that reads as "the repo is gone"). A ref or tag the linking post
+  names wins over the default branch. Quote the SHA in the report.
 - `https://api.github.com/repos/<owner>/<repo>/git/trees/<sha>?recursive=1` — a plain `curl`
   returns the **full JSON file tree** (every path, type and sha) for a public repo. There is no need
   to guess file names when this call is available: read the listing. **Redirect it to a scratch file
@@ -380,7 +382,7 @@ other image.
   on a repo well under GitHub's own limit), and a plain filename can collide with something already
   in the workspace. A bad ref 404s with a real, non-empty JSON body (`{"message":"Not Found",...}`)
   and status 404 — clearly distinguishable from success, not empty. ⚠️ On a very large repo
-  (**100,000 entries or 7 MB**, GitHub's own limit) the response is still `200` but carries
+  (**100,000 entries or 7 MB**, GitHub's documented limit as of 2026-09) the response is still `200` but carries
   `"truncated": true` in the saved JSON — check that field (`jq .truncated "$workdir/tree.json"`)
   before treating the listing as complete; a truncated tree needs per-subtree calls to fill the
   gaps.
@@ -444,18 +446,13 @@ and description; another had the HTML Releases page as the stale side. So:
   stale** — if `curl` agrees with the HTML page, the wrapper was the problem, not GitHub. Attribute
   an anomalous read to the wrapper until a direct call agrees.
 - Cross-check against the HTML page: `#repo-stars-counter-star[title]`, `#repo-network-counter[title]`,
-  `.f4.my-3` (description), the Releases block.
+  `.f4.my-3` (description), the Releases block (selectors as of 2026-09; re-check if one matches nothing).
 - **`pushed_at` is repo-WIDE (any branch); the front page's latest-commit line is DEFAULT-BRANCH
   only** — they can legitimately disagree, which is not staleness. For code freshness compare the
   same ref's HEAD sha: resolve it as SKILL.md §2.3 says, then check it against the HTML page's
   latest-commit line (or `/commits/<branch>`) for that SAME ref.
 - No HTML page reachable and the `curl` retry still looks stale → say that only a possibly-stale
   snapshot could be read; never present it as current.
-
-**Do not hardcode `main`** — plenty of repos are on `master`, `develop` or a product name, and a
-wrong ref 404s in a way that reads as "the repo is gone". Take the default branch from the API as in
-SKILL.md §2.3. If the linking post's URL already names a branch or a tag, that ref wins — it is what
-the author was pointing at.
 
 ### A web-fetch wrapper on GitHub — two more failure modes
 
@@ -481,11 +478,10 @@ read instead.
 ## Medium (`*.medium.com`)
 
 **Medium 403s a plain `curl`** (HTTP 403, ~5 KB anti-bot body — measured 2026-09-19 on both a
-cloud-sandbox host and a local host; again 2026-11-14). A web-fetch tool returned the posts (three by
-one author), but as SKILL.md §1.2 says, its output can be a summary: use it to orient, and take any
-text you will quote or summarise from the browser's page-text read — with no browser, from an
-archived copy (SKILL.md §1.4). And the content trap on top of it: a Medium post by an author who
-also self-hosts is often a **teaser** that says the essay continues on their own site. Check the
+cloud-sandbox host and a local host; again 2026-11-14). On 2026-09-19 a web-fetch tool still returned
+the posts (three by one author, as summaries at best); on 2026-11-14 it answered 403 too. So take the
+text from the browser's page-text read — with no browser, from an archived copy (SKILL.md §1.4). And
+the content trap on top of it: a Medium post by an author who also self-hosts can be a **teaser** that says the essay continues on their own site. Check the
 author's own domain for the full text before summarising the Medium excerpt as the essay — on the
 measured post the Medium copy carried only the setup; the full ~20 KB essay was on the author's own
 domain.
@@ -520,8 +516,8 @@ not assume it**: the challenge can be served to the browser too (a fresh profile
 driver it flags), and then `document.scripts[0].textContent` is the CHECKPOINT's own script and
 reads as the app's bundle. Assert `document.title !== "Vercel Security Checkpoint"` — and, better,
 that some expected DOM of the real page is present — before you parse anything. That matters for
-the whole class of single-file demo sites posts link to — they are overwhelmingly on Vercel and
-their entire substance is the inline `<script>`, which the browser can read and `curl` cannot.
+the whole class of single-file demo sites posts link to — the ones met so far were on Vercel (not
+counted) and their entire substance is the inline `<script>`, which the browser can read and `curl` cannot.
 
 ---
 
@@ -529,8 +525,8 @@ their entire substance is the inline `<script>`, which the browser can read and 
 
 **When a post demos a generated app and links it ("try it here"), the DEPLOYED BUNDLE is the
 primary source, not the video.** The video shows what the author chose to show; the shipped JS
-carries the whole dataset and the real rendering technique, and the two routinely disagree
-(`precedents.md` § AI-built app demos).
+carries the whole dataset and the real rendering technique, and on the one app measured the two
+disagreed (`precedents.md` § AI-built app demos) — which does not establish how often they do.
 
 - **Fetch the page, then every bundle.** `curl -sSL --fail-with-body` the page — a 429 is a bounce,
   not an empty site: check `x-vercel-mitigated: challenge` (§ Vercel Security Checkpoint), and know
@@ -566,10 +562,11 @@ Report what the artifact does and attribute the post's claims to the post — do
 **For a model release, the HuggingFace repo is the artifact, and its FILE SIZES are the one number
 the marketing cannot round.**
 
-- `https://huggingface.co/api/models/<org>/<repo>?blobs=true` returns every file with its exact
+- `https://huggingface.co/api/models/<org>/<repo>?blobs=true` (re-checked 2026-11-14) returns every file with its exact
   `size`, plus `downloads`, `likes`, `lastModified`, `tags` and `cardData.license`.
-- `/api/models?author=<org>&limit=100` lists an org's repos — `limit` caps at 100 and the endpoint
-  pages, so on a large org that is a FIRST PAGE: follow the pagination or say the listing was capped.
+- `/api/models?author=<org>&limit=<n>` lists an org's repos. An earlier note said `limit` caps at
+  100; on 2026-11-14 `limit=500` returned 469 repos of one org in one page. Compare the count against
+  the org page, and if it may be capped, follow the pagination or say the listing may be partial.
 - Read the card from `…/raw/main/README.md` (raw, not the rendered page) and grep it for `RAM`,
   `memory`, `GB`, `mmproj`, `context`, `VRAM`, `KV` before quoting any footprint.
 - **A repo id that does not exist answers HTTP 401 `{"error":"Invalid username or password."}`, not
@@ -605,7 +602,7 @@ Cross-checks that changed the answer on the measured release (`precedents.md` §
   stock tooling and silently produce garbage.
 - **`downloads` is per REPOSITORY, not per file**, so it cannot tell sibling packings apart.
 
-Secondary write-ups of a release get the numbers wrong in the usual direction: tag figures to the
+On the one release checked, a secondary write-up got the numbers wrong in the flattering direction: tag figures to the
 vendor's blog, the model card or the API, never to the aggregator that repeated them.
 
 ---
@@ -637,7 +634,7 @@ as measured per-registry, not assumed:
   reach it», and its one-line `description` is often blunter than the vendor's marketing line.
 
 **Both are registries, not the vendor.** When the two disagree with the vendor's own page, say so
-and quote both — on the measured case the vendor's own subprocessor list and a third party's reading
+and quote both — on the one case measured (date not recorded) the vendor's own subprocessor list and a third party's reading
 of an unmerged release note named **different** underlying model pools, and neither was confirmable
 from the other.
 
@@ -667,7 +664,7 @@ WebGL.
   tween's elapsed variable, the curve parameter `t`, a completion flag) via a page script, and shoot
   when it says it has arrived.
 - **GSAP is conditional — measure it, don't assume either way.** Its ticker's lag smoothing
-  (`gsap.ticker.lagSmoothing`, on by default at a 500 ms threshold) replaces any gap PAST that
+  (`gsap.ticker.lagSmoothing`, on by default at a 500 ms threshold in GSAP's own docs — check the version in use) replaces any gap PAST that
   threshold with a small fixed interval. Compare the observed frame gap to the configured threshold:
   under it the ticker still tracks elapsed time, over it the timeline is frame-coupled.
 
@@ -757,22 +754,22 @@ are contacted, so silence means a rejection.
 ## Luma (`luma.com/<slug>`)
 
 The public event list, without the browser. A web-fetch tool on `luma.com/<slug>` returns only the
-**first page** of upcoming events, and no structured location data.
+**first page** of upcoming events (date not recorded; re-check), and no structured location data.
 
 **Public JSON API, no auth needed** (`period` is one call per value — `future` or `past`, not the
 literal string `future|past`):
 `https://api.lu.ma/calendar/get-items?calendar_api_id=<cal-id>&period=future&pagination_limit=100`
 
 Get `<cal-id>` from the calendar page's HTML: the `apple-itunes-app` meta tag's `app-argument`
-attribute contains `luma://calendar/<cal-id>`.
+attribute contains `luma://calendar/<cal-id>` (re-checked 2026-11-14 on a public calendar).
 
 **A `429` with `{"message":"You’ve exceeded our rate limit…"}` can come on the FIRST call** —
 measured 2026-11-14, twice, minutes apart, on `api.lu.ma` and `api2.luma.com`
 alike, while the calendar page itself answered 200. That is a rate limit on the API, not an empty
-calendar: wait several minutes before one retry, and otherwise read the events from the calendar page
-in the browser and say the API was unavailable. Never report "no events" from a 429.
+calendar: read the events from the calendar page in the browser and say the API was unavailable (a
+retry minutes later failed too in the measured case). Never report "no events" from a 429.
 
-When it answers, the response runs ~82k characters — a web-fetch tool will not return that inline; it
+When it answers, the response ran ~82k characters (date not recorded) — a web-fetch tool will not return that inline; it
 spills to a file and reports the path. **That is normal operation, not an error** — grep the spilled
 file, and if the shell cannot see it, try the host's own file-search tool before concluding the file
 is gone.
@@ -793,13 +790,13 @@ one call as an exhaustive event history.**
 1. Find the filing by company name:
    `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=<name>&type=S-1&owner=include&count=40&output=atom`
    → each `<entry>` has `filing-href` (the `…-index.htm` page that lists the documents) and
-   `file-number`. The full-text search endpoint (`efts.sec.gov`) gave 403 once (one observation) —
+   `file-number`. The full-text search endpoint (`efts.sec.gov`) gave 403 once (one observation, date not recorded) —
    prefer the atom feed.
-2. The main document is one big HTML (14 MB for the measured S-1). Download it with
+2. The main document is one big HTML (14 MB for the measured S-1, date not recorded). Download it with
    `curl -sSL --fail-with-body`, then find the sections before reading anything:
    `bun run "SKILLDIR/scripts/html-to-text.ts" <file> --grep 'prospectus summary|risk factors summary|overview'`.
    «Prospectus Summary», «Summary Consolidated Financial and Other Data», «Risk Factors Summary» and
    the MD&A «Overview» carry most of it; do not read 1.5M characters.
-3. **Check dates on the primary:** a web-search tool conflated a company's earlier CONFIDENTIAL
+3. **Check dates on the primary:** a web-search tool (one case, date not recorded) conflated a company's earlier CONFIDENTIAL
    submission with its public S-1. And figures left blank (`$           `) before pricing are «not
    disclosed in this filing», not a parse failure — do not fill them in.

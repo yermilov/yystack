@@ -2,22 +2,22 @@
 name: fetch-web-sources
 description: >-
   Reach a public web source your fetcher cannot see. Use when a web fetch or curl returns an empty
-  body, a 404 or only navigation chrome on a docs site; when you want a docs page as clean markdown;
-  when you must search public GitHub code for a literal string without a token; when you must find
-  what people have BUILT with a new product; when a login gates a host whose product is open-source;
-  or before fetching a host with a known recipe (vendor blogs, OpenAI, Medium, Hugging Face,
-  Typeform, Luma, SEC filings) — «сторінка не читається», «знайти рядок у репозиторії», "code search
-  401", "client-rendered docs". Do not use for an ordinary web search or fetch that already works,
+  body, a 404, a 403 or bot-check page, or only navigation chrome; when you need an archived copy of
+  a page; when you want a docs page as clean markdown; when you must search public GitHub code for a
+  literal string without a token; when you must find what people have BUILT with a new product; when
+  a login gates an open-source product's host; or before fetching a host with a known recipe (vendor
+  blogs, OpenAI, Medium, Hugging Face, Typeform, Luma, SEC) — «сторінка не читається», «знайти рядок у
+  репозиторії», "code search 401". Do not use for an ordinary web search or fetch that already works,
   for checking whether a batch of links is still alive (link-rot-checker), for reading an X/Twitter
-  post itself (read-twitter — X pages need a logged-in browser), nor for a video's content, YouTube
-  included (watch-video).
+  post (read-twitter), nor for a video's content, YouTube included (watch-video).
 ---
 
 # Fetching a source the fetcher can't see
 
 Three ladders, each rung cheaper than the one below it, plus a note (§4) for when the browser rung is
-reached anyway, and per-host recipes (§5). The ladders are plain HTTP requests that need no credentials;
-the browser is their last rung and usually unnecessary. Some host recipes in §5 do need a browser —
+reached anyway, and per-host recipes (§5). The ladders are plain HTTP requests that need no credentials
+(`gh-repos.ts` sends a `GITHUB_TOKEN` if set, for a higher rate limit only); the browser, then an
+archived copy (§1.4), are the last rungs, and usually unnecessary. Some host recipes in §5 do need a browser —
 each says so.
 
 Numbers below are facts about somebody else's live site: each carries its date, and the measured
@@ -25,7 +25,9 @@ cases behind each ruling are in `references/precedents.md` — read a section th
 justify a ruling or re-check a number. Re-measure before quoting one.
 
 Write fetched files to a scratch directory of your own (shown as `<scratch>` below), never a fixed
-shared path — a sibling run writing the same name turns its numbers into yours.
+shared path — a sibling run writing the same name turns its numbers into yours. `SKILLDIR` in the
+commands is a placeholder too: substitute the **literal** directory you loaded this `SKILL.md` from —
+it is not a shell variable.
 
 ## §1. A documentation page that comes back empty, 404, or 95% navigation
 
@@ -36,6 +38,7 @@ shared path — a sibling run writing the same name turns its numbers into yours
 | A clean `404` | **The path is wrong** — the commonest case | §1.1 — find the real path in `llms.txt` |
 | A 200 whose text is all nav/menu/footer | Server-rendered; the chrome dwarfs the prose | §1.2 — ask for markdown |
 | A 200 with a genuinely empty body | Client-rendered | §1.2, then the browser (§1.3) |
+| A `403`, a `429` or a "Just a moment…" / challenge page | Often the fetcher, not the content — the browser tells you which | Check §5 (bot-blocked hosts), then the browser (§4), then an archived copy (§1.4) |
 
 **Do not diagnose "client-rendered" from an empty result alone** — a 404 on a docs SPA can render as
 a soft shell, which some fetch wrappers report as an empty page. Check the status first:
@@ -85,11 +88,13 @@ an error page and writes it to disk, where it reads like a short article. Limits
 
   ```bash
   curl -sSL --fail-with-body -o <scratch>/page.html '<url>'          # check the exit status
-  bun run "SKILLDIR/scripts/html-to-text.ts" <scratch>/page.html --links --base '<url>'
+  bun run "SKILLDIR/scripts/html-to-text.ts" <scratch>/page.html --links --base '<final url>'
   ```
 
-  On a 403, use the browser — a page-text read, or the DOM walk the host's recipe names (§5) — and
-  with no browser, an archived copy (§1.4). A web-fetch tool on such a page can return a generated
+  `<final url>` is the `final=` from the status check above: after a redirect, the original URL
+  resolves relative links against the wrong base.
+
+  On a 403, follow the table at the top of §1. A web-fetch tool on such a page can return a generated
   SUMMARY, not the page — use it for orientation only, never for a number, a quote or an attribution
   (`references/host-recipes.md` § Vendor blogs).
 
@@ -101,35 +106,26 @@ page unread rather than the read as done.
 
 ### §1.4 No browser, or it is blocked too — an archived copy
 
-A page that 403s every fetcher can still exist in the Internet Archive. Find the closest snapshot,
-then take the plain capture (the page wrapped in the archive's toolbar):
+A page that 403s every fetcher can still exist in the Internet Archive. The script finds the closest
+capture (falling back to the capture index when the lookup errors) and saves the plain capture:
 
 ```bash
-curl -sS --fail-with-body --get 'https://archive.org/wayback/available' --data-urlencode 'url=<url>'
-curl -sSL --fail-with-body -A 'Mozilla/5.0' -o <scratch>/snap.html 'https://web.archive.org/web/<timestamp>/<url>'
+bun run "SKILLDIR/scripts/wayback.ts" '<url>' --out <scratch>/snap.html [--timestamp YYYYMMDD]
+bun run "SKILLDIR/scripts/html-to-text.ts" <scratch>/snap.html
 ```
 
-The raw form (`<timestamp>id_/`, no toolbar) is the cleaner read when it works, but on 2026-11-14 it
-answered HTTP 429 with a «suspected abusive bot traffic» page for the same snapshot the plain form
-served with 200 (three tries, one public page). Try it only after the plain form, and check the
-body either way.
-
-The first answers `archived_snapshots.closest.timestamp`. An empty `archived_snapshots` means no
-capture ONLY when the reply has no `error` key: the lookup can answer 200 with an empty result and
-`"error": {"code": "timeout"}` (measured 2026-11-14). An `error` key or a non-zero exit is a failed
-lookup — retry it, or go straight to the capture listing below — never "no capture".
+Exit **4** is the only "no capture" verdict; exit **1** is a failed lookup or download (a timeout, a
+429): retry later, never read it as "no capture".
 
 **An archived copy is a different document from the live page.** Check it is the article, not a
 block, login or paywall page captured in its place, before you quote it; give its snapshot date;
 and say the live page could not be read, so whoever relies on the quote knows to check the current
 text. Two branches before you give up:
 
-- **The closest capture is not the article** → list every capture and try others:
-  `curl -sS --fail-with-body --get 'https://web.archive.org/cdx/search/cdx' --data-urlencode 'url=<url>'
-  --data-urlencode 'output=json' --data-urlencode 'filter=statuscode:200'` (one row per capture,
-  OLDEST first, with its `timestamp`).
-- **No capture of that URL at all** → the article may live under another slug: look for it on the
-  site's own index or search page (or its archived copy), then run the steps above on the real URL.
+- **The capture is not the article** → `wayback.ts '<url>' --list` prints the newest 300 captures;
+  take another with `--timestamp` (also the way to reach an older one).
+- **Exit 4** → the article may live under another slug: look for it on the site's own index or
+  search page (or its archived copy), then run the steps above on the real URL.
 
 Nothing found after both → report the page unread, never paraphrased from memory.
 
@@ -137,6 +133,9 @@ Nothing found after both → report the page unread, never paraphrased from memo
 
 **`api.github.com/search/code` is useless to you** — unauthenticated it answers
 `401 Requires authentication` (verified 2026-09). Don't spend attempts on it.
+
+**A `403` from `api.github.com` is the rate limit or, on a sandboxed host, its egress proxy** — read
+the body before you retry, and never read it as a permissions answer about the repository.
 
 ### §2.1 A literal string in code — Sourcegraph
 
@@ -148,9 +147,8 @@ bun run "SKILLDIR/scripts/sg-search.ts" '<literal string>' [--count 20] [--filte
 ```
 
 ⚠️ **A capped count is a floor, never a total** — the script prints `matchCount: >=N (a FLOOR …)`
-when the result limit was hit; quote it that way. `skipped: repository-fork` / `excluded-archive`
-mean those repos were never searched — add `fork:yes` / `archived:yes` to `--filters` if they
-matter. A term that itself starts with `--` goes in `--term '<value>'`.
+when the result limit was hit; quote it that way. Each `skipped:` line names repos that were never
+searched (`--help` says how to include them).
 
 ### §2.2 Issues and PRs — GitHub issue search (works unauthenticated)
 
@@ -168,7 +166,7 @@ is often where a closed deployment is described in the open by its own maintaine
   and it moves day to day. Cite it only with its date and for what it counts.
 - **Verify every fragment you quote** (`items[].text_matches[].fragment`, or the issue body).
 - **Unauthenticated search is limited to 10 requests per minute** (verified 2026-09). Pace ~6 s
-  apart, or a sweep half-finishes with a `403` that looks like a permissions problem.
+  apart, or a sweep half-finishes on that `403`.
 
 ### §2.2b What has anybody BUILT with it — repository search
 
@@ -182,15 +180,14 @@ bun run "SKILLDIR/scripts/gh-repos.ts" '<product> <vendor>'
 The script exits 1 when GitHub flags `incomplete_results` — a 200 with a plausible page after an
 internal timeout. Narrow and re-run; never cite that page.
 
-On a sandboxed host, a `403` from `api.github.com` may be the host's egress proxy rather than GitHub
-— read the body. A browser tab on github.com can reach the same API; say which channel you used.
+A browser tab on github.com can reach the same API when the shell cannot; say which channel you used.
 
 **This is candidate discovery, not a census.** It errs both ways: a top-ranked row can be an
 unaffiliated reimplementation, and an integration that never names the product in its metadata is
 invisible. Read and classify every row you cite (built-on / reimplementation / merely mentions).
 `total_count` is an order of magnitude with a date; `--sort updated` is noise on a hot topic.
 
-**Pair it with registry download counts** (no token): `https://pypistats.org/api/packages/<pkg>/recent`,
+**Pair it with registry download counts** (no token; endpoints as of 2026-11): `https://pypistats.org/api/packages/<pkg>/recent`,
 `https://api.npmjs.org/downloads/point/<from>:<to>/<pkg>` (scoped names as `@scope%2Fname`); publish
 dates at `https://registry.npmjs.org/<pkg>` → `.time` and `https://pypi.org/pypi/<pkg>/json` →
 `.releases`. **Downloads are a proxy, never "N users"** — CI, mirrors and transitive installs count.
@@ -237,22 +234,26 @@ A site behind Cloudflare often answers the first navigation of a fresh session w
 ## §5. A known host — check its recipe first
 
 **Before fetching any host listed here, read its section in `references/host-recipes.md`**; a recipe
-there overrides the rungs it names. A recipe that needs a browser does not remove §1.4: with no
-browser, an archived copy is still the next step.
+there overrides the rungs it names.
 
 - **Vendor blogs and announcement pages** — take the bytes (§1.2); read the figures too.
-- **Bot-blocked hosts** — which 403 / 202 answers are about the fetcher, not the content.
-- **Framer sites** — one search-index JSON holds every page's text.
+- **Bot-blocked hosts** — a 403 or short 202 may be the fetcher: confirm in the browser; closed
+  there too = the site's own policy.
+- **Framer sites** — read the one search-index JSON that holds every page's text.
 - **OpenAI docs** — `.md` twins; **OpenAI announcements** — the chart datasets sit in the page.
-- **GitHub** — the sandbox gate, the browser ladder, freshness (no channel is authoritative alone).
-- **Medium** — the `curl` 403 and the teaser trap.
-- **Vercel Security Checkpoint** — a 429 bot challenge, not a rate limit.
-- **AI-built app demos** — read the deployed bundle, every chunk.
+- **GitHub** — when the shell is gated, climb the recipe's browser ladder; and confirm a version or
+  date on two channels (no channel is authoritative alone).
+- **Medium** — a `curl` 403 is the fetcher; a short post may be a teaser whose essay continues on
+  the author's own site — check there before summarising.
+- **Vercel Security Checkpoint** — a 429 bot challenge, not a rate limit: do not back off, use the browser.
+- **AI-built app demos** — read the deployed bundle, every chunk; never send a request to a route just
+  to learn what it does (see «Cautions for every rung»).
 - **Hugging Face model releases** — file sizes are a FLOOR on memory, never a confirmation.
 - **Model registries** — resolve a model named in a post without the browser.
 - **WebGL / three.js demos** — a frame-coupled scene cannot be waited into a later state.
 - **Typeform** — never click through: it saves partial answers in the user's name.
-- **Luma** — the public calendar JSON, and its rate limit.
+- **Luma** — read the public calendar JSON; a 429 there (even on the first call) is the API's
+  limit, never "no events".
 - **SEC / EDGAR filings** — EDGAR needs a contact in the User-Agent: ask the user which one to send.
 
 ## Cautions for every rung
@@ -272,6 +273,8 @@ as unverified.
 - `scripts/sg-search.ts` — §2.1's Sourcegraph search with the finished-stream guard. `--help` for flags.
 - `scripts/gh-repos.ts` — §2.2b's repository search with the `incomplete_results` guard. Sends
   `GITHUB_TOKEN` if set (never prints it).
+- `scripts/wayback.ts` — §1.4's archived copy: closest capture with the capture-index fallback, the
+  plain capture saved, `--list` for the newest 300 captures; exit 4 alone means "no capture".
 - `scripts/html-to-text.ts` — a saved HTML page as readable text (§1.2, and the recipes that read a
   blog post or a filing); `--links` lists its outbound links, `--grep` finds a section in a big one.
 - `references/precedents.md` — the measured case behind each ruling, dated.
@@ -279,5 +282,5 @@ as unverified.
 - `references/trigger-tests.md` — should-fire / should-not prompts and their run record; re-run them
   after any edit to the `description`.
 
-`SKILLDIR` in the commands above is a placeholder: substitute the **literal** directory you loaded
-this `SKILL.md` from — it is not a shell variable.
+Length: ~285 lines, over the ~250 aim because each of the three ladders keeps its branch conditions
+and safeguards at the rung; per-host recipes and the measured cases live in `references/`.
