@@ -48,12 +48,11 @@ const args = process.argv.slice(2)
 if (args.includes('-h') || args.includes('--help')) usage()
 
 // Bun.YAML is built in from Bun 1.3. Fail with an actionable message rather than a bare TypeError:
-// `install-bun` accepts any working `bun`, so an older one satisfies the prerequisite and still
-// cannot run this.
+// an older Bun runs the script, so the version has to be checked here.
 if (typeof Bun.YAML?.parse !== 'function') {
   console.error(
     `this audit needs Bun's built-in YAML parser (Bun >= 1.3); you are on ${Bun.version}.\n` +
-      `Upgrade with \`bun upgrade\` (or the install-bun skill) and re-run.`,
+      `Upgrade it (the install-bun skill picks the command for how it was installed) and re-run.`,
   )
   process.exit(2)
 }

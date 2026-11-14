@@ -46,12 +46,13 @@ bootstrapped with `clone-marketplace` carries a copy of it. It ships six skills 
   `--update` refreshes an existing repo's meta plugin + scaffolding in place, leaving your own plugins
   untouched. Trigger on "create/start my own skills marketplace", "clone a marketplace like this one",
   or "update my marketplace's meta plugin to the latest".
-- **install-bun** — install the **Bun** runtime this marketplace's scripts run on. Its executables
-  (the `clone-marketplace` script and the session-start health hook) are written in **Bun +
-  TypeScript**, so a machine without Bun can't run them. Presents the install command (official
-  installer, Homebrew, or npm) for the user to run, then verifying `bun --version` and fixing PATH.
-  Trigger when Bun is missing — the session-start check reports it isn't installed, a `bun` command
-  fails, or the user asks to "install bun".
+- **install-bun** — install or upgrade the **Bun** runtime this marketplace's scripts run on. Its
+  executables (the skills' scripts and the session-start health hook) are written in **Bun +
+  TypeScript**, so a machine without Bun can't run them. Picks Homebrew, npm or the official
+  installer; runs a package-manager install only after the user says yes and leaves the piped
+  installer for the user to run; verifies by the binary's absolute path and fixes PATH. Trigger when
+  Bun is missing or too old — the session-start check reports it isn't installed, a shell says
+  `command not found: bun`, a script needs a newer Bun, or the user asks to "install bun".
 
 ## Session-start hook
 
