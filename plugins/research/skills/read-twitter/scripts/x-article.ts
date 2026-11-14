@@ -7,7 +7,7 @@
 // Exit codes: 0 = article rendered; 1 = the post was read but is not an X Article (read it with the
 // normal steps); 2 = the post could not be read — the message on stderr says why.
 
-const USAGE = `usage: bun run x-article.ts <x.com status URL | <handle>/<status id>>
+const USAGE = `usage: bun run "SKILLDIR/scripts/x-article.ts" <x.com status URL | <handle>/<status id>>
   Prints the article as Markdown: title, paragraphs, headings, lists, figures as image links (in
   their place in the prose), and inline links. Figures are pbs.twimg.com URLs — download and read each.
 exit 0 = rendered, 1 = not an X Article, 2 = the post could not be read`;

@@ -1,8 +1,8 @@
 # X-native recipes — the depth behind read-twitter's Steps 3–6
 
 Read the section you need when the body sends you here: an X Article, the reply counter, the
-self-thread search, the syndication endpoint, CDN media. Every ruling an agent needs to choose a branch
-is in `SKILL.md`; this file has the measured mechanics. X's selectors and endpoints drift — the dates
+self-thread search, the syndication endpoint, CDN media. The rulings that choose a branch are in
+`SKILL.md`; this file has the measured mechanics behind them. X's selectors and endpoints drift — the dates
 say when each was true.
 
 - **An X Article** (the long-form format) lives in `article.innerText`. Cache it in a `window`
@@ -89,14 +89,13 @@ say when each was true.
   under `[role="group"] [data-testid]` carry both the **count** and the signed-in account's own
   **state** on that post — the `testid` itself is the tell: `unlike` (not `like`) means it already
   liked it, `removeBookmark` (not `bookmark`) means it's already bookmarked. Example read:
-  `reply:875`, `retweet:4.6K`, `unlike:48K`, `removeBookmark:19K`.
+  `reply:900`, `retweet:5K`, `unlike:50K`, `removeBookmark:20K` (rounded).
 
 - **An OLD post whose replies suddenly restart months later: search `quoted_tweet_id:<root id>`
   first.** `x.com/search?q=quoted_tweet_id%3A<root id>&f=top` lists the posts that QUOTE the root,
   which is usually why it resurfaced — often the author re-posting it. Measured 2026-09-25 on
-  one root posted 2026-03-17: one search returned 11 quotes, among them the author's own
-  2026-09-21 hiring re-post (a one-line «DM me» call, 160 likes). That explained a
-  wave of 2026-09-22 replies to a six-month-old thread. Neither the status page nor
+  one six-month-old root: one search returned about ten quotes, among them the author's own recent
+  re-post of it. That explained a fresh wave of replies to the old thread. Neither the status page nor
   `conversation_id:` shows it, because a quote is a new conversation.
   **To place each of the author's replies without scrolling:** `api.fxtwitter.com/i/status/<id>`
   returns `replying_to_status` for any post. Collect the author's reply ids with the
@@ -170,7 +169,8 @@ say when each was true.
      still returns at most 5 items" limit below is a property of the self-thread RECONSTRUCTION
      search, not of this conversation_id query; `since_time:`/`until_time:` were not needed at all
      here, `from:<handle> conversation_id:<root id>` alone was enough; scrolling after the search
-     mounts still surfaces new items, so 3–4 scroll passes (~2s apart) are worth doing; and when the
+     mounts still surfaces new items, so 3–4 scroll passes (SKILL.md Step 5.2's real-input scroll and
+     ~6 s wait) are worth doing; and when the
      artifact lives outside the thread entirely (an app link, say), a second query form works —
      `from:<handle> (apps.apple.com OR app OR download)&f=live` — which is how the App Store link
      above was found.

@@ -60,8 +60,8 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
   Two measured points: a **27 s** clip → `fps=1, scale=360:-1, tile=6x5` (30 cells); a **92 s** clip
   → `fps=1/6, scale=640:-1, tile=4x4` (~96 s of coverage in one image). **Prefer (a):** one 4×4 sheet
   replaced ~15 separate image reads, and on the 92 s clip it alone established that a game demo used
-  the original Westwood/EA assets — the EA splash, the load screen, the version string, the briefing
-  and the FMV — a fact the tweet text never mentions. Use (b) when the point turns on **reading text**
+  the original game's licensed assets (splash, load screen, version string, cut-scenes) — a fact the
+  tweet text never mentions. Use (b) when the point turns on **reading text**
   in the frame rather than on the sequence of scenes. `ffmpeg` was present at `/usr/bin/ffmpeg` on one
   cloud-sandbox host (checked 2026-09-02). Keep the `mktemp -d` — one run that wrote into a hand-made
   `/tmp/frames/...` path got `Could not open file / Input/output error` (single occurrence, no
@@ -106,8 +106,8 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
   seconds**, writes the image and stops — the remaining 19 seconds of captions are simply not in the
   file, with a successful exit. So at 2 fps use `-t 14`, at 3 fps `-t 9` (keeping `tile=1x28`), and
   step `-ss` by that same chunk length.
-  **Honest limit: spoken narration with NO burned-in captions is still not covered** — say that
-  rather than implying you heard it.
+  **Spoken narration with NO burned-in captions is not covered by the bands** — transcribe it instead
+  (SKILL.md Step 6b.4, `watch-video`'s local-file mode).
 
   **A FRAME-SEQUENCE claim needs a MEASUREMENT, not a description — and it is ten lines of array code.**
   When the post's claim is about the video's *construction* rather than its content ("stop motion",

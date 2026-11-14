@@ -26,13 +26,13 @@ believed from an instrument that never moved.
     Measured 3× while reading fetched source, where a single line `const MEDIA_PROXY =
     "/api/media?u="` was enough to lose the whole return. **The dot-defang does NOT help here** —
     strip the punctuation instead: `.replace(/[?&=]/g,' ')`, and `.replace(/https?:\/\/\S+/g,'[url]')`
-    if URLs are riding along. The allowlist filter in `references/source-recipes.md` § GitHub,
+    if URLs are riding along. The allowlist filter in `fetch-web-sources`' `references/host-recipes.md` § GitHub,
     `.replace(/[^A-Za-z0-9 ,.:=(){}[\]<>+*/_-]/g,' ')`, is **not** a drop-in substitute here: it
     strips `?` and `&` but deliberately **keeps `=`** (verified — `a?b=c&d /` → `a b=c d /`),
     because code is unreadable without it. Use it for source listings; use the `[?&=]` strip when
     `=` alone is what is tripping the redactor.
 - ⚠️ **Collapsed `<details>` content is absent from `innerText`, and opening them on the live DOM
-  does not fix it — reparse the raw HTML instead.** Measured 2026-09-06 on collusion.wiki, where
+  does not fix it — reparse the raw HTML instead.** Measured 2026-09-06 on one public wiki-style page, where
   every substantive section (both appendices, all the "Key facts" disclosures) sat in `<details>`:
   `innerText.length` was **6 342** against `htmlLen` **155 428**, and a page-text read likewise
   returned only ~6 KB. Setting `d.open = true` / `setAttribute('open','')` on the live nodes left
@@ -54,7 +54,7 @@ believed from an instrument that never moved.
   the tail.** On that same report it returned all 95 162 characters in one request (spilled to a
   file, read by a subagent) while cutting off the end of the page, so the appendices still needed the
   reparse recipe above. The division that worked: **the fetcher for the body, the browser for the
-  tail.** ⚠️ **A per-source recipe in `references/source-recipes.md` / `references/x-native.md`
+  tail.** ⚠️ **A per-source recipe (`references/source-recipes.md`, `references/x-native.md`, or `fetch-web-sources`' `references/host-recipes.md`)
   OVERRIDES this bullet** — on a host where a fetcher is documented to return a generated summary
   rather than the page's bytes (`claude.com/blog` / `anthropic.com/research` as of 2026-09), "try the
   fetcher first" is the wrong move, not the cheap one. Check that section before applying this default.

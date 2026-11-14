@@ -8,7 +8,7 @@
 // 1 = the post was read but carries no native video; 2 = the post could not be read (network,
 // wrong id served, unknown payload) — the message on stderr says which.
 
-const USAGE = `usage: bun run x-video-variants.ts <status id | x.com status URL> [--fps <n>]
+const USAGE = `usage: bun run "SKILLDIR/scripts/x-video-variants.ts" <status id | x.com status URL> [--fps <n>]
   Lists each native video on the post and on its quoted post: the highest-bitrate mp4 URL, the
   duration in seconds, and a contact-sheet grid (columns x rows) for ffmpeg's tile filter.
   --fps   frames per second to sample (default: 1, lowered so the sheet stays at <= 36 cells)
@@ -45,7 +45,16 @@ function parseArgs(argv: string[]): { id: string; fps: number | null } {
     argv = argv.filter((_, i) => i !== fpsAt && i !== fpsAt + 1);
   }
   const target = argv[0];
-  const id = /^\d+$/.test(target) ? target : target.match(/status(?:es)?\/(\d+)/)?.[1];
+  // Same host rule as x-post.ts: a non-X URL is never read as an X post id.
+  let id: string | undefined;
+  if (/^\d+$/.test(target)) id = target;
+  else {
+    try {
+      const u = new URL(target.startsWith("http") ? target : `https://${target}`);
+      if (/^(?:(?:www|mobile)\.)?(?:x|twitter)\.com$|^(?:fxtwitter|fixupx|vxtwitter|fixvx)\.com$|^nitter\.net$/i.test(u.hostname))
+        id = u.pathname.match(/\/status(?:es)?\/(\d+)/)?.[1];
+    } catch {}
+  }
   if (!id) fail(`not a status id or status URL: ${target}`);
   return { id: id!, fps };
 }
@@ -114,5 +123,6 @@ if (import.meta.main) {
   if (body.id_str !== id) fail(`asked for ${id} but the endpoint served ${body.id_str} — do not trust it`);
   const videos = [...videosOf(body, "root", fps), ...(body.quoted_tweet ? videosOf(body.quoted_tweet, "quoted", fps) : [])];
   for (const v of videos) console.log(JSON.stringify(v));
+  if (!videos.length) console.error(`x-video-variants: no native video on ${id} (or its quoted post)`);
   process.exit(videos.length > 0 ? 0 : 1);
 }

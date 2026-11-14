@@ -191,6 +191,15 @@ A site behind Cloudflare often answers the first navigation of a fresh session w
   that marker.
 - **Still the check page → report the page UNREAD (`unknown`)**, never "0 results" or "dead".
 
+## §5. A known host — check its recipe first
+
+Some hosts have a measured recipe that beats both a fetch and the browser: vendor blogs (a fetch tool
+returns a summary, not the page — take the bytes), OpenAI's `.md` twins and chart datasets, Framer's
+search-index JSON, GitHub's sandbox gate and freshness traps, Hugging Face file sizes (a FLOOR on
+memory, never a confirmation), model registries, WebGL demos, Typeform (never click through: it saves
+partial answers in the user's name), Luma, SEC/EDGAR filings. Before fetching one of these, read its
+section in `references/host-recipes.md`; a recipe there overrides the general ladder above.
+
 ## Bonus: a `claude.ai` artifact link
 
 `claude.ai/code/artifact/<uuid>` renders in a cross-domain iframe, so fetching the page gives you the
@@ -202,6 +211,7 @@ shell. Read the iframe's `src` (`<uuid>.frame.claudeusercontent.com/_f/<slug>/`)
 - `scripts/gh-repos.ts` — §2.2b's repository search with the `incomplete_results` guard. Sends
   `GITHUB_TOKEN` if set (never prints it).
 - `references/precedents.md` — the measured case behind each ruling, dated.
+- `references/host-recipes.md` — per-host recipes (§5). Read the section for the host in front of you.
 
 ⚠️ `SKILLDIR` in the commands above is a placeholder: substitute the **literal** directory you loaded
 this `SKILL.md` from — it is not a shell variable.
