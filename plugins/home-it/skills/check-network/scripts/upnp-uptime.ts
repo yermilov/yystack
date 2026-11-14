@@ -51,14 +51,28 @@ function parseArgs(argv: string[]) {
   return o;
 }
 
+// Any device on the LAN can answer SSDP, so a LOCATION is trusted only when it is plain http on the
+// very host that sent the reply. That keeps the script from fetching an arbitrary URL on a
+// responder's say-so.
+// Returns the normalised URL (control characters percent-encoded, length bounded) or null.
+function sameHostHttp(loc: string, host: string): string | null {
+  try {
+    const u = new URL(loc);
+    return u.protocol === "http:" && u.hostname === host && u.href.length <= 512 ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
 // SSDP M-SEARCH for each WAN connection service type; collect the LOCATION headers that answer.
 function discover(timeout: number): Promise<string[]> {
   return new Promise((resolve) => {
     const sock = dgram.createSocket("udp4");
     const locations = new Set<string>();
-    sock.on("message", (msg) => {
+    sock.on("message", (msg, rinfo) => {
       const m = /^location:\s*(\S+)/im.exec(msg.toString());
-      if (m) locations.add(m[1]);
+      const href = m ? sameHostHttp(m[1], rinfo.address) : null;
+      if (href) locations.add(href);
     });
     sock.on("error", () => { try { sock.close(); } catch {} resolve([...locations]); });
     sock.bind(() => {
@@ -76,17 +90,51 @@ function discover(timeout: number): Promise<string[]> {
 const tag = (xml: string, name: string) => new RegExp(`<(?:\\w+:)?${name}>([^<]*)</(?:\\w+:)?${name}>`, "i").exec(xml)?.[1]?.trim();
 
 // Every <service> block in the device description, with its type and absolute control URL.
-function services(xml: string, base: string) {
+function services(xml: string, base: string, origin: string) {
   const out: { type: string; control: string }[] = [];
   for (const m of xml.matchAll(/<service>([\s\S]*?)<\/service>/gi)) {
     const type = tag(m[1], "serviceType");
     const ctl = tag(m[1], "controlURL");
     if (!type || !ctl) continue;
-    // A malformed controlURL or URLBase skips this service; the next one, or responder, may still answer.
-    try { out.push({ type, control: new URL(ctl, base).toString() }); } catch {}
+    // A malformed controlURL or URLBase skips this service; so does one pointing off the device that
+    // served the description: the SOAP request goes only to the responder itself.
+    try {
+      const control = new URL(ctl, base);
+      if (control.origin === new URL(origin).origin) out.push({ type, control: control.toString() });
+    } catch {}
   }
   return out;
 }
+
+const MAX_BYTES = 256 * 1024;
+
+// Device-supplied text reaches an agent's context: cap the body, and strip control characters and
+// overlong values from any string this script prints.
+async function readCapped(res: Response): Promise<string> {
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (total < MAX_BYTES) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    // Keep only the allowance; slice() copies, so an oversized chunk is not retained whole.
+    const keep = value.byteLength > MAX_BYTES - total ? value.slice(0, MAX_BYTES - total) : value;
+    chunks.push(keep);
+    total += keep.byteLength;
+  }
+  if (total >= MAX_BYTES) await reader.cancel();
+  const buf = new Uint8Array(Math.min(total, MAX_BYTES));
+  let off = 0;
+  for (const c of chunks) {
+    const part = c.subarray(0, Math.min(c.byteLength, buf.byteLength - off));
+    buf.set(part, off);
+    off += part.byteLength;
+    if (off >= buf.byteLength) break;
+  }
+  return new TextDecoder().decode(buf);
+}
+const clean = (v: string | undefined) => v?.replace(/[\u0000-\u001f\u007f-\u009f]/g, " ").slice(0, 120);
 
 async function soap(control: string, type: string, action: string, timeout: number) {
   const body = `<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:${action} xmlns:u="${type}"/></s:Body></s:Envelope>`;
@@ -94,10 +142,11 @@ async function soap(control: string, type: string, action: string, timeout: numb
     method: "POST",
     headers: { "content-type": 'text/xml; charset="utf-8"', SOAPAction: `"${type}#${action}"` },
     body,
+    redirect: "error",
     signal: AbortSignal.timeout(timeout),
   });
   if (!res.ok) throw new Error(`${action}: HTTP ${res.status}`);
-  return res.text();
+  return readCapped(res);
 }
 
 async function main() {
@@ -117,17 +166,17 @@ async function main() {
   // first one that advertises a WAN service is not always the gateway that answers.
   for (const loc of locations) {
     let xml: string;
-    try { xml = await (await fetch(loc, { signal: AbortSignal.timeout(o.timeout) })).text(); }
+    try { xml = await readCapped(await fetch(loc, { redirect: "error", signal: AbortSignal.timeout(o.timeout) })); }
     catch { continue; }
     // A relative controlURL resolves against <URLBase> when the description carries one (UPnP 1.0).
-    const svcs = services(xml, tag(xml, "URLBase") || loc);
+    const svcs = services(xml, tag(xml, "URLBase") || loc, loc);
     // A description can advertise several WAN connection services (IP v1 and v2, PPP); try each.
     const wans = svcs.filter((s) => SERVICES.includes(s.type));
     if (!wans.length) continue;
     const attempt: Record<string, unknown> = {
       description: loc,
-      modelName: tag(xml, "modelName"),
-      modelNumber: tag(xml, "modelNumber"),
+      modelName: clean(tag(xml, "modelName")),
+      modelNumber: clean(tag(xml, "modelNumber")),
     };
     for (const wan of wans) {
       attempt.wanType = wan.type.includes("PPP") ? "PPP (PPPoE)" : "IP (IPoE / DHCP / static)";
@@ -137,7 +186,7 @@ async function main() {
         const readAt = new Date();
         const raw = tag(st, "NewUptime") ?? "";
         attempt.readAt = readAt.toISOString();
-        attempt.connectionStatus = tag(st, "NewConnectionStatus");
+        attempt.connectionStatus = clean(tag(st, "NewConnectionStatus"));
         // An empty or non-numeric element is a missing uptime, not zero (Number("") is 0).
         if (/^\d+$/.test(raw)) {
           const up = Number(raw);
