@@ -19,7 +19,7 @@ conformance is detected** and **who gets swept**.
   (`scripts/audit-markers.ts` does this for this guide's markers).
   Repair later drift in the skills, never by widening the pattern.
   Hand-running `grep -L`? Read the file list it prints, never its exit status, which differs between
-  grep implementations. Why each of these: `precedents.md` §9.
+  grep implementations. Why each of these: `precedents.md` §9d–§9f and §9i.
 - **A requirement that is a PROPERTY** no string can express ("each item covers one
   independently-skippable thing", "the branch condition is in the body") has no marker, so say so and
   name the check that enforces it instead: a line in SKILL.md's pre-ship checklist, and a named check
@@ -34,17 +34,17 @@ conformance is detected** and **who gets swept**.
 Skills drift out of conformance as this guide changes (the Claude 5 reversals in SKILL.md §3
 invalidated advice that was correct when written). So:
 
-1. Run `scripts/audit-frontmatter.ts` and `scripts/audit-markers.ts` over the marketplace; the rest
-   is by hand (step 4).
-2. **Record the commit this guide was at when each review ran**, and open the next review by diffing
-   the endpoints: `git diff <sha>..HEAD -- <path/to/this/skill>`. Without it a reviewer applies the
-   rules it already knew, and a skill written before a rule conforms to nothing — a skipped check no
-   report can show.
-3. Anchor on a SHA. Not `git log -p`, which replays rules later withdrawn; not a package version,
-   which is not a revision (`--since=<version>` is silently read as a calendar date).
-4. Then look for what no diff shows: a missing `Do not use for…` (SKILL.md §1), a ruling stranded in
-   a reference (§2), rules contradicting a neighbouring skill or `CLAUDE.md` (§3).
-5. **Fix the boundary-less in order of cross-reference DIRECTION — the hub first.** The skill every
+1. Run the two audits over the marketplace, in the quoted `bun run "SKILLDIR/scripts/…"` form
+   SKILL.md's Bundled resources gives; the rest is by hand (steps 3–4).
+2. **Record the commit this guide was at when each review ran**, in the review's own durable record
+   (its ledger or report, or the commit message that ships its fixes), and open the next review by
+   diffing the endpoints: `git diff <sha>..HEAD -- <path/to/this/skill>` — a SHA, never `git log
+   -p` (it replays rules later withdrawn) or a package version (`--since=<version>` is silently read
+   as a calendar date). Without it a reviewer applies the rules it already knew, and a skill written
+   before a rule conforms to nothing — a skipped check no report can show.
+3. Then look for what no diff shows: a missing `Do not use for…` (SKILL.md §1), a ruling stranded in
+   a reference (SKILL.md §2), rules contradicting a neighbouring skill or `CLAUDE.md` (SKILL.md §3).
+4. **Fix the boundary-less in order of cross-reference DIRECTION — the hub first.** The skill every
    sibling points *at* while pointing at nobody is both the likeliest gap (a hub reads as "obviously
    the main one") and the worst one (the classifier already defaults to it, and the hub is typically
    the skill that CHANGES STATE while its siblings only read). Worked case: `precedents.md` §1. No

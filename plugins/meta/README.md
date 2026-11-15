@@ -25,7 +25,7 @@ bootstrapped with `clone-marketplace` carries a copy of it. It ships six skills 
   context-engineering reversals** — under-constrain on purpose, design interfaces instead of giving
   examples, prefer references in code form — with the measured precedents in `references/`, a
   trigger-test set for itself, `scripts/audit-frontmatter.ts` (every description against the loader's
-  cap) and `scripts/audit-markers.ts` (the `Length verdict` line and the Step-0 marker, ignoring
+  cap, every name against the spec's format) and `scripts/audit-markers.ts` (the `Length verdict` line and the Step-0 marker, ignoring
   quotes inside code).
 - **marketplace-health** — diagnose an already-installed marketplace on **Claude Code or Codex**: is
   the latest published version of each plugin actually installed (vs a stale cached copy), and is

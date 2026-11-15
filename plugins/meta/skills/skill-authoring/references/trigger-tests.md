@@ -5,7 +5,8 @@
 > for your own skill: about ten prompts that should fire, about ten that should not, the reason for
 > each near-miss, the runs with what they do not establish, and a with-skill vs baseline task run.
 
-Run each prompt in a fresh session with the marketplace installed, and record whether this skill
+Run each prompt in a fresh session with this skill loaded from the working tree (installed only when
+the installed copy matches it, `--plugin-dir`, or copied in), and record whether this skill
 loads. A prompt passes when the result matches the column it is in. Record each run below.
 
 Write realistic prompts: name the skill the user means. A prompt about "this skill" with nothing to
@@ -31,24 +32,44 @@ this plugin. The first four rows did not record which.
 | 2026-11-14 | Claude Code · claude-fable-5-2 · full | meta 0.7.49 (878 chars) | 10/10 | 12/12 | same |
 | 2026-11-14 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.52 (893 chars) | 10/10 | 13/13 | reciprocal boundary with marketplace-health; a never-showed-up near-miss added |
 | 2026-11-14 | Claude Code · claude-fable-5-2 · full | meta 0.7.52 (893 chars) | 10/10 | 13/13 | |
+| 2026-11-15 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.56 (893 chars, unchanged) | 10/10 | 14/14 | a CLAUDE.md near-miss added: the boundary named it, no prompt tested it |
+| 2026-11-15 | Claude Code · claude-fable-5-2 · full | meta 0.7.56 (893 chars, unchanged) | 10/10 | 14/14 | the installed copy disabled; one copy loaded |
+| 2026-11-15 | Codex CLI 0.169 · its built-in default model (`exec --json` does not name it) | meta 0.7.56 (893 chars; the installed copy is identical) | 10/10 | 9/14 | see the Codex note below |
+| 2026-11-15 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.57 (889 chars) | 10/10 | 14/14 | boundary rewritten as one clause per sibling |
+| 2026-11-15 | Claude Code · claude-fable-5-2 · full | meta 0.7.57 (889 chars) | 10/10 | 14/14 | |
+| 2026-11-15 | Codex CLI 0.169 · its built-in default model | meta 0.7.57 (889 chars, working tree) | 10/10 | 9/14 | the same five prompts as on 0.7.56 |
 
-What these runs do not establish: Codex routing (not run — Codex routes from the INSTALLED copy, so
-a run counts for this description only once the installed text matches it), other models, or repeat
-stability (each prompt ran once per row).
+**The Codex row:** one `codex exec` per prompt, `--ignore-user-config`, a read-only sandbox, the
+skill copied into the empty workspace as `.agents/skills/skill-authoring`; "fired" = a command that
+opens its `SKILL.md`. User-level skills still loaded, so it is not fully isolated. With the full user
+config the run measured nothing: that host was over Codex's skills budget and showed no
+descriptions at all (`precedents.md` §16). Of the five should-not misses, "write a README for this
+repo" is the harness: the skill was the only thing in the workspace, so the README described it.
+The other four loaded this skill, sometimes beside the right one: "still doesn't show up", "run the
+eval harness", "write a subagent definition", "tighten our CLAUDE.md" — all four named in its
+`Do not use for` clause. One run per prompt: it does not establish that Codex weighs boundaries
+less than Claude Code in general. Rewriting the boundary as one clause per sibling (meta 0.7.57) left the same five misses,
+so on this evidence the wording is not what Codex skips; what would move it is untested.
+
+What these runs do not establish: other models, repeat stability (each prompt ran once per row), or
+whether a different boundary wording would keep Codex off those four.
 
 ## With the skill vs without it
 
-One task prompt, run once with the skill available and once with `Skill` disallowed; isolated,
-`--max-turns 6`, read-only tools (no shell, no web). Recorded is what changed in the answer.
+Task prompts run with the skill available and with `Skill` disallowed; isolated, `--max-turns 6`,
+read-only tools (no shell, no web). Recorded is what changed in the answer.
 
 | Date | Host · model | Prompt | With the skill | Without it |
 | --- | --- | --- | --- | --- |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | "Review this SKILL.md before I publish it…" + a deliberately weak `csv-cleaner` skill (vague description, caps, one dated incident turned into a rule) | loaded the skill; 8 ranked fixes: description, the overfit DD/MM rule, non-destructive save, defined duplicates and dates, a Definition of Done, caps and repetition, sampling large files; a corrected description | the same eight points in nearly the same order, plus a suggestion to bundle a script |
+| 2026-11-15 | Claude Code · claude-fable-5-2 · ×2 each side | "Review this skill before I publish it" + an `invoice-sync` skill whose body says stop on any login and any duplicate while its reference allows SSO and same-vendor re-issues, with the sibling's boundary sitting in the reference | both halves found and named as cut from their prohibitions; added a confirmation stop before the ledger write (and `disable-model-invocation`), the credentials rule moved INTO the download step, failure paths, a Definition of Done, a Step-0 block, and said what it had not run | the same two contradictions and the misplaced boundary, found as plain contradictions; no confirmation stop; one run advised moving the credentials rule OUT of the steps, the opposite of §2's safeguard rule |
 
-Reading: on a skill with textbook defects, this model already knows the guide's main rules, so the
-skill changed little. That does not establish its value on subtler defects (a severed permission, a
-branch condition in a reference, a one-sided boundary) or on other models. The next task prompt
-should carry one of those.
+Reading: on a skill with textbook defects (the first row) this model already knew the guide's main
+rules, and the skill changed little. On the subtler skill (the second row) the bare model still found
+the contradictions, so finding them is not what the skill adds; what it added was the rules a bare
+review does not reach for — a confirmation stop before an outward write, a safeguard at the step it
+guards, failure paths. Two runs a side on one model: it does not establish the size of the
+difference, its stability, or anything on other models.
 
 
 ## Should fire
@@ -83,6 +104,7 @@ should carry one of those.
 | "review my pull request" | a code review, not a skill review |
 | "write a subagent definition for a security reviewer" | a subagent, not a SKILL.md → the host's docs |
 | "add a /deploy slash command to this repo" | a slash command → the host's docs |
+| "tighten our CLAUDE.md — it's 400 lines and the agent ignores half of it" | repo memory, not a SKILL.md → the host's docs |
 
 ## What a failure means
 

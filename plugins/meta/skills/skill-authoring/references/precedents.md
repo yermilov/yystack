@@ -42,35 +42,39 @@ resolving folded (`>`/`|`) and continued values, then print each length.
 
 ## 4. Severed permission — the login that stopped working (§2)
 
-Caught in review. A skill said: *"sign in through single sign-on yourself; stop only if a typed
+Caught in review (recorded by 2026-08-08). A skill said: *"sign in through single sign-on yourself; stop only if a typed
 password or a 2FA code is demanded."* A refactor moved the **sign-in permission** into a reference and
 kept the **credential warning** in the body. An agent that hadn't opened the reference would have
 blocked at every login wall — refusing work it was explicitly allowed to do.
 
 The failure mode is what makes this class dangerous: it is **silent**. The agent produces no wrong
-answer to investigate; it just quietly does less.
+answer to investigate; it just quietly does less. One refactor of one skill: it does not establish how often a move severs
+a rule, only that a review must check that both halves travelled.
 
 ## 5. Branch condition in a reference — four sessions lost to a rule that existed (§2)
 
 A task-running skill's body described only the **one-connected-device** case. The
 **two-devices-connected** routing was added later, to a reference file.
 
-Over the following days at least **four sessions** skipped a verification step they were fully
+Over the following days (recorded by 2026-08-08) at least **four sessions** skipped a verification step they were fully
 authorised to perform, each reporting that the choice "requires an interactive question." The
 reference had answered it the whole time — but the agent decides whether to open a reference *before*
 reading it, and it decides from the body. A body that appears not to cover your case reads as a skill
 that is silent on it.
 
-The test that came out of it is SKILL.md §2's branch-condition rule.
+Four is a floor, counted from the runs that reported the choice; it does not establish how many
+skipped the step without saying so. The test that came out of it is SKILL.md §2's branch-condition
+rule.
 
 ## 6. All-or-nothing gate — 19 hours of coverage destroyed to protect a standard (§6)
 
-A monitoring skill carried a completeness rule: read all 16 channels or write nothing. Three
+A monitoring skill (recorded by 2026-08-08) carried a completeness rule: read all 16 channels or write nothing. Three
 consecutive runs hit a broken login and each **correctly** reported *"created no assessments, signals or ground-truth
 marks"* — discarding everything they had gathered.
 
 The series lost roughly **19 hours of coverage** which, being time-series, can never be backfilled —
-over a window in which the event being monitored for actually occurred.
+over a window in which the event being monitored for actually occurred. One series: it does not
+establish the cost elsewhere, only that for time-series data the loss cannot be recovered.
 
 The split that fixes it: **recording** partial input is always allowed and must carry an explicit
 coverage line (`partial pass: 7/16, missing: …`); only the **derived conclusion** — the score, the
@@ -79,13 +83,15 @@ level, the verdict, the published number — waits for full coverage. Then a dow
 
 ## 7. Read the command, it looks fine; run it, it yields nothing (§8)
 
-A skill instructed `wdutil info` for macOS Wi-Fi statistics. The binary is present and the command
+A skill instructed `wdutil info` for macOS Wi-Fi statistics (measured 2026-07-25). The binary is present and the command
 still looks right on the page — but the bare call now prints only a **usage message**, because it
 requires elevation.
 
 An agent hitting a usage dump most naturally concludes the *tool* is missing or broken and abandons
 the whole step, rather than re-running with `sudo`. Privilege requirements, renamed flags, and moved
-output formats all rot silently this way, and prose review cannot see any of them.
+output formats all rot silently this way, and prose review cannot see any of them. One
+command on one macOS version: it does not establish that `wdutil` still behaves this way, only
+why a review runs commands instead of reading them.
 
 The ruling that came out of it is SKILL.md §8's "run the commands it prescribes".
 
@@ -128,6 +134,11 @@ reversals invert advice that was correct for older models; the next generation m
 
 ## 9. One family of workflow skills registered its steps; no other workflow did (§2)
 
+Nine findings from one line of audits, in the order they happened. Each subsection is one finding;
+SKILL.md and the other references point at the subsection they need.
+
+### 9a. The audit: one family carried the block, nothing else did
+
 An audit of a mature marketplace. A heading scan **shortlists** candidates — three or more
 numbered step headings, or a `## Workflow` section — and a second sweep asks which skills say
 anything at all about tracking the run:
@@ -155,7 +166,10 @@ was the stronger "not one workflow skill follows the scheme" — the audit is wh
 
 Nothing about the runs looked wrong, which is the cost: with no registered list, a run that did three
 of seven steps produces the same shape of report as one that did all seven, and the skipped steps are
-invisible to the agent itself, to the reader, and to any later review.
+invisible to the agent itself, to the reader, and to any later review. One marketplace, read once:
+it does not establish how common the gap is elsewhere.
+
+### 9b. The sequel: the tool was there and was not recognised
 
 **The sequel (recorded 2026-08-10): the very first observed run after those blocks shipped dropped
 the list anyway.** A remote-control session opened the task-runner skill, reached the new block, and reported
@@ -167,7 +181,7 @@ saw nothing and concluded the host had none. Registering the same list by hand i
 that host took one search and four calls.
 
 **⚠️ Read that as dated, not standing — the same host later had no todo tool at all, and the rule
-below turns on which case you are in.** Measured on a build eight weeks on, from the session's own
+below turns on which case you are in.** Measured on a build two weeks on, from the session's own
 advertised tool list rather than from a search: **294 tools and not one todo tool**, identical across
 every permission mode; setting the vendor's opt-in environment flag and re-running the identical probe
 returned **298 including the three handles**. Both names are compiled into the binary either way, so
@@ -182,15 +196,18 @@ evidence about the name, not about the host,"* tells an agent facing a REAL abse
 correct answer is a mistake, and the honest report becomes indistinguishable from the failure the block
 was written to stop. **The repair is to make the negative decidable rather than deniable: search by
 capability, then by the exact handles, and treat two empty results as a real absence — reported
-plainly, with the fallback taken and every item accounted for.** A rule that can only ever conclude
+plainly, with the fallback taken and every item accounted for.** (That floor is now a line of the
+Step-0 block in SKILL.md §2.) A rule that can only ever conclude
 "you searched wrong" is not a recognition test.
 
 Two rules come out of it, and the second is the one that bites. **Name the capability, not the
-handle** — "the host's todo/plan tool" — which is only §9's portability rule applied to the block you
+handle** — "the host's todo/plan tool" — which is only SKILL.md §9's portability rule applied to the block you
 just mandated. And **say what "no such tool" means**: search for it first, and give the fallback
 explicitly, because the alternative the runner improvises ("I'll track it inline") is indistinguishable
 in the report from having tracked nothing at all. A mandate the runner cannot execute does not fail
 loudly; it fails as a polite sentence about tracking things inline.
+
+### 9c. Seven checks registered as one item
 
 **The third act (recorded 2026-08-10): the block was there, was worked in full, and still hid a
 skipped check.** A review workflow had registered all seven of its steps and completed every one. But its
@@ -209,10 +226,13 @@ precedent is about, reproduced by the fix for it. The cheap test is the one in �
 closed while a named sub-check was never performed?*), and the cheap repair is that each item closes
 naming what it checked, so "clean" carries its own evidence.
 
+### 9d. Three rival marker sentences, then a fourth
+
 **And the phrasing kept drifting, which is why §8 now says to fix the marker when you write the
 rule.** On 2026-08-11 one marketplace carried **three** rival sentences — 16
 skills with "Register them in this session's own todo/plan tool", 6 with "Register these as TODOs", 4
-with "Register these as todo items now". Of its 36 workflow-shaped skills, 20 carried some
+with "Register these as todo items now" — the six also carried the first sentence a line later
+(`workflow-skills.md` §2), so the forms overlap. Of its 36 workflow-shaped skills, 20 carried some
 instruction and the narrow `todo list|todo item` pattern found **15 of those 20**: a 25% miss rate on
 a mandate its own author could not grep for. Nothing was wrong with any of the three wordings — only
 with there being three.
@@ -232,8 +252,10 @@ is a real conformance failure, not a false alarm. What the flag does not tell yo
 and that is the trap — read it as "no Step-0 block here" and you write a second block on top of a
 working one. It means **the marker is missing**, so the repair is a one-sentence rewording. The
 tempting alternative — admit a third form so the flags go away — is the one to refuse: each
-admission is unbounded and dissolves the property that made the marker checkable at all. Repair the
-skills, not the pattern.
+admission is unbounded and dissolves the property that made the marker checkable at all. The pass
+repaired the skills, not the pattern; that ruling now lives in `library-maintenance.md` §1.
+
+### 9e. `grep -L`: the same output, opposite exit codes
 
 **And the audit command has one portability trap of its own: `grep -L`'s EXIT STATUS is not
 portable, while its output is.** Measured 2026-08-30 on one machine: BSD `grep -L <pattern> <file>`
@@ -241,7 +263,11 @@ and `ugrep -L` — which some agent harnesses transparently substitute for `grep
 file list and returned **opposite** exit codes (BSD 1 / ugrep 0 for a non-matching file). A sweep
 wired to `$?` therefore inverts depending on which implementation is on `PATH`, silently, while still
 printing the correct answer on screen. This bit the review that wrote the rule: its own negative
-control reported the audit broken when only the control was. Read the filenames.
+control reported the audit broken when only the control was. Reading the printed
+filenames instead of `$?` is the ruling in `library-maintenance.md` §1. One machine, two grep
+builds: it does not establish which other implementations differ.
+
+### 9f. The Length-verdict hand-grep
 
 **The `Length verdict (§2):` hand-grep has two more traps, which is why `scripts/audit-markers.ts`
 now does it.** The pattern must be anchored (`^Length verdict …`): unanchored, any file that merely
@@ -250,11 +276,15 @@ in both regex dialects; written bare, they are grouping under ERE, and the audit
 conforming file as missing. The script sidesteps both, and also skips a verdict that sits only
 inside a code fence.
 
+### 9g. The standard moved under the review
+
 **A second miss in the same pass came from the standard itself moving.** Several of the rules the
 review was meant to apply had been added to this guide *after* the file under review was written —
 and after its previous review. An agent applying "the standard" from memory applies the rules it
 already knew, and nothing about that looks like a skipped check. Hence `library-maintenance.md` §2:
 anchor each periodic review on a commit.
+
+### 9h. 85 runs measured: searching was not enough without a recognition rule
 
 **Measured afterwards, and the number is the point: the block works, and "search for it" was still
 not enough.** Eighty-five completed runs of one task-runner workflow were read on 2026-08-12 from the host's own
@@ -279,9 +309,11 @@ search hands it a result set it has no test for, and the wrong test is the one i
 remembered handle. **Give the recognition rule with the search** — anything that creates items and
 marks them in progress and completed IS the tool, whatever it is called; an empty result for one
 remembered name is evidence about the name only — plus the floor described above (two empty
-probes settle it). That keeps §9's "name the capability, not the handle"
+probes settle it). That keeps SKILL.md §9's "name the capability, not the handle"
 intact, because a recognition test is not a handle: it is what makes the capability identifiable on a
 host whose handle you cannot know.
+
+### 9i. The heading scan misses in both directions
 
 **The heading scan is a shortlist in BOTH directions, and the rollout that trusted it proved it.**
 A later pass read every skill in the same marketplace instead of only the scan's hits. About one in
@@ -290,17 +322,19 @@ non-English "steps" heading, a numbered bold list or plain prose. The marker gre
 positive. The authoring guide itself quotes both marker sentences, in its template and in prose about
 them, so `grep -L` treated it as conforming although at the time it had no runtime step list at all.
 Both rules that came out of it — the inventory covers every skill, and the check ignores a quoted
-marker — are in `library-maintenance.md` §1.
+marker — are in `library-maintenance.md` §1. One marketplace: "one in five" does not establish
+the miss rate of a heading scan elsewhere.
 
 ## 10. Two capability checks that could only answer "no", and one that could only answer "yes" (§6)
 
 **The self-confirming half.** Measured 2026-08-23 on a task skill backed by an MCP tool that the host
 *defers*: nothing is in the tool list until a tool-search loads it, so the skill's check — *"if the
-tool isn't in your tool list, fall back to the browser"* — answered "absent" on every run. Every
+tool isn't in your tool list, fall back to the browser"* — answered "absent" on every run observed on that host. Every
 unattended run therefore fell through to a browser sign-in no unattended run can complete. The
 reviewing agent's own verdict names why it lasted: **the failure read as a confirmation**, so the
 check appeared to be correctly detecting a problem that was not there. Nobody debugs a check that is
-agreeing with itself.
+agreeing with itself. One skill on one host: it does not establish how such checks behave where
+tools load eagerly, only that a check must be able to return both answers.
 
 **The mirrored half, and the reason the rule insists on a date.** The same library's todo-tool
 guidance ran the other way — it asserted the capability existed and offered no way to conclude
@@ -309,14 +343,14 @@ host that claim has been in three different states, which is the whole argument 
 
 | Measured | State |
 | --- | --- |
-| 2026-06 | present, but under unfamiliar handles and **deferred** — a search for the remembered name found nothing |
+| 2026-08-10 | present, but under unfamiliar handles and **deferred** — a search for the remembered name found nothing |
 | 2026-08-23 (v2.1.241) | **absent by default** — 294 advertised tools and no todo tool in any permission mode; the vendor's opt-in environment flag returned 298 including the three handles |
 | 2026-08-30 (v2.1.251) | **present again** — the same three handles advertised, on a host where that opt-in flag is enabled |
 
 Nothing about the skill changed across those three rows; the host did. A rule written on any one of
 them, undated, is wrong for two-thirds of its life — and each time it is wrong it converts a correct
-agent into one that distrusts its own reading. Hence SKILL.md §6's Self-Confirming Check ruling — then date the row so the next reader knows to
-re-measure rather than to obey.
+agent into one that distrusts its own reading. Hence SKILL.md §6's Self-Confirming Check row, and the reason to date the claim so the next reader
+re-measures rather than obeys.
 
 ## 11. Distance to the action — the external measurement behind §2's safeguard rule (§2)
 
@@ -348,7 +382,8 @@ Two shapes, both recorded 2026-11-13:
 - A `curl` refusal on one host became "the GitHub API does not work", when the true scope was *this
   host, this tool, and not the same on the next session*.
 
-Neither claim was false about what was observed; both were read at their widest.
+Neither claim was false about what was observed; both were read at their widest. Two cases: they
+do not establish a rate, only the shape.
 
 ## 14. A fix that bound one step, and the same 400 from the next (§8)
 
@@ -357,7 +392,8 @@ request field is mandatory — in **that step only**. A later step in the same f
 contents into a comment" and named neither the field nor the endpoint. Agents kept hitting the
 identical 400 from the second step; the run that finally diagnosed it put the cost plainly: the same
 bug, from the same instructions, will simply happen again. A grep of the file for the endpoint name
-would have listed both steps.
+would have listed both steps. One file: it does not establish how often a fix stays local, only
+that a grep for the endpoint finds the siblings.
 
 ## 15. A skill that made an agent less careful than no skill (§7)
 
@@ -370,3 +406,14 @@ those services: its framing — reach what you cannot see — licensed them. A o
 against them, re-run the same day, brought the with-skill runs back to the baseline's behaviour.
 One pair of prompts on one host: it does not establish how often this happens, only that the
 blocked case is where to look.
+
+## 16. Over the skills budget, every description went (§1)
+
+Measured 2026-11-15 on Codex CLI 0.169, on a machine with a few dozen plugins enabled: a fresh
+`codex exec` reported *"Exceeded skills context budget. All skill descriptions were removed and 14
+additional skills were not included in the model-visible skills list."* Asked "my skill never
+triggers, what's wrong with the description?", that run did not open the authoring skill, which was
+installed. The same prompt with the user config ignored and only that one skill present opened it at
+once. So on a crowded host the description you tuned may not be in context at all: the `name` is
+all the model sees, or the skill is missing from the list. One host, one count of plugins: it does
+not establish where the budget sits, how it is computed, or what other hosts do past theirs.

@@ -14,11 +14,11 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
 const args = process.argv.slice(2);
+// Refuse what we do not parse: a typo'd flag silently ignored would audit the wrong thing and pass.
+const unknown = args.filter((a) => a.startsWith("-") && !["--json", "--help", "-h"].includes(a));
+const positional = args.filter((a) => !a.startsWith("-"));
 // --help wins only when nothing else on the line is wrong: `--bad --help` or two roots must still exit 2.
-const badFlag =
-  args.some((a) => a.startsWith("-") && !["--json", "--help", "-h"].includes(a)) ||
-  args.filter((a) => !a.startsWith("-")).length > 1;
-if ((args.includes("--help") || args.includes("-h")) && !badFlag) {
+if ((args.includes("--help") || args.includes("-h")) && unknown.length === 0 && positional.length <= 1) {
   console.log(`usage: bun run audit-markers.ts [marketplace-root] [--json]
 
 Scans <root>/plugins/*/skills/*/SKILL.md (default root: the current directory).
@@ -33,12 +33,10 @@ inside a code fence or backticks does not count — that is a skill discussing t
 running it.
 
 Exit codes: 0 clean, 1 a length verdict is missing, 2 the audit could not run (the root has no
-plugins/ directory, an unknown flag, or more than one root).`);
+plugins/ directory or no SKILL.md under it, a directory or SKILL.md it cannot read, an unknown
+flag, or more than one root).`);
   process.exit(0);
 }
-// Refuse what we do not parse: a typo'd flag silently ignored would audit the wrong thing and pass.
-const unknown = args.filter((a) => a.startsWith("-") && !["--json", "--help", "-h"].includes(a));
-const positional = args.filter((a) => !a.startsWith("-"));
 if (unknown.length > 0 || positional.length > 1) {
   console.error(
     unknown.length > 0
@@ -173,6 +171,15 @@ const missingVerdict = rows.filter((r) => r.lines > LENGTH_CAP && !r.verdict);
 const withMarker = rows.filter((r) => r.marker);
 const withoutMarker = rows.filter((r) => !r.marker);
 
+if (rows.length === 0) {
+  // A plugins/ tree with no SKILL.md in it is a wrong root, not a clean library: "0 skills, 0
+  // findings" would read as a pass. audit-frontmatter.ts refuses the same case.
+  console.error(
+    `audit-markers: no plugins/*/skills/*/SKILL.md under ${root} — wrong directory? ` +
+      `(permanent: fix the path, a retry will not help)`,
+  );
+  process.exit(2);
+}
 if (json) {
   console.log(
     JSON.stringify(

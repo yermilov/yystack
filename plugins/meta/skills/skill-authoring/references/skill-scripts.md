@@ -17,7 +17,8 @@ that runs unattended, whose failures are read by a model rather than a human.
 - **TypeScript + bun** — bun runs a `.ts` file directly, so there is no build step to go stale and
   no `node_modules` to ship inside a plugin. You get types (the errors a skill script actually hits
   — a field that is sometimes `null`, an upstream shape that changed — are exactly the ones a type
-  catches), `tsc --noEmit` as a cheap gate, and a real test runner once the script has moved into a codebase (§4).
+  catches), a typecheck as a cheap gate wherever `tsc` is installed (bun does not ship it), and `bun test`
+  built in for the small tests a pure script can carry; past that, §4 says move it.
 - **Python** — when the work needs a library that only exists there: image and PDF manipulation,
   scientific or numeric code, an SDK with no JS equivalent. A long Python script is not a smell if
   that is why it is Python.
@@ -51,7 +52,7 @@ that a caller can poll for. A caller waiting only for a success marker waits for
 
 ## 2. The line a script may not cross
 
-§5 says `scripts/` is for "deterministic work where exactness matters". The failure mode is that
+SKILL.md §5 says `scripts/` is for "deterministic work where exactness matters". The failure mode is that
 this reads as a description of *content*, when the thing that matters is *shape*.
 
 **A skill script may be a pure transformation: inputs in, outputs out, finished when it returns.**
@@ -65,8 +66,8 @@ Any one of the three means it is a program, and a program belongs in a real code
 have types, tests and a review history.
 
 **The line is not size, and getting that wrong is the common mistake.** Measured across one
-marketplace (2026-08; a snapshot of that library, not a size limit): the largest script in it, at 865 lines, is in exactly the right place — a deterministic
-converter, no state, nothing supervised. The one that had to be removed was **shorter**, at 473
+marketplace (2026-08; a snapshot of that library, not a size limit): the largest script in it,
+at 865 lines, was in exactly the right place — a deterministic converter, no state, nothing supervised. The one that had to be removed was **shorter**, at 473
 lines, and it was the only script in the collection that supervised another process, kept state
 between invocations *and* retried. All three at once.
 
@@ -94,7 +95,7 @@ twelve-round loop on the fallback. The tool was installed and reachable the enti
 simply unlabelled.
 
 **And the obvious fix is itself a trap.** A later edit replaced the bare path with
-`"$SKILL_DIR/scripts/<name>.sh"`. **`SKILL_DIR` is not set in the agent's shell** — printing it
+`"$SKILL_DIR/scripts/<name>.sh"`. **`SKILL_DIR` is not set in the agent's shell** (recorded by 2026-08-26) — printing it
 returns empty — so the documented command failed exactly as before, merely rooted at `/` instead of
 at the repo. One wrong path had been swapped for another, and the swap looked like a fix.
 
@@ -123,11 +124,11 @@ to win.
 
 ## 4. Tests, and the honest reason they are rare here
 
-§5 asks every non-trivial skill for "at least one validation mechanism". Read that precisely: it is
+SKILL.md §5 asks every non-trivial skill for "at least one validation mechanism". Read that precisely: it is
 a check on the **skill's output**. It is not a test of the script.
 
-A file under `skills/*/scripts/` usually has no test runner, no typecheck in CI, and no reviewer who
-will notice it drifting. That is a real argument for keeping such scripts small and pure — and it is
+A file under `skills/*/scripts/` usually has no tests wired up (bun ships `bun test`, so that is a
+choice, not a missing tool), no typecheck in CI, and no reviewer who will notice it drifting. That is a real argument for keeping such scripts small and pure — and it is
 §2 arriving from the other direction. When a script grows past what you would be comfortable
 shipping untested, that is the signal to **move it**, not the signal to build a test harness beside
 it.
@@ -147,8 +148,9 @@ assert it reads 1, remove it and assert it reads 0. An instrument that has not b
 not evidence, and a green suite built on one is not green.
 
 Beware exact counts in prose, too. A hand-grep for `it(`/`test(` under a couple of directories
-undercounted a real suite by a quarter, because it missed a directory and every parameterised case;
-the number was wrong the day it was written. Quote a count only if you got it from the test runner,
+undercounted a real suite by a quarter (recorded by 2026-08-26, one repo; it does not establish a
+typical undercount), because it missed a directory and every parameterised case; the number was
+wrong the day it was written. Quote a count only if you got it from the test runner,
 and date it.
 
 ## 5. Errors are read by a model
@@ -167,7 +169,7 @@ cannot see your source.
 - **Refuse arguments you did not parse.** Exit 2 with a one-line reason on an unknown flag, a flag
   missing its value, or the wrong number of positionals. A script that takes `argv[0]` as its input
   turns `--count 5 foo` into a search for `--count`, and the result looks like a real answer
-  (measured 2026-11-14). Under `bun run`, a leading `--` right after the script name never reaches
+  (measured 2026-11-14). Under `bun run` (same date), a leading `--` right after the script name never reaches
   it, so do not offer `--` as the way to pass a value that starts with `--`: give that value a flag
   of its own.
 - **Check a URL argument by parsing it and matching the host exactly**, never with a regex over the

@@ -1,8 +1,9 @@
 # Workflow skills — the depth behind SKILL.md §2's rules
 
-> Reference for the `skill-authoring` skill. Every **ruling** about workflow skills is already inline
-> in `SKILL.md` §2 — the mandate, the marker sentences, the granularity test, the length rule. This
-> file holds what you consult: why each line of the Step-0 block is there, the body skeleton, and
+> Reference for the `skill-authoring` skill. The rulings about workflow skills are inline in
+> `SKILL.md` §2 — the mandate, the marker sentences, the granularity test, the length rule — except
+> the nesting wording in §4 here, which only a skill another skill invokes needs. This file holds
+> what you consult: why each line of the Step-0 block is there, the body skeleton, and
 > the nesting wording for both shapes of todo tool. Read it when you are writing or fixing a
 > workflow skill's step list; you never need it to know *whether* to write one.
 
@@ -19,7 +20,7 @@ skimmable prose. Every line of the copyable block exists because a real run fail
 | naming the items **1..N** in the block itself | the runner inventing its own coarser list |
 | "register the **conditional** steps too, completing a moot one with that reason" | a branch quietly dropping items, or skipped steps left open — either way an unfinished list stops meaning unfinished work |
 | "**SEARCH** for the tool first" | a host that defers or renames its planner reading as a host that has none |
-| "**anything that creates items** and marks them in progress/completed IS that tool" | the search running, returning the planner, and the runner not recognising it — measured 2026-08-12 in 3 of 33 runs of one workflow on one host, after the search line alone shipped (`precedents.md` §9) |
+| "**anything that creates items** and marks them in progress/completed IS that tool" | the search running, returning the planner, and the runner not recognising it — measured 2026-08-12 in 3 of 33 runs of one workflow on one host, after the search line alone shipped (`precedents.md` §9h) |
 | "**two** empty results are a real absence on this host — say so plainly" | the opposite failure: a host that really has no planner, where an agent told only "you searched for the wrong name" can never conclude so, and its honest report reads as not having looked |
 | "the **SESSION's** own planner, never an external tracker" | run bookkeeping written into somebody's real backlog — an outward action nobody asked for |
 | the reply-list **fallback** | the runner improvising "I'll track it inline", which is indistinguishable in the report from tracking nothing |
@@ -30,12 +31,13 @@ The block to copy lives once, in `SKILL.md` §2 — copy it from there and repla
 parts. The heading is yours to pick, and so is the sentence that opens the block: a `## Workflow`
 section starting "Register these as TODOs and work the list" reads fine. Skills that open that way
 carry `Register them in this session's own todo/plan tool` a line later, and that sentence is what
-makes them conforming — copy that shape, not just the opening. What is not free is the rest of the
-block: the conditional-step, planner-search, floor and fallback lines are the load-bearing part.
+makes them conforming — copy that shape, not just the opening. Everything else in the block is
+not free: each line in the §1 table stops a measured failure, so keep what every line does, even
+where you reword it.
 
 ## 3. Granularity — why the bound is half the rule
 
-Split an item while omitting part of it would change the outcome *and* nothing in the record would
+Split an item when omitting part of it would change the outcome *and* nothing in the record would
 show it. Stop there. Below that line the item stays whole and its **close** carries the enumeration:
 "all four measurements taken", "loss test skipped: no gateway reachable". Splitting protects what a
 reader must be able to audit; the close-verdict protects the rest.
@@ -71,6 +73,6 @@ while the numbering lines up.
 
 ## 6. Paying for the steps with `references/`
 
-A long workflow still pays tier-2 cost: the body stays in context all session. So one file per deep step, keeping inline the step, its order, its branch conditions and
-its rulings, and moving out the evidence, the long alternate paths and the platform detail —
-signposted by the step that opens it ("Read `references/browser.md` before your first browser call").
+A long workflow still pays tier-2 cost: the body stays in context all session, which is why
+SKILL.md §2 budgets it per step with one reference per deep step. What moves out is the evidence,
+the long alternate paths and the platform detail, signposted by the step that opens it ("Read `references/browser.md` before your first browser call").

@@ -5,11 +5,13 @@
  * Parses every SKILL.md frontmatter as YAML (never a `description:` line-grep, which bleeds into the
  * keys that follow and over-reports length) and reports, per skill:
  *   - description length in CODE POINTS against the 1024-character cap (the skill validator refuses
- *     a longer one — Codex CLI, as of 2026-08: its runtime accepts it and truncates the tail, so keep only
- *     capability prose there) and against SKILL.md §1's 500–900 aim (a warning)
+ *     a longer one — Codex CLI, as of 2026-08: its runtime accepts it and truncates the tail, so
+ *     keep only capability prose there) and against SKILL.md §1's 500–900 aim (a warning)
  *   - whether the DESCRIPTION carries a `Do not use for…` boundary — read off the parsed field, not
  *     the file, because the same phrase in the body is not a boundary
- *   - `name` vs its directory
+ *   - `name` vs its directory, and `name` against the Agent Skills spec's format (1–64 characters of
+ *     a-z, 0-9 and single hyphens, none leading or trailing — agentskills.io/specification, read
+ *     2026-11-15), which host validators enforce
  *   - frontmatter that will not parse at all — which is counted in NONE of the other buckets, so it
  *     is announced up front rather than only at the end
  *
@@ -25,6 +27,9 @@ const CAP = 1024
 // budget (which shortens descriptions from the tail), a short one rarely names enough situations.
 const AIM_MIN = 500
 const AIM_MAX = 900
+// The spec's name rule: lowercase alphanumerics separated by single hyphens, at most 64 characters.
+const NAME = /^[a-z0-9]+(-[a-z0-9]+)*$/
+const NAME_MAX = 64
 const BOUNDARY = /do not use (for|it|this|to|when|on)|not for\b|—\s*that'?s\b/i
 
 interface Row {
@@ -42,7 +47,8 @@ function usage(): never {
 Scans <root>/plugins/*/skills/*/SKILL.md (default root: the current directory).
 
 Exits 1 on the defects a machine can be sure of: frontmatter that will not parse, a missing or
-non-string or blank name/description, a name that disagrees with its directory, and a description over the
+non-string or blank name/description, a name that disagrees with its directory or breaks the spec's
+format (1–${NAME_MAX} characters of a-z, 0-9 and single hyphens), and a description over the
 ${CAP}-character cap. Descriptions outside the ${AIM_MIN}–${AIM_MAX} aim and missing boundaries are reported but do not
 fail the run — both need a human read. Exits 2 when the audit cannot run: an unreadable root or no
 plugins/*/skills/*/SKILL.md under it, an unknown flag or a second root, or a Bun without its YAML
@@ -51,11 +57,11 @@ parser (< 1.3).`)
 }
 
 const args = process.argv.slice(2)
+// Refuse what we do not parse: a typo'd flag silently ignored would audit the wrong thing and pass.
+const unknown = args.filter((a) => a.startsWith('-') && !['--json', '--help', '-h'].includes(a))
+const positional = args.filter((a) => !a.startsWith('-'))
 // --help wins only when nothing else on the line is wrong: `--bad --help` or two roots must still exit 2.
-const badFlag =
-  args.some((a) => a.startsWith('-') && !['--json', '--help', '-h'].includes(a)) ||
-  args.filter((a) => !a.startsWith('-')).length > 1
-if ((args.includes('-h') || args.includes('--help')) && !badFlag) usage()
+if ((args.includes('-h') || args.includes('--help')) && unknown.length === 0 && positional.length <= 1) usage()
 
 // Bun.YAML is built in from Bun 1.3. Fail with an actionable message rather than a bare TypeError:
 // an older Bun runs the script, so the version has to be checked here.
@@ -66,9 +72,6 @@ if (typeof Bun.YAML?.parse !== 'function') {
   )
   process.exit(2)
 }
-// Refuse what we do not parse: a typo'd flag silently ignored would audit the wrong thing and pass.
-const unknown = args.filter((a) => a.startsWith('-') && !['--json', '--help', '-h'].includes(a))
-const positional = args.filter((a) => !a.startsWith('-'))
 if (unknown.length > 0 || positional.length > 1) {
   console.error(
     unknown.length > 0
@@ -149,10 +152,11 @@ const overCap = rows.filter((r) => !r.error && r.length > CAP)
 const longish = rows.filter((r) => !r.error && r.length <= CAP && r.length > AIM_MAX)
 const shortish = rows.filter((r) => !r.error && r.length < AIM_MIN)
 const mismatched = rows.filter((r) => !r.error && r.name !== r.dir)
+const badName = rows.filter((r) => !r.error && (!NAME.test(r.name) || r.name.length > NAME_MAX))
 const noBoundary = rows.filter((r) => !r.error && !r.boundary)
 
 if (asJson) {
-  console.log(JSON.stringify({ root, rows, overCap, overAim: longish, underAim: shortish, mismatched, noBoundary }, null, 2))
+  console.log(JSON.stringify({ root, rows, overCap, overAim: longish, underAim: shortish, mismatched, badName, noBoundary }, null, 2))
 } else {
   const line = (r: Row) => `  ${String(r.length).padStart(4)}  ${r.path}`
   console.log(`${rows.length} skills under ${root}\n`)
@@ -168,7 +172,8 @@ if (asJson) {
     )
 
   // On Codex CLI (as of 2026-08, SKILL.md §1) the runtime accepts an over-cap description and silently
-  // truncates it — it is the packaged-skill validator that refuses one. Either way the tail is what you lose, so nothing but capability prose belongs there.
+  // truncates it — it is the packaged-skill validator that refuses one. Either way the tail is what
+  // you lose, so nothing but capability prose belongs there.
   console.log(`over the ${CAP}-char cap — validator refuses, runtime truncates: ${overCap.length}`)
   overCap.forEach((r) => console.log(line(r)))
 
@@ -181,6 +186,9 @@ if (asJson) {
   console.log(`\nname ≠ directory: ${mismatched.length}`)
   mismatched.forEach((r) => console.log(`  ${r.name} in ${r.path}`))
 
+  console.log(`\nname breaks the spec's format (a-z, 0-9, single hyphens, ≤${NAME_MAX}) — hosts refuse it: ${badName.length}`)
+  badName.forEach((r) => console.log(`  ${r.name} in ${r.path}`))
+
   console.log(`\nno boundary in the description — shortlist, read each: ${noBoundary.length}`)
   noBoundary.forEach((r) => console.log(`  ${r.path}`))
 
@@ -190,4 +198,4 @@ if (asJson) {
   }
 }
 
-process.exit(overCap.length + mismatched.length + broken.length > 0 ? 1 : 0)
+process.exit(overCap.length + mismatched.length + badName.length + broken.length > 0 ? 1 : 0)
