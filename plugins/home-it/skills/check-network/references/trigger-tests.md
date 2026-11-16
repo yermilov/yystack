@@ -8,8 +8,9 @@ Run each prompt in a fresh session with the marketplace installed, and record wh
 loads. A prompt passes when the result matches the column it is in. Record each run below.
 
 **Runs** (each prompt in a fresh `claude -p` with `--plugin-dir` on the working tree, shell and web
-tools disallowed; "fired" = a Skill call naming exactly this skill. The first two rows used
-`--max-turns 1`; the last used `--max-turns 2` with MCP servers cut off):
+tools disallowed; "fired" = a Skill call naming exactly this skill. Rows 1–2 used `--max-turns 1`;
+rows 3–4 `--max-turns 2` with MCP servers cut off; rows 5–6 the same, isolated (`--setting-sources
+project`) and in the full environment with the installed copy turned off):
 
 | Date | Host · model | Fired | Silent | Note |
 | --- | --- | --- | --- | --- |
@@ -17,6 +18,8 @@ tools disallowed; "fired" = a Skill call naming exactly this skill. The first tw
 | 2026-11-14 | Claude Code · claude-fable-5-2 | 12/12 | 10/10 | the description as shipped in 623f9e8 |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | 12/12 | 10/10 | opening trimmed to "…failures and fix them"; `--max-turns 2`, MCP cut off |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | 12/12 | 10/10 | "…fix them (with the owner's OK) or recommend the fix"; server-side latency → "the service's own monitoring" |
+| 2026-11-16 | Claude Code · claude-fable-5-2 · isolated | 14/14 | 10/10 | + "the internet is down", «інтернет не працює» (889 chars); two full-outage rows added |
+| 2026-11-16 | Claude Code · claude-fable-5-2 · full | 14/14 | 10/10 | same description; one copy of the skill in `init` |
 
 What these runs do not establish: Codex routing (not run), other models, or stability across
 repeated runs of one prompt (each ran once).
@@ -52,6 +55,8 @@ Not established: full measurement runs (no commands were allowed), or any outcom
 | «інтернет вдома повільний, що перевірити?» | a native-language phrasing |
 | «вай-фай постійно відвалюється» | native-language drop-outs |
 | "check my home network" | the bare ask |
+| "the internet at home is completely down, nothing loads" | a full outage |
+| «інтернет вдома не працює взагалі» | native-language full outage |
 
 ## Should NOT fire
 

@@ -2,21 +2,22 @@
 name: check-network
 description: >-
   Diagnose home-network speed, DNS and drop-out failures and fix them (with the owner's OK) or
-  recommend the fix. Use when Wi-Fi is slow, latency spikes or pings lose packets, the connection
+  recommend the fix. Use when Wi-Fi is slow, the internet is down, latency spikes or pings lose packets, the connection
   keeps dropping, the router seems to reboot itself, a 4G/LTE modem keeps disconnecting or only
   recovers after a power-cycle, a domain returns NXDOMAIN only at home, and BEFORE advising on
   buying an extender, mesh or new router or on whether the router is the bottleneck (measure first:
   the usual answer is a cable) — “speeds are below my plan”, “DNS is broken”, “site works on mobile
   data”, “Wi-Fi drops every few hours”, “bufferbloat”, «інтернет повільний», «вай-фай відвалюється»,
-  «роутер не резолвить домен». Not for public or office networks you don't administer (a slow work
+  «інтернет не працює». Not for public or office networks you don't administer (a slow work
   VPN included) — that's their admin's job — nor for server-side app latency (the service's own
   monitoring).
 ---
 
 # check-network — diagnose and fix a home network
 
-A home-network failure is almost never one thing. First classify it: **performance** (slow, laggy),
-**name resolution / reachability** (one host fails only at home), or **intermittent drop-outs**. For
+A home-network failure is almost never one thing. First classify it: **down right now** (nothing
+loads), **performance** (slow, laggy), **name resolution / reachability** (one host fails only at
+home), or **intermittent drop-outs**. Down right now goes first (§ Down right now). For
 an exact host that fails only at home, take the DNS fast path before running irrelevant speed tests.
 For performance, work the four layers below and measure before recommending: the fix that feels
 obvious (buy an extender) is usually the *worst* option. For drop-outs that every device sees at
@@ -57,7 +58,10 @@ bookkeeping is not someone's backlog. If there genuinely is none, keep the list 
 account for every item at the end — "I'll track it inline" with no stated list is precisely the
 failure this block exists to prevent.
 
-1. Classify the symptom as performance, DNS/reachability, or intermittent drop-outs
+1. Classify the symptom as down right now, performance, DNS/reachability, or intermittent
+   drop-outs. Down right now: work § Down right now and close naming the host you tested from, where the
+   path stopped, the WAN status and outage/billing checks read, whether the connection came back,
+   and the ISP ticket drafted (or why none)
 2. Ask the owner for an authenticated router session now, or record why no step will need the admin
    UI. Asking early lets you keep measuring while they answer; a run that discovers the login only
    at §3 stops there and waits
@@ -103,6 +107,34 @@ for items 4–7) is completed with that reason, not left open. **No device that 
 closes item 6 with that reason, and says what stays unproven: Wi-Fi versus upstream. Read the
 router's own WAN status (link speed, the line's sync rate) and any line test the ISP offers instead,
 and report a slow upstream as an **inference**, not a measurement.
+
+## Down right now
+
+Nothing loads on any device: find where the path stops before measuring anything. **First confirm
+the host you test from is on the home network** — its active interface is joined to the home
+SSID or cabled to the router, and its gateway is that router (the router's own page or MAC, not
+just a familiar subnet: a phone hotspot can use the same one; `references/measurement-commands.md`
+§ Finding the gateway). You are running, so your machine has
+some path out: if it is tethered or elsewhere, test from a home device the owner operates, or read
+the router's lights and WAN status through the owner. Every hop passing from a host that really is
+on the LAN — add a web request (an `https://` page) to the ping and DNS checks, since a block can
+stop web traffic while both pass — means it is not down for everyone: reclassify as drop-outs or
+one device (§2a).
+
+1. **Test each hop on its own.** This device's link (Wi-Fi joined or cable up, an address from the
+   router); the gateway (ping, or its admin page if it ignores ping); two public IPs (1.1.1.1 and
+   8.8.8.8); and a name lookup through a resolver (`dns-probe.ts`, § DNS fast path), not a ping by
+   name. No link or no gateway → local: the router's power and lights, the cable, this device.
+   Gateway reachable, both public IPs silent → the WAN side. Public IPs answer but lookups fail →
+   DNS (§ DNS fast path).
+2. **WAN side:** read the router's WAN status — link up, an address assigned, the modem's or ONT's
+   sync and signal (cellular: §3a) — in the owner's session (§3), or from the lights the owner
+   reads to you. Ask the owner to check the ISP's outage page or app and whether the account is
+   paid (in the ISP's account or app).
+3. A power-cycle of the modem or router is the owner's call: name it and let them do it. Then
+   repeat step 1. Still down — whether the WAN link is down, or up with an address while both
+   public IPs stay silent — read the router's WAN log for errors, then draft the ISP ticket (§4)
+   with the times, the WAN status and what each test showed, for the owner to send.
 
 ## DNS fast path
 
@@ -359,8 +391,8 @@ branch) and report before/after numbers side by side. A fix you did not re-measu
 
 ## Validation
 
-Length: ~370 lines, over the ~250 aim because this workflow has four branches (DNS, performance,
-drop-outs, cellular) whose rulings and branch conditions must sit in the body; the per-OS commands,
+Length: ~395 lines, over the ~250 aim because this workflow has five branches (down right now,
+DNS, performance, drop-outs, cellular) whose rulings and branch conditions must sit in the body; the per-OS commands,
 the logger, the API and cellular depth, and the measured cases live in `references/`.
 
 `references/trigger-tests.md` holds the prompts that should and should not load this skill, and its
