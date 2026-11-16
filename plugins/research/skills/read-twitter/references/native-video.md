@@ -3,9 +3,16 @@
 The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN media.
 «Above»/«below» refer to this file. SKILLDIR below is the folder `SKILL.md` was loaded from.
 
+Sections: Photos off the CDN · Native video: sampled frames · Burned-in subtitles: the subtitle band
+· A frame-sequence claim: measure it · Audio: present, silent or speech · Speech: transcribe it · A
+claim that sound is synced to picture · Fallback: no variants list · The poster frame as evidence.
+
 - **Media pixels straight off the CDN**, when the Step 6 lightbox walk is not available — a
   **native X video**, which has no `/photo/<N>` link at all, or a media node you can see in the
   DOM but cannot navigate to.
+
+
+## Photos off the CDN
 
   **Photos** (verified): match the id and rebuild the URL —
 
@@ -15,6 +22,9 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
 
   then `curl "https://pbs.twimg.com/media/<ID>?name=orig"` (the original upload, the same form
   `x-post.ts` prints) and read the image.
+
+
+## Native video: sampled frames
 
   **Native X video — read it as SAMPLED FRAMES via `ffmpeg`, not just a poster.** The primary path
   is the same `tweet-result` endpoint this skill already uses for text (see «To check one tweet's
@@ -75,6 +85,9 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
   **sample, not every frame** — say so, and drop to a higher `fps` (or a scene-change extraction)
   if the content looks like it changes faster than the sampling interval.
 
+
+## Burned-in subtitles: the subtitle band
+
   **Burned-in subtitles: crop the SUBTITLE BAND and tile it, rather than reading full frames.** When
   the narration is captioned into the picture — the norm for agent-POV and lore videos — the whole
   spoken track is readable without any transcription service, and a narrow vertical tile of just the
@@ -109,6 +122,9 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
   step `-ss` by that same chunk length.
   **Spoken narration with NO burned-in captions is not covered by the bands** — transcribe it instead
   (SKILL.md Step 6b.4, `watch-video`'s local-file mode).
+
+
+## A frame-sequence claim: measure it
 
   **A FRAME-SEQUENCE claim needs a MEASUREMENT, not a description — and it is ten lines of array code.**
   When the post's claim is about the video's *construction* rather than its content ("stop motion",
@@ -184,6 +200,9 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
   made*. A background near the noise floor fits a composited plate AND a masked edit; say what you
   measured and leave the pipeline to the author's own words.
 
+
+## Audio: present, silent or speech
+
   **Check for audio before saying anything about it — don't assume it's unwatchable:**
 
   ```
@@ -207,13 +226,21 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
 
   Measured 2026-09-17 on one screen-recording post (16 s, stream `aac (LC) 48000 Hz
   stereo 128 kb/s`): `mean_volume: -91.0 dB`, `max_volume: -91.0 dB`. **`max_volume` at the
-  −91.0 dB floor (equal to `mean`) is the signature of a track silent for its whole length** —
+  −91.0 dB floor (equal to `mean`) is what a track silent for its whole length reads — and also
+  speech attenuated past the encoder floor (see below), so it is ambiguous on its own** —
   controls the same day on synthetic AAC: `anullsrc` → −91.0/−91.0, a 440 Hz sine → mean −21.1 /
   max −16.3, and the same sine attenuated by 60 dB → mean −80.8 / max −76.3. So do NOT pick a
   loudness threshold like "> −50 dB": a genuinely quiet track sits far below it and is still not
-  silent. Report a floor reading as «the clip carries an audio track that is digitally silent
-  (max_volume −91 dB) — nothing to transcribe»; anything above the floor has signal, so quote the
-  two numbers and flag audio as unwatched only then.
+  silent. A floor reading usually means a digitally silent track, but speech attenuated past the
+  encoder floor reads the same, so treat it as uncertain, not as «nothing to transcribe».
+  `watch-video`'s `frames.ts` (the transcriber you hand speech to) calls `max_volume` at or below
+  −80 dB «silent» and below −30 dB «faint», and its procedure for a «silent» reading (a retry with
+  the level raised when whisper is already installed) is the one to follow: hand the file over
+  rather than ruling it out here. Quote both numbers either way, and flag audio as unwatched only if
+  it was not transcribed.
+
+
+## Speech: transcribe it
 
   **Signal that is SPEECH → transcribe it; «present, not transcribed» is not an ending for a talk or
   tutorial.** Transcription itself belongs to the sibling skill **`watch-video`, local-file mode** —
@@ -246,6 +273,9 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
   into a celebrity's, model names) — take every
   name from the repo or a frame, not from the transcript. Not measured: how long transcription takes
   on a 30-min file — do not quote a duration.
+
+
+## A claim that sound is synced to picture
 
   **A claim that the SOUND is synced to the picture («timed it perfectly with the animation») is
   measurable too — scene cuts against audio onsets, with a LOCAL-JITTER control.** A present,
@@ -346,6 +376,9 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
   the author's «Web Audio API» answer. Say *consistent with* it: a spectrogram cannot prove how a
   sound was made.
 
+
+## Fallback: no variants list
+
   **Fallback — only when the `variants` list isn't reachable** (`tweet-result` fails, or the post
   isn't publicly embeddable): the poster frame's CDN path still works, but **do NOT rebuild it
   under `/media/`.** It lives on deeper, differently-shaped paths
@@ -369,6 +402,9 @@ The depth behind read-twitter's native-video step (SKILL.md, Step 6b) and CDN me
   characters, so an `innerHTML` occurrence followed by `&quot;` is captured with that tail attached
   and shows up beside the clean match as a second "unique" URL. `.replace(/&quot;.*$/, '')` on each
   match, then dedupe, before you count or fetch anything.
+
+
+## The poster frame as evidence
 
   **Read the poster frame FIRST when the post claims a demo but links nothing — the address bar is
   in the picture.** A screencast's poster usually shows the browser chrome, and the URL in it is the

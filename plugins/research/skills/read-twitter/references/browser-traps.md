@@ -133,8 +133,10 @@ believed from an instrument that never moved.
   (immediately), with no error, while the async function's body was often still mid-flight past its
   first `await`** (one driver, as of 2026-09). This reads as "the page returned nothing", when the
   code is actually still running (or has barely started) — hit twice in one run. Write the loop at
-  the **top level** with `await` instead of wrapping it in an async function expression: e.g.
-  `const sleep=ms=>new Promise(r=>setTimeout(r,ms)); for (...) { await sleep(x) } JSON.stringify(out)`.
+  the **top level** with `await` instead of wrapping it in an async function expression, and keep
+  it short — one `await` of a few seconds at most, e.g.
+  `await new Promise(r=>setTimeout(r,2000)); JSON.stringify(collect())`. Repeat by making more calls,
+  not by looping inside one: a long in-page loop hangs the tab (next bullet).
 - **A long async scroll loop inside one page-script call can leave the automation path unresponsive
   for far longer than any single call's own timeout — a different failure from the ordinary timeout
   in the second bullet, needing a different recovery.** A `for (6) { scrollBy; await sleep(2500) }`
