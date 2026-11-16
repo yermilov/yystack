@@ -2,15 +2,14 @@
 name: skill-authoring
 description: >-
   Write, structure and review Agent Skills (SKILL.md files) so an agent reliably triggers and
-  follows them. Load it BEFORE answering any question about a skill's description, triggering,
-  auto-firing, length, steps or Codex portability, even one you could answer from memory. Use when
-  creating, editing, improving, reviewing, shortening or debugging a skill / SKILL.md: «як написати
-  скіл», «створити/покращити скіл», «чому скіл не тригериться», "write a skill", "make a SKILL.md",
-  "my skill never triggers", "my workflow skill skips steps", "will my skill work on Codex", "review
-  my skill before I publish it". Do not use for: plugin packaging, manifests or version bumps —
-  that's plugin-dev; a skill that never showed up after an install or push —
-  that's marketplace-health; running evals — the host's tooling; a CLAUDE.md / AGENTS.md, slash
-  command or subagent definition — the host's docs.
+  follows them. Not for a skill that never showed up after an install or push (marketplace-health),
+  running a skill's evals or an eval harness (the host's eval tooling), plugin packaging or version
+  bumps (plugin-dev), or a CLAUDE.md / AGENTS.md, slash command or subagent definition (the host's
+  docs). Use when creating, editing, improving, reviewing, shortening or debugging a skill /
+  SKILL.md, or asked about its description, triggering, auto-firing, length, steps or Codex
+  portability: «як написати скіл», «створити/покращити скіл», «чому скіл не тригериться», "write a
+  skill", "make a SKILL.md", "my skill never triggers", "my workflow skill skips steps", "will my
+  skill work on Codex", "review my skill before I publish it".
 ---
 
 # Skill authoring
@@ -20,11 +19,12 @@ triggers, follows, and benefits from — thousands of times. This is the prescri
 guide: how to make the prose itself good.
 
 > This skill practices what it preaches — its own description and structure are meant as a worked
-> example. As of 2026-11-15 (meta 0.7.56, one run per prompt) its trigger set passes on Claude Code;
-> Codex results and what every run does not establish: `references/trigger-tests.md`. To review a skill, work the Pre-ship checklist at the end: it is the
-> review procedure. If you change this skill, keep it a worked example.
+> example. As of 2026-11-16 (meta 0.7.59) its trigger set passes on Claude Code and, in one run, on
+> Codex; repeats on Codex spread by 2–3 prompts. Runs and what they do not establish:
+> `references/trigger-tests.md`. To review a skill, work the Pre-ship checklist at the
+> end: it is the review procedure. If you change this skill, keep it a worked example.
 
-Length verdict (§2): 2026-11-15 — 590 lines. Every section still inline is a ruling an author
+Length verdict (§2): 2026-11-16 — 590 lines. Every section still inline is a ruling an author
 applies while writing (§1 activation and the two-host flag table, §2 tiers, §3 voice, §4
 generalising, §5 bundling, §7 testing, §8 maintenance rulings, §9 portability); evidence, sources
 and mechanics live in `references/`. Three choices keep it over 500 on purpose: the Step-0 block

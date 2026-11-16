@@ -38,6 +38,14 @@ this plugin. The first four rows did not record which.
 | 2026-11-15 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.57 (889 chars) | 10/10 | 14/14 | boundary rewritten as one clause per sibling |
 | 2026-11-15 | Claude Code · claude-fable-5-2 · full | meta 0.7.57 (889 chars) | 10/10 | 14/14 | |
 | 2026-11-15 | Codex CLI 0.169 · its built-in default model | meta 0.7.57 (889 chars, working tree) | 10/10 | 9/14 | the same five prompts as on 0.7.56 |
+| 2026-11-16 | Codex CLI 0.169 · its built-in default model | meta 0.7.57 (889 chars), same-day control | 10/10 | 11/14 | still-doesn't-show-up, eval harness, subagent |
+| 2026-11-16 | Codex CLI 0.169 · its built-in default model | variant: the "Load it BEFORE … even from memory" clause dropped (832 chars), 2 runs | 10/10 | 12/14, 10/14 | no steady gain: the clause is not the cause |
+| 2026-11-16 | Codex CLI 0.169 · its built-in default model | variant: boundary right after the first sentence (772 chars), 3 runs | 10/10 ×3 | 13/14, 11/14, 12/14 | subagent and CLAUDE.md 0/3; eval harness 3/3; still-doesn't-show-up 1/3; README (harness) 2/3 |
+| 2026-11-16 | Codex CLI 0.169 · its built-in default model | + "a skill's evals or an eval harness (the host's eval tooling)" (806 chars), 2 runs | 10/10 ×2 | 13/14, 12/14 | eval harness 2/2 |
+| 2026-11-16 | Claude Code · claude-fable-5-2 · full | the 806-char text | 9/10 | 14/14 | "keeps auto-firing" missed: the restructure had dropped the word "auto-firing" (1/3 on re-runs; 4/4 once restored) |
+| 2026-11-16 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.59 (819 chars, as shipped) | 10/10 | 14/14 | |
+| 2026-11-16 | Claude Code · claude-fable-5-2 · full | meta 0.7.59 (819 chars, as shipped) | 10/10 | 14/14 | the installed copy disabled; one copy loaded |
+| 2026-11-16 | Codex CLI 0.169 · its built-in default model | meta 0.7.59 (819 chars, as shipped), 1 run | 10/10 | 14/14 | one run; earlier variants spread 2–3 prompts between repeats |
 
 **The Codex row:** one `codex exec` per prompt, `--ignore-user-config`, a read-only sandbox, the
 skill copied into the empty workspace as `.agents/skills/skill-authoring`; "fired" = a command that
@@ -48,8 +56,13 @@ repo" is the harness: the skill was the only thing in the workspace, so the READ
 The other four loaded this skill, sometimes beside the right one: "still doesn't show up", "run the
 eval harness", "write a subagent definition", "tighten our CLAUDE.md" — all four named in its
 `Do not use for` clause. One run per prompt: it does not establish that Codex weighs boundaries
-less than Claude Code in general. Rewriting the boundary as one clause per sibling (meta 0.7.57) left the same five misses,
-so on this evidence the wording is not what Codex skips; what would move it is untested.
+less than Claude Code in general. Rewriting the boundary as one clause per sibling (meta 0.7.57) left the same five misses.
+**The restructured description moved it** (meta 0.7.59: boundary right after the first sentence,
+the load-first clause gone, shorter wording): the subagent and CLAUDE.md near-misses stopped loading
+it in three runs out of three. Dropping the load-first clause alone did not; which of the other
+changes did it is not isolated. Runs vary by 2–3 prompts between repeats of one description, so read
+any single row with that spread. "Run the eval harness on my skill" loaded it in all 5 runs before
+the final text and in 0 of 1 on it: not yet shown fixed.
 
 What these runs do not establish: other models, repeat stability (each prompt ran once per row), or
 whether a different boundary wording would keep Codex off those four.
