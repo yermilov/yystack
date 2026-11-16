@@ -115,7 +115,10 @@ these items ADD to the caller's list; the calling item stays open until your las
      analysis, for a technical question) at the highest reasoning level offered. Deep Research is a
      separate tool, not a model.
    - **A free tier on either vendor** → no council on it: search and model choice are too limited.
-     Tell the user, and run with the other vendor only if they agree.
+     Tell the user, and run with the other vendor only if they agree. A **one-vendor run** (this, or
+     an exhausted quota) is not a council: Round 1 is that vendor's answer alone, skip Phase 3, and
+     keep the brief's agreement and disagreement headings with one line under each saying the answer
+     rests on one model with no cross-review.
 
    Read `references/ui-tactics.md` before Phase 2: tier tables, the click-paths for Search and Deep
    Research, and the extraction snippets.
@@ -144,8 +147,8 @@ these items ADD to the caller's list; the calling item stays open until your las
    It is the same model family as you, so weigh its agreement with you accordingly.
 4. **Depth** — **Quick** (chat answers, no cross-review, ~10 min) · **Standard** (default: chat answers
    + one cross-review round + synthesis, ~20–30 min) · **Deep Research** (DR mode on both, 1–2 cross-reviews,
-   full brief, ~75–120 min including a likely mid-flight retry). Tell the user the time up front so the
-   run isn't killed early.
+   full brief, ~75–120 min including a likely mid-flight retry). Timings as of 2026-08. Tell the
+   user the time up front so the run isn't killed early.
 5. **Output** — a one-shot decision → a tl;dr plus a short brief; a topic they'll re-read → a full brief
    file; a procedure they'll repeat → propose turning it into a skill.
 
@@ -355,8 +358,8 @@ across runs, record it in `references/landmines.md`.
   from a fresh screenshot; reload the conversation URL and re-send).
 - **ChatGPT DR can fail mid-flight after 30–60 min** — change model → try again → start, once. A second
   failure: tell the user before spending more quota.
-- **Quota exhausted** → say so; run DR on the other vendor or wait. Never quietly downgrade to chat mode
-  and still call it a DR council.
+- **Quota exhausted** → say so; run DR on the other vendor (only on the user's yes; a one-vendor run,
+  see Pre-flight step 5) or wait. Never quietly downgrade to chat mode and still call it a DR council.
 - **Long-idle tabs drop their connection** and the answer stalls — scroll the answer area, or reload the
   conversation URL (history is kept).
 - **Gemini can hang on "continue" turns** — synthesize from what you have and note the partial coverage.
