@@ -16,6 +16,8 @@ catalog — an upstream defect for `plugin-dev`.
 2. `claude plugin install <plugin>@<marketplace> --scope <scope>`, where `<scope>` is exactly one of
    `project`, `user` or `local` — the one the plugin is enabled at. (An unquoted `a|b|c` in a real
    shell is a pipeline, not a choice.)
+   If it stops on a marketplace-declared command, follow SKILL.md § Fix: show the command, accept it
+   only on the user's yes, never `-y`.
 
 Verify with `claude plugin list --json`, and expect the skills to become invokable at the next
 session start.

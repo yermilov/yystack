@@ -150,9 +150,16 @@ refresh below; or the catalog lists it and it was never installed, fixed by
 ## Fix — only under the go-ahead rule
 
 - **Claude Code:** refresh the catalog — `claude plugin marketplace update <name>` (omit the name for
-  all) — then update the plugin — `claude plugin update <plugin>@<name>` — or, for a plugin never
-  installed, the two-step install in `references/enabled-not-installed.md`. A
-  restart applies it. If refreshes keep failing and wiping the clone,
+  all) — then update the plugin — `claude plugin update <plugin>@<name> --scope <scope>`, with the
+  scope the checker reported it stale in (run from that project for `project`/`local`) — or, for a
+  plugin never installed, the two-step install in `references/enabled-not-installed.md`. A
+  restart applies it.
+- **A marketplace-declared command stops the update or install** (a command-source install, or the
+  `headersHelper` that fetches the archive; Claude Code 2.1.325). The go-ahead does not cover it:
+  it runs a third party's shell command. Re-run with `--json`, show the user the command it reports
+  as `shownCommand`, and only on their yes re-run with `--accept-command <shownCommand.sha256>`.
+  Do not refresh the catalog in between: a moved catalog voids the hash, and the CLI asks again.
+  Never pass `-y`, even though the error names it for a non-interactive shell. If refreshes keep failing and wiping the clone,
   `CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1` keeps the last good copy (present in Claude
   Code 2.1.325) — propose it, don't set it.
 - **Codex:** `codex plugin marketplace upgrade <name>` (omit the name for every Git marketplace;
@@ -171,7 +178,7 @@ A tight verdict, not a command dump:
 Marketplace <name> (<source>) — <host>
  • Versions: <plugin> installed x.y.z vs remote a.b.c → STALE   (or "all current", or "unverified: <why>")
  • Auto-update: <ON | OFF | conflicting: <file>: <value>; …> (<where it was read>)
- → Fix: `claude plugin marketplace update <name>` + `claude plugin update <plugin>@<name>`, restart
+ → Fix: `claude plugin marketplace update <name>` + `claude plugin update <plugin>@<name> --scope <scope>` per stale scope, restart
         (Codex: `codex plugin marketplace upgrade <name>`, then `codex plugin list --json`); auto-update OFF → enable-autoupdate
 ```
 

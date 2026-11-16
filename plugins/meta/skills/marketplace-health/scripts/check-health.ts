@@ -61,6 +61,16 @@ if (help) {
 }
 const only = positional[0]
 
+// POSIX single-quote a path for a command we print: no $(), backtick or variable in it expands.
+function shQuote(v: string): string { return `'${v.replace(/'/g, `'\\''`)}'` }
+
+// One scoped update command per install row: without --scope the CLI auto-detects from the
+// working directory and can update a different install than the stale one.
+function scopedUpdates(rows: any[], plugin: string, name: string): string {
+  return [...new Set(rows.map((r) =>
+    `${r.projectPath ? `cd ${shQuote(String(r.projectPath))} && ` : ''}claude plugin update ${plugin}@${name} --scope ${r.scope ?? '<scope>'}`))].join('; ')
+}
+
 function fail2(msg: string): never {
   console.error(`check-health: cannot run — ${msg}`)
   process.exit(2)
@@ -227,7 +237,7 @@ async function claude() {
       if (!want) {
         const commitOnly = [...versions.keys()].every((v) => !semverish(v))
         const msg = commitOnly
-          ? `${plugin}: installed ${shown} — a plugin with no declared version, identified by commit; this checker cannot compute the remote commit, so \`claude plugin update ${plugin}@${name}\` is the only way to be sure it is current`
+          ? `${plugin}: installed ${shown} — a plugin with no declared version, identified by commit; this checker cannot compute the remote commit, so updating each install is the only way to be sure it is current: \`${scopedUpdates(rows, plugin, name)}\``
           : `${plugin}: installed ${shown}; remote version unverified`
         if (offline) info(msg)
         else if (!(behind && !remoteVersions)) flag(msg)
@@ -238,7 +248,8 @@ async function claude() {
       const shaNote = [...versions.keys()].some((v) => !semverish(v)) || !semverish(want) ? ' (sha versions: compared for equality only)' : ''
       const staleWhere = stale.flatMap((v) => versions.get(v) ?? [])
       const where = staleWhere.length > 5 ? `${staleWhere.slice(0, 5).join('; ')}; +${staleWhere.length - 5} more` : staleWhere.join('; ')
-      if (stale.length) flag(`${plugin}: installed ${shown} vs ${remoteLabel} ${want} → STALE in: ${where}${shaNote} (\`claude plugin update ${plugin}@${name}\` after the catalog refresh; restart to apply)`)
+      const fixText = scopedUpdates(rows.filter((r) => stale.includes(typeof r.version === 'string' ? r.version : '(none)')), plugin, name)
+      if (stale.length) flag(`${plugin}: installed ${shown} vs ${remoteLabel} ${want} → STALE in: ${where}${shaNote} (after the catalog refresh: \`${fixText}\`; restart to apply)`)
       else ok(`${plugin}: installed ${shown} = ${remoteLabel} ${want}${shaNote}`)
     }
     // «Enabled in settings but never appeared»: an enabledPlugins entry the registry does not list.
