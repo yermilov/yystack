@@ -19,8 +19,9 @@ A home-network failure is almost never one thing. First classify it: **performan
 **name resolution / reachability** (one host fails only at home), or **intermittent drop-outs**. For
 an exact host that fails only at home, take the DNS fast path before running irrelevant speed tests.
 For performance, work the four layers below and measure before recommending: the fix that feels
-obvious (buy an extender) is usually the *worst* option. For drop-outs, prove or rule out router
-reboots (§2a) before blaming the ISP. The goal is a verified repair, or a ranked recommendation
+obvious (buy an extender) is usually the *worst* option. For drop-outs that every device sees at
+once, prove or rule out router reboots (§2a) before blaming the ISP; drops on one device only start
+from that device and the access point serving it (§2a, first ruling). The goal is a verified repair, or a ranked recommendation
 backed by measurements, not a shopping spree.
 
 The four layers, outermost to innermost:
@@ -30,7 +31,8 @@ The four layers, outermost to innermost:
 3. **Wi-Fi path**: distance, walls, interference, and any **wirelessly-backhauled** extender.
 4. **Client**: the device's Wi-Fi radio, negotiated rate, drivers, adapter.
 
-**Router changes are the owner's.** Reading is free; every write (DNS servers, QoS, a recovery probe,
+**Router changes are the owner's.** Read-only measurements are free (the admin UI needs their
+session, §3; a long-running logger needs their OK, §2a); every write (DNS servers, QoS, a recovery probe,
 any toggle) needs the owner's OK and goes in one at a time, re-measured before the next. This holds at
 every step below that changes something, and those steps repeat it.
 
@@ -67,9 +69,13 @@ failure this block exists to prevent.
 6. Measure wired into the router over Ethernet (§1). **It is its own item because it is the control,
    and the control is what gets skipped**; one "measure the baseline" item would hide that
 7. Localize the bottleneck to a layer (§2). Close naming which layer each gap pointed at
-8. On drop-outs: prove or rule out router reboots (§2a). Close naming the logging span and host, the
+8. On drop-outs: prove or rule out router reboots (§2a); drops on one device only close this item
+   as "one device only — <client or its node>" per §2a's first ruling, naming the serving node and
+   that device's measured link quality and negotiated rate (§1); this replaces the close below. Otherwise close naming the logging span and host, the
    boots seen, which were confirmed from the client side, which were discarded as handling, the load
-   comparison, and whether the power test was proposed. A logger still running at the end (started
+   comparison and, when boots were seen, whether the power test was proposed. With no reboot, close
+   on §2a's ping-log verdict instead: local (gateway lost too; no ISP ticket) or WAN (gaps on both
+   public IPs, with the router's WAN log; the ISP ticket drafted for the owner). A logger still running at the end (started
    only with the owner's OK, on their machine) closes as "logging since <time> on <host>, verdict
    pending — stop it with <how>"
 9. Inspect the router admin UI (§3). Close naming each setting you actually read: an unenumerated
@@ -92,8 +98,8 @@ means), and item 11 closes with the §4 ladder applied to that plan; items 2–1
 that reason.
 
 A step a branch makes moot (no admin access to the router, no drop-outs reported, a wired WAN rather
-than a cellular one, a DNS-only fault with no speed complaint) is completed with that reason, not
-left open. **No device that can take a cable** (a phone-only home, a laptop with no port or adapter)
+than a cellular one, a DNS-only fault with no speed complaint, drop-outs with no speed complaint
+for items 4–7) is completed with that reason, not left open. **No device that can take a cable** (a phone-only home, a laptop with no port or adapter)
 closes item 6 with that reason, and says what stays unproven: Wi-Fi versus upstream. Read the
 router's own WAN status (link speed, the line's sync rate) and any line test the ISP offers instead,
 and report a slow upstream as an **inference**, not a measurement.
@@ -163,6 +169,7 @@ or block page. Without Bun, the OS tools are in `references/measurement-commands
    router. Only then remove temporary per-device DNS overrides and repeat the same controls on each
    device; a laptop passing does not prove a phone's override is gone.
 
+   A device's DNS setting is the owner's too: ask before setting an override.
    **Record an override's original mode when you set it, and read the restore back.** "Automatic" is
    a mode, not a blank, so restoring the wrong one leaves the workaround in place. The per-platform
    keys (Android Private DNS over ADB, iOS profiles, desktop adapters) are in
@@ -236,12 +243,23 @@ Only a slow result that survives that is genuinely upstream.
 
 ## 2a. Drop-outs — prove whether the router reboots before theorising
 
+**First ask which devices drop.** Drops on one device only (the laptop drops, the phone stays on)
+are not a main-router reboot. Find which access point or mesh node serves that device (§2, §3): if
+the others sit on a different node, that node can be the one dropping or restarting — compare its
+uptime (from the mesh UI or app in the owner's session, §3; a node rarely answers the UPnP query)
+with the router's, and move a second device onto it. If they share a node, check the client:
+link quality and negotiated rate (§1), power saving and driver, and roaming or band steering
+between nodes (§3). Only drops that every device sees at once go to the reboot proof below.
+
 A drop of ~60–90 s that every client sees at once is the usual signature of a consumer router's
 reboot, not of the ISP (a typical boot time — a different router can take longer, so the uptime below
-is the proof, not the duration). Prove it before blaming anyone. You can do it **without the admin password**, because most
+is the proof, not the duration). Prove it before blaming anyone. You can do it **without the admin password**, because many
 consumer routers answer an unauthenticated UPnP query with their uptime:
 `bun run "<skill dir>/scripts/upnp-uptime.ts"` prints the uptime, the boot time it implies, the WAN type
-and the WAN byte counters (read-only; exit 1 means no gateway answered, or one answered with no uptime). Rulings:
+and the WAN byte counters (read-only; exit 1 means no gateway answered, or one answered with no uptime
+— UPnP is often off. Then read the uptime or the system log, which starts at the last boot, in an
+owner-granted session (§3). With neither, a client-side ping-gap log shows the outages but cannot
+tell a reboot from Wi-Fi loss: report "reboot unverified"). Rulings:
 
 - **Confirm each "reboot" from the client side** (Wi-Fi link down, a ping gap at that instant): the
   UPnP counter is the daemon's and can reset on a WAN reconnect without a reboot.
@@ -250,6 +268,11 @@ and the WAN byte counters (read-only; exit 1 means no gateway answered, or one a
   sleeping laptop is a blind spot, not a quiet period.
 - **Discard boots someone's hands caused** before reading the list, then rule out load, then propose
   the UPS power test, which the owner can run without any password.
+- **Reboots ruled out, every device still drops** → read the ping log. Gateway lost too is
+  **local** — power, the LAN or Wi-Fi at the router (§1, §3). Gateway answering while the public
+  side fails points past the router: confirm it is the WAN link and not one destination (gaps on two
+  public IPs at once; the router's WAN status or WAN/PPPoE log showing reconnects at those times;
+  cellular: §3a). Then draft the ISP ticket (§4) with the logged timestamps for the owner to send.
 
 Read `references/router-reboots.md` when you set up the logger or read its boot list. It has the
 UPnP calls, their caveats, the logger, and the power test.
@@ -259,8 +282,9 @@ UPnP calls, their caveats, the logger, and the power test.
 Use the session the owner signed in to (a browser on the gateway address — `references/measurement-commands.md` § Finding the gateway — or the
 vendor host printed on the router's label). Router admin access can re-route or capture every
 device in the house, so it is theirs to grant: have them sign in and hand over the session, or read
-the settings back to you. Never type their admin password yourself; the same holds for the ISP
-portal in §2. Without a session, everything in this list can still be read back to you by the owner.
+the settings back to you. Never type their admin password yourself, even when offered: it would
+land in this session's transcript. The same holds for the ISP portal in §2.
+Without a session, everything in this list can still be read back to you by the owner.
 
 Read these (reads only; any change is a router write: owner's OK, one at a time, re-measured):
 
@@ -273,7 +297,8 @@ Read these (reads only; any change is a router write: owner's OK, one at a time,
   areas, but test it, since it often makes no measurable difference.
 - **Mesh / EasyMesh**: note every satellite node, its IP, how many clients hang off it, and **whether
   its backhaul is wireless or wired**. Wireless backhaul is the top suspect.
-- **MTU / NAT boost / hardware acceleration**: MTU should be 1500 (1492 on PPPoE). Hardware
+- **MTU / NAT boost / hardware acceleration**: MTU is 1500 on Ethernet/IPoE and 1492 on PPPoE; a cellular or tunnelled WAN may run lower — note
+  it, and don't change it without a measured reason. Hardware
   acceleration is normally on, but on many routers a smart queue only works with it off: read which
   applies to this firmware before judging it.
 
@@ -321,7 +346,7 @@ Two faults sit outside the Wi-Fi ladder:
   No smart queue on the router means the fix is a router that has one.
 - **Wired is slow and the test path is ruled out** (§1): fix what §2 found on the wired side (a
   100 Mbps port or a cable short of four pairs: replace the cable, move to a gigabit port). If the
-  router's own WAN is slow, open a ticket with the ISP carrying the wired numbers, the times of day,
+  router's own WAN is slow, draft a ticket for the owner to send to the ISP, carrying the wired numbers, the times of day,
   and loss to the gateway versus a public IP. Do not recommend a faster plan until the provider has
   answered.
 
@@ -334,7 +359,7 @@ branch) and report before/after numbers side by side. A fix you did not re-measu
 
 ## Validation
 
-Length: ~340 lines, over the ~250 aim because this workflow has four branches (DNS, performance,
+Length: ~370 lines, over the ~250 aim because this workflow has four branches (DNS, performance,
 drop-outs, cellular) whose rulings and branch conditions must sit in the body; the per-OS commands,
 the logger, the API and cellular depth, and the measured cases live in `references/`.
 

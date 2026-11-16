@@ -29,7 +29,8 @@ Caveats, each of which has produced a wrong verdict:
 ## The logger
 
 - Log uptime every ~20 s (`upnp-uptime.ts --json` from a loop or scheduler) plus a 1 Hz ping of the
-  gateway and of a public IP, to a **local file**: an outage cannot stop a local log.
+  gateway and of two public IPs from different networks (e.g. 1.1.1.1 and 8.8.8.8), each to its own
+  **local file** — two public targets tell a WAN drop from one destination failing: an outage cannot stop a local log.
 - It runs for hours on the owner's machine, so start it only with their OK, and tell them how to stop
   it. A minimal POSIX loop; both run in the background, so Ctrl-C does not stop them — stop each with
   `kill <PID>` using the PIDs they print (the ping then exits on its next write):
@@ -38,10 +39,10 @@ Caveats, each of which has produced a wrong verdict:
   ( while :; do bun run "<skill dir>/scripts/upnp-uptime.ts" --json; sleep 20; done ) >> uptime.log 2>&1 &   # one JSON line per reading, with readAt
   echo "logger PID $!"
   ping -i 1 <gateway> | while read -r l; do echo "$(date -u +%FT%TZ) $l"; done >> ping-gw.log &
-  echo "ping logger PID $!"     # repeat this line with a public IP for the second ping log
+  echo "ping logger PID $!"     # repeat these two lines for each public IP (ping-1111.log, ping-8888.log)
   ```
 
-  On Windows (PowerShell), the same two loggers; stop each with `Stop-Job`. A background job does
+  On Windows (PowerShell), the same loggers; stop each with `Stop-Job`. A background job does
   not start in your current directory on Windows PowerShell 5.1, so give it absolute log paths
   (written from the documented `Start-Job` / `$using:` behaviour; not yet run on a Windows host):
 
@@ -49,6 +50,10 @@ Caveats, each of which has produced a wrong verdict:
   $up = Join-Path $PWD 'uptime.log'; $gw = Join-Path $PWD 'ping-gw.log'
   Start-Job { while ($true) { bun run "<skill dir>/scripts/upnp-uptime.ts" --json >> $using:up; Start-Sleep 20 } }
   Start-Job { ping -t <gateway> | ForEach-Object { "$(Get-Date -Format o) $_" } >> $using:gw }
+  foreach ($ip in '1.1.1.1', '8.8.8.8') {
+    $f = Join-Path $PWD "ping-$($ip -replace '\.','').log"
+    Start-Job { ping -t $using:ip | ForEach-Object { "$(Get-Date -Format o) $_" } >> $using:f }
+  }
   ```
 - Keep the logging host awake and on power. A sleeping laptop is a blind spot, never a quiet period:
   cross-check its sleep/wake log before reading any gap.
