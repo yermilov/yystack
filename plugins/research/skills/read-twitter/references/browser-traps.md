@@ -49,7 +49,9 @@ believed from an instrument that never moved.
   .forEach(b => b.click())` hit 42 elements and **closed the tab outright** — the next call answered
   `Tab … no longer exists`, taking every `window` accumulator with it. This is the same failure class
   as the «Show more» text-match hunt at the end of `references/x-native.md`, and it generalises to a
-  rule: **expanding content is a parsing job, never a bulk-clicking job.**
+  rule: **expanding content is a parsing job, never a bulk-clicking job** — never by a text match or
+  `aria-expanded`. The one exception is a known testid that only opens clipped text, such as X's
+  `tweet-text-show-more-link` (SKILL.md Step 5.2), where the text is not in the raw HTML to parse.
 - **For a NON-x.com page, a web-fetch tool is cheaper — but on one host (as of 2026-09) it truncated
   the tail.** On that same report it returned all 95 162 characters in one request (spilled to a
   file, read by a subagent) while cutting off the end of the page, so the appendices still needed the

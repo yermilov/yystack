@@ -95,7 +95,7 @@ gives you — and while work remains keep exactly one in progress:
 13. Step 5.5 — old post with fresh replies → `quoted_tweet_id:` search (conditional; not on a root-only read)
 14. Step 5.6 — pick the notable replies (conditional; not on a root-only read)
 15. Step 6 — read every attached image
-16. Step 6b — native video: list variants, read a contact sheet (conditional)
+16. Step 6b — native video: list variants, build and read a contact sheet — after item 19's transcript when there is speech (conditional)
 17. Step 6b — native video: `ffprobe` audio-stream check (conditional)
 18. Step 6b — native video: `volumedetect` level check — a missing stream and a silent one differ (conditional)
 19. Step 6b — native video speech: transcribe via watch-video, read before frames (conditional)
@@ -210,6 +210,10 @@ run all of Step 5.
    a returned Promise) that sweeps `document.querySelectorAll('article')` into `sessionStorage`
    (page variables don't survive a navigation). Repeat until the article count stops growing across
    several passes, or you have enough.
+   - **Before each sweep, open clipped posts:** a long self-reply shows only its first lines.
+     `document.querySelectorAll('[data-testid="tweet-text-show-more-link"]').forEach(l=>l.click())`
+     opens them in one call. Click only that testid — a free-text «Show more» match or a mass
+     `aria-expanded` click navigates away or closes the tab (`references/browser-traps.md`).
    - ⚠️ **Never `window.scrollBy`** on a status page — it "succeeds", moves nothing, and the collector
      reports "no replies" over a full self-thread.
    - ⚠️ **Aim the scroll BELOW the root's media and read `window.scrollY` back** — a point inside a
@@ -230,7 +234,7 @@ run all of Step 5.
    short of the counter: that is X's capped "Relevant" view, not the end. Use the same
    `conversation_id:` search with overlapping `since_time:` / `until_time:` windows sized to how the
    replies arrived (hours wide for replies; seconds wide for a burst-posted self-thread), accumulate in
-   `sessionStorage`, expand "Show more" before each pass, and stop after three consecutive quiet windows.
+   `sessionStorage`, open clipped posts before each pass (the testid click in 5.2), and stop after three consecutive quiet windows.
    Report "read N of M replies", never "read the thread". (Measured windows and counts:
    `references/x-native.md`.)
 5. **Self-thread** — every reply by the root author; treat it as the post's continuation (it usually
@@ -276,7 +280,8 @@ Say when a tall image was cropped. If a screenshot fails, say so for that image 
    ones by `bitrate`: highest = `mp4`, the rest = `smaller`), `duration_millis` (milliseconds) and
    `media_url_https` (the `poster`); pick the sheet rate yourself as 1 fps, or 36 ÷ seconds for a
    clip over 36 s.
-2. Download each mp4 into its own fresh scratch directory and read one contact sheet (`ffmpeg` `tile=<C>x<R>`,
+2. Download each mp4 into its own fresh scratch directory, build one contact sheet and read it —
+   after the transcript when there is speech (step 4) (`ffmpeg` `tile=<C>x<R>`,
    at the script's `sheet.fps`, which it lowers for long clips so one sheet stays ≤36 cells); fall
    back to full-size frames when text in the frame is what matters (`references/native-video.md`).
    **A long clip** (minutes, or speech you will transcribe) → download the lowest entry in `smaller`
@@ -287,7 +292,7 @@ Say when a tall image was cropped. If a screenshot fails, say so for that image 
 3. **Before saying anything about audio**: `ffprobe` for an audio stream, then `volumedetect` for its
    level. A missing stream and a silent stream are different findings.
 4. **Speech → transcribe it** with `watch-video`'s local-file mode (it asks before a first-run model
-   download) and read the transcript before the frames.
+   download) and read the transcript before the contact sheet from step 2.
 5. Name whose video it is in the report — the root's, the quoted post's, a reply's.
 6. **The post makes a claim about the video itself** → measure it rather than eyeballing frames
    (`references/native-video.md` has each protocol): burned-in captions → read the subtitle band
