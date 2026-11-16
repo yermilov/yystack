@@ -35,17 +35,19 @@ gives you — and while work remains keep exactly one in progress. Register the 
 this run follows:
 
 **`--new`:** 1. Check `bun` is installed, else run install-bun (§ The script)   2. Ask the user for
-the marketplace name and the owner's name + email (§ 1)   3. Run `--new` (§ 1)   4. Run
+the marketplace name, the owner's name + email, and the target path — a new directory outside any
+existing repo; their own existing clone takes the sibling route (§ 1)   3. Run `--new` (§ 1)   4. Run
 `check-manifests.ts` over the result (§ After running)   5. Check LICENSE and the manifest carry no
 `Your Name` / `you@example.com` (§ 1)   6. Commit the scaffold on the user's yes, or hand it to them
 (§ 1)   7. Hand the user the human follow-ups: create the GitHub repo, push, add plugins (§ 1)
 
-**`--update`:** 1. Check `bun` is installed, else run install-bun (§ The script)   2. Preview with
-`--update --dry-run` (§ 2)   3. If a guard refused: resolve it, or get the user's explicit yes for
-`--force` (§ 2)   4. Run `--update` (§ 2)   5. Review `git status` + `git diff` (§ 2)   6. If the
-script warned that the meta entry's description drifted: sync the manifest(s) it names + the README
-row (§ 2)   7. If you edited a manifest entry: bump `metadata.version` (§ 2)   8. Run
-`check-manifests.ts` (§ After running)   9. Commit on the user's yes, or hand it to them; pushing
+**`--update`:** 1. Check `bun` is installed, else run install-bun (§ The script)   2. Confirm the
+target with the user: their marketplace's own working repo, never a host's installed copy (§ 2)
+3. Preview with `--update --dry-run` (§ 2)   4. If a guard refused: resolve it, or get the user's explicit yes for
+`--force` (§ 2)   5. Run `--update` (§ 2)   6. Review `git status` + `git diff` (§ 2)   7. If the
+script warned about the meta entry (not listed, or its description drifted): add or sync the
+manifest entry it names + the README row (§ 2)   8. If you edited a manifest entry: bump `metadata.version` (§ 2)   9. Run
+`check-manifests.ts` (§ After running)   10. Commit on the user's yes, or hand it to them; pushing
 is theirs (§ 2)
 
 Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
@@ -83,6 +85,13 @@ Ask the user for the marketplace name (kebab-case; the script refuses anything e
 name and email — they go into the LICENSE and the Claude manifest. Without them the script writes
 `Your Name` / `you@example.com` and prints a warning; never push those placeholders.
 
+The target must not exist yet (the script refuses an existing directory), and should sit outside any
+other repo so it does not become a nested one. **The user already has a clone to fill** (a fresh,
+empty GitHub repo cloned locally)? Scaffold into a new sibling directory, then move all of its contents into
+their clone except its `.git` — hidden ones included (`.claude-plugin/`, `.agents/`, which a `*` glob
+skips) — delete the sibling, and run `check-manifests.ts` on the clone itself. Never delete or re-create the user's clone:
+its remote and history live there.
+
 ```
 bun run "SKILLDIR/scripts/clone-marketplace.ts" --new ./my-skills --name my-skills \
   --owner-name "Ada Lovelace" --owner-email "ada@example.com"
@@ -116,6 +125,11 @@ version bump that ships with them — and leaves your other plugins, your `marke
 and your README untouched. It retargets the copied health hook to your marketplace, and adds `CLAUDE.md` and
 the `AGENTS.md` symlink **only if missing** — a `CLAUDE.md` you customised is never touched.
 
+**Target the user's own working repo — the one they push from — and confirm the path with them when
+they did not name it.** Never a host's installed copy (the plugin cache under `~/.claude/plugins` or
+`~/.codex`): the next auto-update overwrites it and the user's real repo stays stale. The script
+refuses those paths outright, with no `--force`.
+
 **Because it deletes `plugins/meta/` first, it refuses (exit 1) when** that directory holds
 uncommitted changes or git-ignored files, when the target is not a git repo (so that cannot be
 checked), or when the target is named like the source marketplace (it is the source itself, which is
@@ -129,7 +143,10 @@ After it runs:
    set the meta entry of the `marketplace.json` files it names to the exact text the warning prints
    (unless the owner reworded their listing on purpose — then ask; no edit means no bump), bring the
    README's meta row in line, and bump the Claude manifest's `metadata.version` (plugin-dev,
-   **Version discipline**). No warning → no manifest edit and no `metadata.version` bump.
+   **Version discipline**). **If it warned that `meta` is not listed** in a `marketplace.json`, add
+   the meta entry there (the same text the other manifest carries, or upstream's description), the
+   README row, and the same `metadata.version` bump. No warning → no manifest edit and no
+   `metadata.version` bump.
 3. Commit on the user's yes (pushing stays theirs). The meta plugin's version bump travels with the
    copied files, so installed clients re-pull meta on their next update.
 

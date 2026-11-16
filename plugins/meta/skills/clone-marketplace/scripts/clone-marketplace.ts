@@ -31,19 +31,26 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
   constants as fsConstants,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, join, resolve, sep } from 'node:path';
 
 const DEFAULT_SOURCE = 'https://github.com/yermilov/yystack';
 
 function die(msg: string): never {
   console.error(`error: ${msg}`);
   process.exit(1);
+}
+// A usage error (an argument this script did not parse) exits 2, so a caller can tell it from a
+// guard refusal (exit 1) it could resolve.
+function usage(msg: string): never {
+  console.error(`error: ${msg} (see --help)`);
+  process.exit(2);
 }
 function say(msg: string): void {
   console.log(`clone-marketplace: ${msg}`);
@@ -63,7 +70,11 @@ let force = false;
 
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
-  const next = () => argv[++i] ?? '';
+  const next = () => {
+    const v = argv[++i];
+    if (v === undefined || v === '' || v.startsWith('--')) usage(`${a} needs a value`);
+    return v;
+  };
   switch (a) {
     case '--new':
       mode = 'new';
@@ -105,19 +116,38 @@ for (let i = 0; i < argv.length; i++) {
           '--update refuses when plugins/meta has uncommitted or ignored files, when <dir> is not a git repo,\n' +
           '  or when <dir> is the source marketplace itself; --force skips those checks (local edits\n' +
           '  under plugins/meta are then lost).\n' +
+          'Both modes refuse a target inside a host\'s installed plugin copy (~/.claude/plugins, ~/.codex).\n' +
+          'Exit: 0 done, 1 refused or failed (reason on stderr), 2 bad arguments.\n' +
           `\n--source defaults to ${DEFAULT_SOURCE} (the canonical meta plugin).`,
       );
       process.exit(0);
     default:
-      die(`unknown argument: ${a}`);
+      usage(`unknown argument: ${a}`);
   }
 }
 
-if (!mode) die('pass --new <dir> or --update <dir> (see --help)');
-if (!target) die('missing target directory');
+if (!mode) usage('pass --new <dir> or --update <dir>');
+if (!target) usage('missing target directory');
 if (mode === 'new') {
-  if (!name) die('--new requires --name <marketplace-name> (kebab-case)');
-  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) die(`--name must be kebab-case (got '${name}')`);
+  if (!name) usage('--new requires --name <marketplace-name> (kebab-case)');
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) usage(`--name must be kebab-case (got '${name}')`);
+}
+
+// Never write into a host's INSTALLED marketplace copy: the next auto-update overwrites it, and the
+// user's real repo stays stale while the run looks successful. Resolve symlinks on the nearest
+// existing ancestor so a link into the cache is caught too. No --force for this one.
+{
+  let probe = resolve(target);
+  while (!existsSync(probe) && dirname(probe) !== probe) probe = dirname(probe);
+  const real = existsSync(probe) ? realpathSync(probe) : probe;
+  const home = realpathSync(homedir());
+  // Resolve the cache roots too: a symlinked ~/.codex or ~/.claude/plugins would otherwise not match.
+  const caches = [join(home, '.claude', 'plugins'), join(home, '.codex')].map((c) =>
+    existsSync(c) ? realpathSync(c) : c,
+  );
+  if (caches.some((c) => real === c || real.startsWith(c + sep))) {
+    die(`${target} is inside a host's installed plugin copy (${real}); target your own marketplace repo instead`);
+  }
 }
 
 function run(desc: string, fn: () => void): void {
