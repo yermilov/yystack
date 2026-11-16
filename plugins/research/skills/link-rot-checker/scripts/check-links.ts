@@ -26,9 +26,10 @@
  * other state is a pointer to the next step. Both regexes are case-insensitive and never read on a
  * bot-check page. --dead is matched against the title and the visible text; --alive against the
  * <title> ONLY — the place a page names its own item, where a "related items" block cannot reach.
- * ALIVE prints the title: still compare it with the item the link should be. Markers belong to
- * ONE site: with several sites in the batch, --site <host> says whose they are, and links on other
- * hosts are checked without them. It only reads; it never posts or logs in.
+ * ALIVE prints the title: still compare it with the item the link should be. A line that ends
+ * "ended on <url>" landed on another page of the same site: read its title against that page.
+ * Markers belong to ONE site: with several sites in the batch, --site <host> says whose they are,
+ * and links on other hosts are checked without them. It only reads; it never posts or logs in.
  *
  * The same URL twice (ignoring a #fragment) is fetched once and reported on every line it appears.
  *
@@ -55,7 +56,10 @@ for (const n of VALUED) {
 const urls: string[] = []
 for (let i = 0; i < args.length; i++) {
   if (VALUED.includes(args[i])) { i++; continue }
-  if (args[i].startsWith('--')) continue
+  if (args[i] === '--json') continue
+  // An unknown flag is refused, not skipped: a typo in --dead would otherwise drop the marker and
+  // turn DEAD links into CHECK, and the typo's value would be read as a URL.
+  if (args[i].startsWith('-')) { console.error(`check-links: unknown option ${args[i]} (see --help)`); process.exit(2) }
   urls.push(args[i])
 }
 const fromLines = (t: string) => t.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
@@ -104,6 +108,9 @@ if (site && (deadRe || aliveRe) && !urls.some((u) => hostOf(u) === site)) {
 const timeoutMs = Number(opt('--timeout') ?? 20) * 1000
 if (!(timeoutMs > 0)) { console.error('check-links: --timeout must be a positive number of seconds'); process.exit(2) }
 
+// A desktop Chrome 130 string (a 2024 release), the value this script's checks were measured with
+// through 2026-11. An old version can itself draw a bot check: when sites that answered start
+// challenging, bump it to the current stable release.
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 const BOT_CHECK = /just a moment|cf-chl|captcha|robot check|are you a robot|verify you are human|enable javascript to continue|access denied/i
 const BLOCK_STATUS = new Set([401, 403, 429, 451, 503])
@@ -156,7 +163,7 @@ async function check(raw: string): Promise<Row> {
   let u: URL
   try { u = new URL(raw) } catch { return { url: raw, state: 'UNKNOWN', why: 'not a URL (a relative link? resolve it against its page first)' } }
   if (u.protocol !== 'http:' && u.protocol !== 'https:') return { url: raw, state: 'UNKNOWN', why: `not an http(s) link (${u.protocol})` }
-  const [g, root] = await Promise.all([get(raw), rootOf(u)])
+  const [g, root] = await Promise.all([get(u.href), rootOf(u)])
   if ('error' in g) {
     if (await domainGone(u.hostname)) return { url: raw, state: 'DEAD', why: `domain ${u.hostname} does not resolve (control ${CONTROL_HOST} does)` }
     return { url: raw, state: 'UNKNOWN', why: g.error }
@@ -183,17 +190,25 @@ async function check(raw: string): Promise<Row> {
   if (to.href !== from.href && depth(to.pathname) < depth(from.pathname)) {
     return { ...base, state: 'REDIRECTED', why: `ended on ${g.finalUrl}` }
   }
+  // Same site, same depth, another page (a removed item landing on a similar one): not a verdict
+  // on its own, but every line below says where the page ended so the title is read against it.
+  const page = (x: URL) => `${normHost(x.hostname)}${x.pathname.replace(/\/+$/, '')}${x.search}`
+  const moved = page(to) !== page(from) ? `; ended on ${g.finalUrl}` : ''
   // Markers are read only on the intended site: both where the link points and where it ended up.
   const scoped = markersApply(raw) && markersApply(g.finalUrl)
-  if (scoped && deadRe?.test(g.text)) return { ...base, state: 'DEAD', why: `dead marker matched (HTTP ${g.status})` }
+  if (scoped && deadRe?.test(g.text)) return { ...base, state: 'DEAD', why: `dead marker matched (HTTP ${g.status})${moved}` }
   if (scoped && aliveRe?.test(g.title)) {
-    return { ...base, state: 'ALIVE', why: `alive marker matched${g.title ? `: ${g.title.slice(0, 80)}` : ''}` }
+    return { ...base, state: 'ALIVE', why: `alive marker matched${g.title ? `: ${g.title.slice(0, 80)}` : ''}${moved}` }
   }
-  return { ...base, state: 'CHECK', why: `HTTP ${g.status}${g.title ? `, title "${g.title.slice(0, 80)}"` : ', no title'}` }
+  return { ...base, state: 'CHECK', why: `HTTP ${g.status}${g.title ? `, title "${g.title.slice(0, 80)}"` : ', no title'}${moved}` }
 }
 
 // A few at a time: a batch from one site fired all at once is what gets a shell rate-limited.
-const keyOf = (u: string) => u.replace(/#.*$/, '')
+// The key is the parsed URL without its #fragment, so `HTTP://Example.com/a#x` and `http://example.com/a`
+// are one fetch; a string that does not parse keeps itself and gets its UNKNOWN line.
+const keyOf = (u: string) => {
+  try { const x = new URL(u); x.hash = ''; return x.href } catch { return u }
+}
 const unique = [...new Set(urls.map(keyOf))]
 const byKey = new Map<string, Row>()
 let next = 0
