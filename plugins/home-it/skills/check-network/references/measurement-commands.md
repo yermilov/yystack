@@ -11,6 +11,20 @@ forms. Re-check a line before you rely on its output shape.
 Gateway. *Linux:* `ip route` → `default via`. It is usually `192.168.0.1` or `192.168.1.1`, but read
 it rather than assume it.
 
+## Path MTU (don't-fragment ping)
+
+A 1472-byte payload plus 28 bytes of headers is a full 1500-byte packet; 1464 fits a 1492 PPPoE link.
+Test at the size the WAN should carry: 1472 on Ethernet/IPoE, 1464 on PPPoE, and on cellular or a
+tunnel the MTU the router's WAN page reports, minus 28. A reply means that
+size gets through. An explicit "frag needed" / "message too long" answer is a normal, signalled
+limit — the path is smaller than you assumed, and TCP can adapt. Only a **silent timeout at the
+expected size while smaller pings answer** is the black hole that stalls HTTPS while pings pass.
+
+- macOS: `ping -D -s 1472 -c 3 1.1.1.1`, then `-s 1464` (run 2026-11-16 on macOS 15: 1472 passed,
+  1600 failed, as expected)
+- Linux: `ping -M do -s 1472 -c 3 1.1.1.1`, then `-s 1464` (from the man page, not yet run here)
+- Windows: `ping -f -l 1472 -n 3 1.1.1.1`, then `-l 1464` (from the docs, not yet run here)
+
 ## Ethernet negotiated speed (the wired run)
 
 - *macOS:* `ifconfig <iface>`. Read **two** lines. `status: active` means a link is up; `status:

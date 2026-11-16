@@ -61,7 +61,7 @@ failure this block exists to prevent.
 1. Classify the symptom as down right now, performance, DNS/reachability, or intermittent
    drop-outs. Down right now: work § Down right now and close naming the host you tested from, where the
    path stopped, the WAN status and outage/billing checks read, whether the connection came back,
-   and the ISP ticket drafted (or why none)
+   the HTTPS result, and the ISP ticket drafted (or why none)
 2. Ask the owner for an authenticated router session now, or record why no step will need the admin
    UI. Asking early lets you keep measuring while they answer; a run that discovers the login only
    at §3 stops there and waits
@@ -126,15 +126,25 @@ one device (§2a).
    8.8.8.8); and a name lookup through a resolver (`dns-probe.ts`, § DNS fast path), not a ping by
    name. No link or no gateway → local: the router's power and lights, the cable, this device.
    Gateway reachable, both public IPs silent → the WAN side. Public IPs answer but lookups fail →
-   DNS (§ DNS fast path).
+   DNS (§ DNS fast path). Pings and lookups pass but `https://` pages fail, or every site lands on the
+   same page → read the browser's or `curl -v`'s error and where it lands. The ISP's block or
+   unpaid-account page → step 2's billing check. A router content filter or a local proxy/TLS
+   interception (the certificate names the router or a filter) → local, §3. A plain timeout on
+   every site → test for an MTU black hole with a don't-fragment ping at the size the WAN should
+   carry (`references/measurement-commands.md` § Path MTU; §3's MTU line). A silent drop at that
+   size points at the WAN. If it passes, open two unrelated `https://` sites on a second home device
+   and on mobile data: the second device loads them → one device (§2a); they load on mobile data
+   but not on home devices → report "HTTPS fails at home, cause unverified" with what each test
+   showed, and let the owner decide on an ISP ticket. Any other mix (mobile data fails too, or
+   mixed results) → report the results as they are, cause unverified, and no ISP ticket.
 2. **WAN side:** read the router's WAN status — link up, an address assigned, the modem's or ONT's
    sync and signal (cellular: §3a) — in the owner's session (§3), or from the lights the owner
    reads to you. Ask the owner to check the ISP's outage page or app and whether the account is
    paid (in the ISP's account or app).
 3. A power-cycle of the modem or router is the owner's call: name it and let them do it. Then
-   repeat step 1. Still down — whether the WAN link is down, or up with an address while both
-   public IPs stay silent — read the router's WAN log for errors, then draft the ISP ticket (§4)
-   with the times, the WAN status and what each test showed, for the owner to send.
+   repeat step 1. Still down — the WAN link down, up with an address while both public IPs stay
+   silent, or the HTTPS triage above still pointing at the WAN — read the router's WAN log for
+   errors, then draft the ISP ticket (§4) with the times, the WAN status and what each test showed, for the owner to send.
 
 ## DNS fast path
 
@@ -391,7 +401,7 @@ branch) and report before/after numbers side by side. A fix you did not re-measu
 
 ## Validation
 
-Length: ~395 lines, over the ~250 aim because this workflow has five branches (down right now,
+Length: over the ~250 aim because this workflow has five branches (down right now,
 DNS, performance, drop-outs, cellular) whose rulings and branch conditions must sit in the body; the per-OS commands,
 the logger, the API and cellular depth, and the measured cases live in `references/`.
 
