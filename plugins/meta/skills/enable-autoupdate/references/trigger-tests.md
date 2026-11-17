@@ -25,24 +25,31 @@ disallowed (so no prompt could change a real config). "Fired" = a `Skill` call w
 | 2026-11-14 | Claude Code · claude-fable-5-2 · full | meta 0.7.51 (883 chars) | 12/12 | 10/10 | |
 | 2026-11-14 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.51 (883 chars) | 13/13 | 10/10 | + the "pin my Codex marketplace" prompt |
 | 2026-11-14 | Claude Code · claude-fable-5-2 · full | meta 0.7.51 (883 chars) | 13/13 | 10/10 | |
+| 2026-11-17 | Codex · codex-cli 0.169, config ignored, this skill alone | meta 0.7.51 (883 chars) | 13/13 | 7/10 | the three status questions loaded it: with no `marketplace-health` in the workspace it was the only candidate, so this measures the harness more than the description |
+| 2026-11-17 | Codex · codex-cli 0.169, config ignored, + siblings | meta 0.7.51 (883 chars) | 13/13 | 10/10 | `marketplace-health`, `plugin-dev` and `clone-marketplace` copied beside it, as the plugin installs them |
 
 **Full** = the runner's other installed plugins loaded too; **isolated** = `--setting-sources
-project`, only this plugin. Rows without either were not recorded.
+project`, only this plugin. Rows without either were not recorded. **Codex** rows: one `codex exec
+--json --ignore-user-config -s read-only --ephemeral` per prompt, the skill (and the named siblings)
+copied into an empty workspace's `.agents/skills/`; "fired" = a command reading its `SKILL.md`.
+A near-miss row only means something with the sibling it names present.
 
-What these runs do not establish: Codex routing (not run — Codex routes from the INSTALLED copy),
-other models, or stability beyond the one prompt re-run three times.
+What these runs do not establish: Codex under a full user config (on a host with many plugins it
+drops every description), other models, or stability beyond the one prompt re-run three times.
 
 ## With the skill vs without it
 
 | Date | Host · model | Prompt | With the skill | Without it |
 | --- | --- | --- | --- | --- |
 | 2026-11-14 | Claude Code · claude-fable-5-2 · isolated, read-only tools | "I installed a third-party plugin marketplace called acme-skills in Claude Code… Its plugins never update… How do I make it update by itself? Give me the exact change." | loaded the skill; the settings diff with `source` to be copied verbatim from `known_marketplaces.json`; the UI-registry conflict and not hand-editing that file; the global override check | the same settings block "from memory", hedged ("less sure of this exact field"); no registry conflict; the override named |
-
 | 2026-11-14 | Claude Code · claude-fable-5-2 · isolated, read-only tools | "Stop my acme-skills plugin marketplace in Claude Code from auto-updating — I want it to stay on the version I have now. What exactly do I change?" | loaded the skill; UI toggle or a settings diff with `false` and the source copied verbatim; told not to hand-edit `known_marketplaces.json`; checked every scope including the managed-settings path | the UI toggle, then offered hand-editing `known_marketplaces.json` as the file route, unsure of the field |
 
 Reading: the skill turns hedged answers into sourced ones, adds the registry-conflict step, and
-keeps the agent off the host's own state file. That does not establish the Codex branch (no Codex
-run: it needs the published copy installed).
+keeps the agent off the host's own state file. The Codex branch has no with/without run; on
+2026-11-17 its read-only parts were checked on codex-cli 0.169: `config.toml` records `source_type`
+per marketplace (host-bundled ones are `local` under Codex's own directories), `marketplace add`
+offers `--ref` and `--sparse`, and marketplace-health's checker with `--host codex` reports
+`source_type`. The add, remove and pin paths were not run.
 
 ## Should fire
 

@@ -35,7 +35,7 @@ enable / disable IS the go-ahead for the state change it names; anything else �
 edit or re-add the user did not ask for — is proposed with the exact command or diff, and run on
 their yes. The steps below point back here. (marketplace-health states the same rule for its own read-and-refresh actions.)
 
-Length: a little past the ~250-line default because the two hosts are separate branches, each with
+Length: about 280 lines, past the ~250-line default (2026-11-17) because the two hosts are separate branches, each with
 its own steps and output templates.
 
 ## Step 0 — register the run
@@ -45,10 +45,11 @@ gives you — only the branch for the host you are fixing — and while work rem
 progress:
 - **Claude Code:** 1. Identify the marketplace name + source (§1; a local directory may end the
   run there)   2. Only if a re-add needs it: remove the old entry — its own yes, plugins listed
-  before and reinstalled after (§1)   3. Turn it on — UI, or a settings.json diff shown first (§2)
-  4. Check the global env override (§3)   5. Verify the effective flag across every scope (§4)
+  before and reinstalled after (§1)   3. Turn it on (or off) — UI, or a settings.json diff shown
+  first (§2)   4. Check the global env override (§3)   5. Verify the effective flag across every scope,
+  managed policy included; close it naming each source read (§4)
   6. Offer a refresh now (§5)   7. Report (Output). Turning it off: see the top of this file.
-- **Codex:** 1. Read the marketplace's `source_type` (Codex)   2. Act on it, naming the branch you
+- **Codex:** 1. Read the marketplace's `source_type` and any pinned ref (Codex)   2. Act on it, naming the branch you
   took (Codex)   3. Only if the re-add needs it: remove the old entry — its own yes, plugins listed
   before and reinstalled after   4. Verify in `config.toml`: `source_type = "git"`, or the pinned
   ref (Codex)   5. Report (Output)
@@ -92,7 +93,7 @@ here). Before asking, list those plugins with their `scope`
 (`claude plugin list --json`, the ids ending `@<name>`); after, reinstall each in the scope it had —
 `claude plugin install <plugin>@<name> --scope <user|project|local>` — and name them in the report.
 
-## 2. Turn it on — two paths
+## 2. Turn it on (or off) — two paths
 
 **Which path:** on an explicit request, take **B** (you cannot click the UI for the user); offer
 **A** when the user would rather click than have a file edited. If
@@ -129,18 +130,19 @@ asked.
 ```
 
 Merge into any existing `extraKnownMarketplaces` block — never clobber other marketplaces; if the
-key exists with `autoUpdate: false`, flip just that value. **Always show the exact diff.** On an
-explicit request to enable auto-update, show it and write it in the same turn: this marketplace's
-own entry (its `source` from §1, plus `autoUpdate`) is that request. A diff that touches any
-other key is proposed and written only on the user's yes.
+key exists with the opposite `autoUpdate` value, flip just that value. **Always show the exact
+diff.** On an explicit request to enable or disable auto-update, show it and write it in the same
+turn: this marketplace's own entry (its `source` from §1, plus `autoUpdate`) is that request. A diff
+that touches any other key is proposed and written only on the user's yes.
 
 ## 3. Mind the global override
 
 `autoUpdate: true` does nothing while updates are disabled globally. As of 2026-08 (names re-checked
 present in Claude Code 2.1.325 on 2026-11): **`DISABLE_AUTOUPDATER=1`** turns off ALL updates,
 whatever the per-marketplace flag says; adding **`FORCE_AUTOUPDATE_PLUGINS=1`** keeps plugin updates
-on while pausing Claude Code's own binary updates. Look in all three places it can be set: the current shell environment, the shell profile files, and
-the `env` block of every settings.json scope from §2. If `DISABLE_AUTOUPDATER` is set, adding
+on while pausing Claude Code's own binary updates. Look in every place it can be set: the current
+shell environment, the shell profile files, the `env` block of every settings.json scope from §2,
+and the managed settings file's `env` block where one exists (§4 names its paths). If `DISABLE_AUTOUPDATER` is set, adding
 `FORCE_AUTOUPDATE_PLUGINS=1` affects **every** marketplace, not only this one, so it is its own
 go-ahead: write it only when the user's request names
 that situation ("I still want plugin updates despite DISABLE_AUTOUPDATER"); after a request about one
@@ -170,7 +172,7 @@ Read its `autoUpdate` and `global override` lines: its
 exit code also counts unrelated findings, such as an unverified version. Without Bun, read the files above by hand.
 
 Report each value and the file it came from. An absent value means the host default: off for a
-third-party marketplace, on for an official one. The more specific settings scope wins (§2), so a
+third-party marketplace, on for Anthropic's official `claude-plugins-official` (Claude Code docs, 2026-08). The more specific settings scope wins (§2), so a
 user-wide write can still read OFF in this project. If the settings files and
 `known_marketplaces.json` disagree, say so plainly rather than picking one: which of them wins is
 not documented.
@@ -190,8 +192,13 @@ unconditionally** in the background (stated as of 2026-08 on Codex CLI; not re-m
 `autoUpdate` key in `config.toml`; it does not exist there. Read `source_type` under
 `[marketplaces.<name>]` in `~/.codex/config.toml` (or `$CODEX_HOME/config.toml`):
 
-- **`git`** → already auto-updating; nothing to enable. A Git marketplace that still looks stale is
-  marketplace-health's job, not this one.
+- **`git`** → auto-updating, unless the entry records a ref (`add --ref` or `owner/repo@ref`
+  writes one under `[marketplaces.<name>]`). **No ref, or a branch:** nothing to enable; a Git
+  marketplace that still looks stale is marketplace-health's job, not this one. **A commit or tag:**
+  it is pinned and will not move, so an "on" request means re-adding it without the ref (or at the
+  branch they want): `codex plugin marketplace add <owner/repo>`, carrying over any `--sparse`. A
+  config change, go-ahead rule; the removal rule below applies if the add refuses the name. Verify
+  that `config.toml` no longer records the pinned ref.
   **To stop it updating**, there is no flag either: propose re-adding it pinned to a fixed commit or
   tag (`codex plugin marketplace add <owner/repo> --ref <commit-or-tag>`; a config change, go-ahead
   rule; the removal rule below applies if the add refuses the name). Verify that `config.toml` now
@@ -206,17 +213,21 @@ unconditionally** in the background (stated as of 2026-08 on Codex CLI; not re-m
   - **The user's own dev checkout** → expected to be updated by hand (`git pull` in the source).
     Leave it and say so.
   - **A snapshot of a Git repo** → re-add it from Git so it joins the auto-update set:
-    `codex plugin marketplace add <owner/repo>` (or an HTTPS/SSH Git URL), carrying over any ref or
-    sparse path the old entry used (`--ref`, `--sparse`). A config change, so the go-ahead rule
+    `codex plugin marketplace add <owner/repo>` (or an HTTPS/SSH Git URL), carrying over any sparse
+    path (`--sparse`) and a branch ref (`--ref <branch>`), but not a commit or tag: that would pin it
+    again. A config change, so the go-ahead rule
     applies. On codex-cli 0.169 (2026-11) this replaced the local entry of the same
     name in place. If Codex instead answers that the marketplace "is already added from a different
     source", it has to be removed first (`codex plugin marketplace remove <name>`), under the same
-    removal rule as Claude Code's (§1): its own yes, plugins listed before and reinstalled after.
+    removal rule as Claude Code's (§1): its own yes, plugins listed before
+    (`codex plugin list --json`, the ones from `<name>`) and reinstalled after
+    (`codex plugin add <plugin>@<name>`).
 
-**Verify:** re-read `config.toml` and confirm `source_type = "git"` under `[marketplaces.<name>]`
-(`codex plugin marketplace list` shows only names and roots, not the source type). With Bun,
-marketplace-health's checker (`--host codex`) reports `source_type` too, and its «clone is behind»
-line is how you notice a Git marketplace that is not refreshing.
+**Verify:** re-read `config.toml` and confirm `source_type = "git"` under `[marketplaces.<name>]`,
+with no commit or tag recorded as its ref on an "on" request (`codex plugin marketplace list` shows
+only names and roots, not the source type). With Bun, marketplace-health's checker (`--host codex`)
+reports `source_type` and the ref too, and its «clone is behind» line is how you notice a Git
+marketplace that is not refreshing. It does not judge a ref, so read a commit or tag there as pinned.
 
 ## Output
 
@@ -249,7 +260,10 @@ Marketplace <name>: <a managed policy is present | the source is claude.ai-hoste
 read → effective value unverified; <what the user or their admin can check>.
 
 # Codex — git source
-Marketplace <name> is Git-sourced → Codex already auto-updates it. Nothing to enable.
+Marketplace <name> is Git-sourced with no pinned ref → Codex already auto-updates it. Nothing to enable.
+
+# Codex — pin removed (updates on again)
+Marketplace <name> was pinned at <ref> → re-added without it; config.toml records no pinned ref.
 
 # Codex — pinned (updates stopped)
 Marketplace <name> re-added at <ref> → no longer moves. That it stays put is inferred from --ref,
