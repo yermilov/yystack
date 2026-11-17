@@ -16,7 +16,8 @@ description: >-
 Done means: a `bun` that prints its version, and the work that sent you here resumed. This
 marketplace writes its executables in Bun + TypeScript, so without Bun its scripts and its
 session-start check cannot run — which is also why this skill ships no script of its own: it has to
-work before Bun exists.
+work before Bun exists. It is a short task skill, not a multi-step workflow, so it keeps no Step-0
+todo list.
 
 ## 0. Is it already there?
 
@@ -45,23 +46,29 @@ Bun from a version manager is not in those places: where the user has one, also 
 
 One that prints a version is a working Bun at that path → do not install. Use that path until the
 session restarts, and go to §3 if its directory is not on PATH. A version older than a script needs →
-the upgrade branch in §1. **More than one answers?** Scripts get the one a bare `bun` resolves to
-(`command -v bun`; PowerShell: `(Get-Command bun).Source`), which need not be the newest. Report each
-path and version, and either upgrade that one or ask the user which should come first on PATH;
-never remove one without asking.
+the upgrade branch in §1. **More than one answers?** First resolve each path that answered
+(`realpath <path>`; on Windows the path itself): Homebrew and npm can share one bin directory, so two
+probes that land on the same target are one copy, not two. Still more than one? Scripts get the
+one a bare `bun` resolves to (`command -v bun`; PowerShell: `(Get-Command bun).Source`), which need
+not be the newest. Report each path and version, and either upgrade that one or ask the user which
+should come first on PATH; never remove one without asking.
 
 ## 1. Pick the method — and who runs it
 
-**Never pipe the remote installer to a shell yourself.** `curl … | bash` and `irm … | iex` run an
-unpinned script straight from the web, so present that line and let the user run it. A package
-manager installs a published, versioned package instead (npm's postinstall fetches the binary of
-that exact version, not a script that can change); you may run that command once the user
-says yes, never with `sudo`. A request that already asks you to install or upgrade ("install it
-for me") is that yes once you have named the exact command you will run; anything vaguer, offer
-and wait. If it fails on file permissions, offer the next option instead. An automatic refusal by
-your own sandbox (no network, no global writes) is not that failure: ask the user to allow the
-command, rather than dropping to another installer. A user who denies that approval has declined
-(see «The user declines?» below). Choose in this order:
+- **Never pipe the remote installer to a shell yourself.** `curl … | bash` and `irm … | iex` run an
+  unpinned script straight from the web, so present that line and let the user run it.
+- **A package manager you may run, once the user says yes, never with `sudo`.** It installs a
+  published, versioned package (npm's postinstall fetches the binary of that exact version, not a
+  script that can change).
+- **What counts as yes:** a request that already asks you to install or upgrade ("install it for
+  me", or the session-start nudge forwarded with "can you do that?") is that yes once you have
+  named the exact command you will run. Anything vaguer: offer and wait.
+- **It fails on file permissions** → offer the next option below. An automatic refusal by your own
+  sandbox (no network, no global writes) is not that failure: ask the user to allow the command
+  rather than dropping to another installer. A user who denies that approval has declined
+  (see «The user declines?» below).
+
+Choose in this order:
 
 1. `brew` on PATH (macOS, Linux) → offer Homebrew.
 2. Else `npm` on PATH (any OS) → offer npm, unless `npm prefix -g` sits under a Node version
@@ -97,14 +104,18 @@ npm can share one bin directory, so the resolved target, not the directory, deci
 there is no link to resolve: the path itself decides.
 
 - under `.bun/bin` → `<that path> upgrade` (e.g. `"$HOME/.bun/bin/bun" upgrade`, which works off PATH)
-- under a Homebrew `Cellar` → `brew upgrade bun`
+- under a Homebrew `Cellar` → `brew upgrade <formula>`, naming the formula that is installed:
+  `brew list --full-name --formula | grep -E '(^|/)bun$'` prints `bun` (Homebrew's own) or
+  `oven-sh/bun/bun` (Bun's tap, as §1 installs it). Both live under `Cellar/bun`, so the path
+  alone cannot tell them apart.
 - under `node_modules/bun` (on Windows, a `bun.cmd`/`bun.ps1` shim in npm's global directory, `npm
   prefix -g`) → `npm install -g bun@latest`
 - anything else (mise, asdf, a distro package, Scoop) → upgrade with the tool that owns that path;
   if that is unclear, tell the user where the binary is and ask. Never install a second Bun on top.
 
 You may run that upgrade command yourself once the user says yes (it updates an installed,
-versioned binary), never with `sudo`.
+versioned binary), never with `sudo`. As in the list above, a request that already asks you to
+upgrade is that yes once you have named the exact command.
 
 **The user declines?** Stop here and say what stays off. Declining an install: every Bun script is
 unavailable, and the session-start message saying Bun isn't installed repeats each session. Declining
@@ -121,7 +132,8 @@ binary by its absolute path.
 - **Installed:** a version printed there is the verdict. A bare `bun` "not found" beside it means
   only PATH is stale (§3). Do not reinstall.
 - **Upgraded:** the upgraded absolute path must print at least the minimum the script asked for.
-  That is the verdict.
+  That is the verdict. With no minimum named (the user just asked to upgrade), it must print a
+  version newer than before, or the upgrade command must have said it is already the latest.
 - **Bare `bun --version` still old after an upgrade:** either another copy comes earlier on PATH
   (§0, «More than one answers?»), or a version manager's shim is first and still selects an old
   version (`mise current bun`, `asdf current bun`); the user changes that selection, PATH order will

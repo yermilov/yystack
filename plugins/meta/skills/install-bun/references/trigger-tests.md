@@ -24,9 +24,10 @@ disallowed. "Fired" = a `Skill` call naming exactly this skill. "Isolated" adds
 | 2026-11-14 | Claude Code · claude-fable-5-2 | same | 10/10 | 10/10 | isolated |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | + boundary toward `marketplace-health` (stale-plugin warning); the hook-nudge prompt now quotes the real message | 10/10 | 11/11 | isolated; the new stale-plugin row went to marketplace-health |
 | 2026-11-14 | Claude Code · claude-fable-5-2 | same | 9/10 | 11/11 | full environment, installed `meta@yystack` disabled: the WSL `unzip` prompt was answered directly once; re-run 3× alone, it fired 3/3 |
+| 2026-11-17 | Codex · codex-cli 0.169, config ignored | same | 10/10 | 11/11 | one `codex exec --json --ignore-user-config -s read-only --ephemeral` per prompt, the skill copied into an empty workspace's `.agents/skills/`; "fired" = a command reading its `SKILL.md`. No empty or errored run |
 
-What these runs do not establish: Codex routing (not run), other models, repeat stability, or
-anything past the routing decision.
+What these runs do not establish: Codex under a full user config (on a host with many plugins it
+drops every description), other models, repeat stability, or anything past the routing decision.
 
 **With the skill vs without it** (2026-11-14, Claude Code · claude-fable-5-2, `--max-turns 4`, no shell,
 once each; observed behaviour, not a score):
