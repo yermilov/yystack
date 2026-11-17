@@ -7,7 +7,7 @@
 //
 //   bun run upnp-uptime.ts [--timeout 3000] [--json]
 //
-// Exit codes: 0 an uptime was read · 1 no UPnP gateway answered, or it answered without an uptime
+// Exit codes: 0 an uptime was read · 1 no UPnP gateway answered, or it answered without a readable uptime
 // (UPnP off, a non-miniupnpd stack, or a firewall on this host) · 2 usage error.
 
 import dgram from "node:dgram";
@@ -134,6 +134,8 @@ async function readCapped(res: Response): Promise<string> {
   }
   return new TextDecoder().decode(buf);
 }
+// The UPnP WANIPConnection / WANPPPConnection NewConnectionStatus values.
+const STATUSES = ["Unconfigured", "Connecting", "Authenticating", "Connected", "PendingDisconnect", "Disconnecting", "Disconnected"];
 const clean = (v: string | undefined) => v?.replace(/[\u0000-\u001f\u007f-\u009f]/g, " ").slice(0, 120);
 
 async function soap(control: string, type: string, action: string, timeout: number) {
@@ -186,16 +188,22 @@ async function main() {
         const readAt = new Date();
         const raw = tag(st, "NewUptime") ?? "";
         attempt.readAt = readAt.toISOString();
-        attempt.connectionStatus = clean(tag(st, "NewConnectionStatus"));
-        // An empty or non-numeric element is a missing uptime, not zero (Number("") is 0).
-        if (/^\d+$/.test(raw)) {
-          const up = Number(raw);
+        const status = clean(tag(st, "NewConnectionStatus"));
+        // Some firmware sends garbage here (a number, a stray suffix); flag it rather than pass it on.
+        attempt.connectionStatus = status === undefined || STATUSES.includes(status.trim()) ? status?.trim() : `?(${status})`;
+        // An empty or non-numeric element is a missing uptime, not zero (Number("") is 0). Some
+        // firmware appends a stray character ("101444l"): leading digits followed only by non-digits
+        // are read as the uptime, with a note naming the raw value.
+        const m = raw.trim().match(/^(\d+)\D*$/);
+        if (m) {
+          const up = Number(m[1]);
           attempt.uptimeSeconds = up;
           attempt.bootedAt = new Date(readAt.getTime() - up * 1000).toISOString();
+          if (m[1] !== raw.trim()) attempt.uptimeNote = `malformed value '${clean(raw.trim())}', parsed as ${up}`;
           delete attempt.statusError;
           break;
         }
-        attempt.statusError = "GetStatusInfo carried no NewUptime";
+        attempt.statusError = raw.trim() ? `GetStatusInfo carried an unreadable NewUptime '${clean(raw.trim())}'` : "GetStatusInfo carried no NewUptime";
       } catch (e: any) { attempt.statusError = e.message; }
     }
     const common = svcs.find((s) => s.type === COMMON);
@@ -221,6 +229,7 @@ async function main() {
       const s = result.uptimeSeconds as number;
       console.log(`uptime         ${s} s (${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h ${Math.floor((s % 3600) / 60)}m)`);
       console.log(`booted at      ${result.bootedAt}  (UPnP daemon start — confirm a reboot from the client side)`);
+      if (result.uptimeNote) console.log(`uptime note    ${result.uptimeNote}`);
     } else console.log(`uptime         not reported${result.statusError ? ` (${result.statusError})` : ""}`);
     if (result.NewTotalBytesReceived !== undefined) console.log(`WAN bytes rx   ${result.NewTotalBytesReceived}`);
     if (result.NewTotalBytesSent !== undefined) console.log(`WAN bytes tx   ${result.NewTotalBytesSent}`);

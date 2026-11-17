@@ -38,7 +38,8 @@ expected size while smaller pings answer** is the black hole that stalls HTTPS w
 ## Throughput + bufferbloat
 
 - *macOS:* `networkQuality -v` → uplink/downlink capacity, idle latency and **Responsiveness** (RPM;
-  low RPM is bufferbloat). It takes ~20 s and saturates the link while it runs.
+  low RPM is bufferbloat). It takes ~20 s and saturates the link while it runs, so tell the owner
+before running it (a video call in the house will stutter); the same goes for any speed test.
 - *Windows / Linux:* no built-in equivalent. Use a browser test that reports **loaded** latency
   (`speed.cloudflare.com`, `waveform.com/bufferbloat`), or the Ookla `speedtest` CLI for throughput
   alone.
@@ -47,8 +48,10 @@ expected size while smaller pings answer** is the black hole that stalls HTTPS w
 
 Run the two series at the same time, so a gap in one can be matched against the other:
 *macOS / Linux:* `ping -c 100 <gateway> > gw.txt & ping -c 100 1.1.1.1 > pub.txt; wait`. Both send
-one probe a second from the same start, so equal `icmp_seq` numbers are the same second; a sequence
-number missing from both files is shared loss. *Windows* prints no sequence number, so stamp each
+one probe a second from the same start, so equal `icmp_seq` numbers are the same second. A lost probe
+looks different per OS: macOS prints `Request timeout for icmp_seq N` (measured), Linux iputils prints
+nothing for it (add `-O` to get a "no answer yet" line). So a sequence number that timed out (macOS)
+or is missing (Linux) in both files is shared loss. *Windows* prints no sequence number, so stamp each
 line with the time and match failures (`Request timed out.`) by second; in two PowerShell windows
 started together (written from the documented cmdlets, not yet run on Windows):
 `ping -n 100 <gateway> | ForEach-Object { "$(Get-Date -Format o) $_" } > gw.txt` and the same with
@@ -80,8 +83,9 @@ SOA TTL is the exact negative-cache TTL.
 - *The authoritative answer* (DNS fast path, step 1, when the public resolvers fail too): `dig
   +trace <host> @1.1.1.1` walks from the root through a public resolver (a home gateway can refuse
   the root query); on Windows, `Resolve-DnsName <zone> -Type NS`, then `Resolve-DnsName <host>
-  -Server <one of those NS>`. Read the final status: `NXDOMAIN` from the zone's own server is the
-  definitive negative.
+  -Server <one of those NS>`. `+trace` prints no `status:` line, and a negative answer shows only as
+  SOA/NSEC records, so finish with `dig <host> @<the last server the trace names>` and read its
+  `status:`: `NXDOMAIN` from the zone's own server is the definitive negative.
 - *Windows:* `Resolve-DnsName <host> -Server <resolver> -DnsOnly`; `Resolve-DnsName <zone> -Type SOA`.
   The system path is `Resolve-DnsName <host>` without `-Server`. Clear the client cache with
   `Clear-DnsClientCache`; on macOS use `sudo dscacheutil -flushcache; sudo killall -HUP

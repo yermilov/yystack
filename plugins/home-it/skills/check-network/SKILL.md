@@ -33,7 +33,8 @@ The four layers, outermost to innermost:
 4. **Client**: the device's Wi-Fi radio, negotiated rate, drivers, adapter.
 
 **Router changes are the owner's.** Read-only measurements are free (the admin UI needs their
-session, §3; a long-running logger needs their OK, §2a); every write (DNS servers, QoS, a recovery probe,
+session, §3; a long-running logger needs their OK, §2a; a speed test saturates the line for ~20 s,
+so say so first); every write (DNS servers, QoS, a recovery probe,
 any toggle) needs the owner's OK and goes in one at a time, re-measured before the next. This holds at
 every step below that changes something, and those steps repeat it.
 
@@ -103,7 +104,8 @@ that reason.
 
 A step a branch makes moot (no admin access to the router, no drop-outs reported, a wired WAN rather
 than a cellular one, a DNS-only fault with no speed complaint, drop-outs with no speed complaint
-for items 4–7) is completed with that reason, not left open. **No device that can take a cable** (a phone-only home, a laptop with no port or adapter)
+for items 4–7, a down-right-now run that ended restored or handed to the ISP for items 3–10, with
+items 11–12 closed by § Down right now's repair and re-test) is completed with that reason, not left open. **No device that can take a cable** (a phone-only home, a laptop with no port or adapter)
 closes item 6 with that reason, and says what stays unproven: Wi-Fi versus upstream. Read the
 router's own WAN status (link speed, the line's sync rate) and any line test the ISP offers instead,
 and report a slow upstream as an **inference**, not a measurement.
@@ -298,8 +300,8 @@ reboot, not of the ISP (a typical boot time — a different router can take long
 is the proof, not the duration). Prove it before blaming anyone. You can do it **without the admin password**, because many
 consumer routers answer an unauthenticated UPnP query with their uptime:
 `bun run "<skill dir>/scripts/upnp-uptime.ts"` prints the uptime, the boot time it implies, the WAN type
-and the WAN byte counters (read-only; exit 1 means no gateway answered, or one answered with no uptime
-— UPnP is often off. Then read the uptime or the system log, which starts at the last boot, in an
+and the WAN byte counters (read-only; exit 1 means no gateway answered, or one answered with no readable
+uptime — read the printed reason; UPnP is often off. Then read the uptime or the system log, which starts at the last boot, in an
 owner-granted session (§3). With neither, a client-side ping-gap log shows the outages but cannot
 tell a reboot from Wi-Fi loss: report "reboot unverified"). Rulings:
 
