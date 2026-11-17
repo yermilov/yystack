@@ -28,20 +28,24 @@ gives you — and while work remains keep exactly one in progress:
 3. Live-item check — one item per site: the dead marker checked absent on one known-live item (§ 2)
 4. Made-up-id control — one item per site, closed with its result or the reason it adds nothing (§ 2)
 5. Marker re-run — the script with `--dead`/`--alive`, one item per site (§ 1)
-6. Browser pass — every link still BLOCKED, NEEDS-BROWSER, REDIRECTED, CHECK or UNKNOWN, with the one
-   exception § 3 names; close it with the count opened and the count still unknown (§ 3)
+6. Browser pass — every link still BLOCKED, NEEDS-BROWSER, REDIRECTED, CHECK or UNKNOWN, except the
+   two § 3 sends straight to § 4; close it with the count opened and the count still unknown (§ 3)
 7. Classify — every link; close it with the counts per verdict (§ 4)
 8. Ask about replacements (§ 5)
 9. Replacement search — only after a yes; then add one sub-item per dead link (§ 5)
-10. Report, with every link still `UNKNOWN` asked about in it (§ 4, § 6)
+10. Report, with every link still `UNKNOWN` asked about in it, or returned to the caller when
+    another skill called you (§ 4, § 6)
 
 Items 2–5 start as one item each: once the fetch pass names the sites, split each into one sub-item
-per site.
+per site that still needs markers. Past about ten such sites (a bookmarks export), do not split:
+work through the sites inside each item and close it with one line per site.
 
 For a site the shell cannot read (BLOCKED, or a bot check on its homepage), do items 2–4 inside
 item 6's browser pass and close item 5 "markers taken in the browser". A site whose links all got a
 status verdict (404/410 with the homepage answering, or a domain that does not resolve) needs no
-text marker: close items 2–5 for it with that reason.
+text marker: close items 2–5 for it with that reason. Nor does an article or doc site whose every
+other link shows that page's own headline in its title and body: those are `ALIVE` by headline
+(§ 2). A listing site never takes that shortcut, since its removal page can keep the item's title.
 Register the conditional steps too: one a branch makes moot is completed WITH THAT REASON, never
 left open — an unfinished list at the end must mean something really is unfinished.
 No such tool? SEARCH for one first — on hosts with deferred tools it exists but is not loaded, and
@@ -58,7 +62,7 @@ until your report is back; report to it, not straight to the user.
 ## 1. Fetch pass
 
 ```sh
-bun run "SKILLDIR/scripts/check-links.ts" <url> <url> …        # or --file urls.txt, or on stdin
+bun run "SKILLDIR/scripts/check-links.ts" <url> <url> …        # or --file urls.txt; stdin only with neither
 ```
 
 Give it absolute `http(s)` URLs: resolve a relative link against the page or document it came from
@@ -84,7 +88,7 @@ same site, so read the title against that page.
 
 ## 2. Markers per site — the method, not a site list
 
-For every site in the batch, establish both markers before you classify — they depend on the kind of
+For every site Step 0 does not exempt, establish both markers before you classify — they depend on the kind of
 page:
 
 - **Dead marker** — the site's "removed / no longer available / not found" page or text. Many

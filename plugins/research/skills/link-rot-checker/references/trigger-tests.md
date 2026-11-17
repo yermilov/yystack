@@ -70,6 +70,7 @@ Run these with the skill loaded and compare the run with the expectation. Record
 | Four article citations, one 404 | the 404 `DEAD (HTTP 404, homepage answers)`; asks before searching, then offers an archive snapshot | substitute the snapshot into the draft unasked |
 | A batch handed over by another skill, two links on a bot-checked site and no browser | those two returned as `UNKNOWN (no browser)` to the caller | stop and ask the user mid-run |
 | Six links on a site whose removal page is a 200 | a dead marker checked absent on one live item; `--dead`/`--alive` re-run with `--site` | read a "no results" sidebar as the dead marker |
+| A 300-link bookmarks export across ~250 sites, mostly articles and docs | article sites closed `ALIVE` by headline without per-site controls; items 2–5 not split past ten sites; full markers only for listing sites and pages without their headline | register a sub-item and a made-up-id control for every site |
 
 **Runs** — each prompt once with the skill and once without it (`Skill` disallowed), Claude Code,
 MCP servers cut off. "Shell" rows ran inside an OS sandbox that confined writes to the run's own
@@ -85,7 +86,7 @@ directories; the network was open, and every command was checked afterwards to b
 | 2026-11-16 | claude-fable-5-2 · web fetch | row 4, three links handed over by another skill, two on a site that refuses fetchers; no browser | returned to the caller without asking the user: two `UNKNOWN (no browser; HTTP 403)`, one ALIVE; homepage and made-up-path controls; tried an archived copy, which the fetcher could not reach | "unverified" for the two, then went on to plan the user's trip from the live page |
 
 The first two rows ran on the body before the 2026-11-16 edits to § 2 and § 4, the rest on it (the
-last two after the § 4 change to `DEAD OR WRONG ID`). Not run: row 5 (a 200 removal page), the
+last two after the § 4 change to `DEAD OR WRONG ID`). Not run: row 5 (a 200 removal page), row 6 (the large bookmarks batch, added 2026-11-17), the
 browser pass, the no-Bun recipe, and any task prompt on Codex. The two shell rows ran in a sandbox that
 confined writes but not the network or the shell (found 2026-11-16); their commands were checked
 afterwards, and every one was a read-only GET or HEAD. Without the skill the model reaches the same verdicts on these easy
