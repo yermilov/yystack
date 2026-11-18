@@ -21,9 +21,9 @@ writing those is the host's docs, but **packaging** them — where they sit, and
 them bumps the version (§4) — is the same as for skills. Agents install a plugin and its skills
 become available. The whole thing is plain files in git — no build step, no server.
 
-Length: past the ~250-line default because §6's flows, §8's five decisions and the pre-ship
-checklist are rulings applied while editing; the manifest templates and the grouping evidence
-already live in `references/`.
+Length: past the ~250-line default because §3's hook and `agents/openai.yaml` rules, §6's flows,
+§8's five decisions and the pre-ship checklist are rulings applied while editing; the manifest
+templates and the grouping evidence already live in `references/`.
 
 Not for the `SKILL.md` prose (`skill-authoring`), an installed marketplace that looks stale
 (`marketplace-health`), toggling auto-update (`enable-autoupdate`), bootstrapping a new one
@@ -130,9 +130,14 @@ and edits silently never reach anyone.
   browser. (Per-plugin bumps re-pull a plugin's *contents*; the marketplace `metadata.version` is
   what makes clients re-pull the *manifest* and discover new plugins.) Bump it too when you edit an
   existing entry in `.claude-plugin/marketplace.json` (description, source, category): the manifest
-  changed, an extra bump costs nothing, and without one clients may keep the cached copy.
-- **Default:** semver-ish — patch for skill edits, minor for a new skill, and treat a new plugin as
-  a marketplace minor bump too.
+  changed, an extra bump costs nothing, and without one clients may keep the cached copy. The Codex
+  marketplace manifest has no version to bump: Codex lists every plugin in its snapshot of the
+  marketplace, so a new one shows up as `not installed` in `codex plugin list` once that snapshot
+  refreshes (`codex plugin marketplace upgrade`), and the user installs it with
+  `codex plugin add <plugin>@<marketplace>` (codex-cli 0.169, 2026-11-18).
+- **Default:** semver-ish — patch for a skill edit; minor for adding, removing, renaming or moving
+  a skill; and treat a new plugin as a marketplace minor bump too. Any increase satisfies the
+  checker; the size only tells installers how much changed.
 - **Avoid** assuming "deployed = visible in this session": a newly added plugin, skill or tool can
   stay invisible to a running agent until its client re-pulls its plugin snapshot, so don't promise
   a same-session dogfood (`marketplace-health` diagnoses it).
@@ -153,7 +158,8 @@ and edits silently never reach anyone.
 Three rules run through every flow below, stated once here:
 
 - **(M) `metadata.version`** — bump the Claude marketplace's `metadata.version` whenever the plugin
-  list or any marketplace entry changes (§4). A flow that only edits a plugin's files does not.
+  list or an entry in `.claude-plugin/marketplace.json` changes (§4). A flow that only edits a
+  plugin's files, or only the Codex marketplace manifest, does not.
 - **(G) Grep before you delete, rename or move** — search the repo for the old name, bare, in
   `Requires:` lines, and qualified as `<plugin>:<skill>`, and repair every hit before the old thing
   disappears. A bare skill name resolves across all installed plugins, so `skill-authoring` survives
@@ -167,7 +173,8 @@ Three rules run through every flow below, stated once here:
   plugin is retired — and tell the user.
 
 Before you start a flow, register its actions in this session's own todo/plan tool (search for one
-first; with none, keep the list in your replies; never an external tracker), close a step that does
+first; with none, keep the list in your replies; never an external tracker): one item per action
+the flow names between semicolons, with (G), (N) and (M) each their own item. Close a step that does
 not apply with that reason, and make the last item the validator run below — so a skipped step
 shows as open rather than as done.
 
@@ -265,7 +272,8 @@ in the dependent plugin's README ("Requires: `<plugin>`").
 1. **Which plugin gets a new skill?** The one whose one-sentence job covers it *without widening the
    sentence*; with two candidates, the **domain** decides, not the instrument.
 2. **New plugin** when no job fits without "…and also X", or the skill has a different **install
-   boundary** (audience, public vs private, one host/OS, heavy dependencies), or it is a tool plugin
+   boundary** (audience, public vs private, heavy dependencies, or a skill that genuinely runs on
+   only one host or OS — the exception, since skills default to both hosts), or it is a tool plugin
    others depend on. Otherwise wait for 2–3 skills of the new domain.
 3. **Split** when the description needs "and… and…", skills form clusters that never reference each
    other, installers want only part of it, or a reusable instrument grew inside a domain (extract a
@@ -310,7 +318,8 @@ THAT REASON.
 12. After a rename, move, split or remove, a grep for each old `<plugin>:<skill>` returns nothing,
     and so does one for the old plugin name when that plugin was renamed or removed (§6 rule G) —
     apart from the installer notice of item 14 and any changelog entry, which name it on purpose.
-13. After a skill rename or remove, a grep for the old bare skill name returns nothing.
+13. After a skill rename or remove, a grep for the old bare skill name returns nothing — apart from
+    any changelog entry, which names it on purpose.
 14. After a plugin rename, split, merge or removal, the README tells existing installers the new
     install command, or that the plugin is retired (§6 rule N).
 
@@ -323,8 +332,10 @@ bun run "SKILLDIR/scripts/check-manifests.ts" "MARKETPLACE_ROOT" --base origin/m
 ```
 
 ⚠️ Substitute both placeholders with **literal** paths — `SKILLDIR` is the directory you loaded this
-`SKILL.md` from; it is not a shell variable. `--base` is the ref your change will land on; omit it
-to check only the static structure (all but items 4 and 12–14). It also flags a plugin directory (a manifest or
+`SKILL.md` from; it is not a shell variable. `--base` is the ref your change will land on (your
+remote's default branch), so run it **before you push** — after the push that ref already holds
+your change and the version check compares it with itself. Omit `--base` to check only
+the static structure (all but items 4 and 12–14). It also flags a plugin directory (a manifest or
 `skills/`) that neither marketplace lists — the forgotten step of «Add a plugin». It prints notes,
 not defects, for a missing `LICENSE` (only you know whether the repo is public) and for a plugin or
 skill a README never names (a shortlist for items 9–10; a description that lists skill names is

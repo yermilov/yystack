@@ -25,13 +25,16 @@ disallowed. "Fired" = a `Skill` call whose skill is exactly `plugin-dev` or `<pl
 | 2026-11-14 | Claude Code · claude-fable-5-2 · full | trimmed to 883, without "from the canonical marketplace" | 13/14 | 10/10 | "set up the repo layout for a skills marketplace" went to clone-marketplace — the cut phrase was the distinction; restored |
 | 2026-11-14 | Claude Code · claude-fable-5-2 · isolated | meta 0.7.50 (899 chars) | 14/14 | 10/10 | |
 | 2026-11-14 | Claude Code · claude-fable-5-2 · full | meta 0.7.50 (899 chars) | 14/14 | 10/10 | |
+| 2026-11-18 | Codex · codex-cli 0.169.1 default model · config ignored | meta 0.7.50 text (899 chars, unchanged) | 14/14 | 8/10 | workspace copy of every skill in this repo; user-level skills also loaded. "bump the version in package.json" fired once, silent on 3 repeats (noise). "create my own skills marketplace like this one" loaded this skill beside clone-marketplace 4/4, clone-marketplace named first: that skill's own flow runs this skill's checker, so the co-load is not routed away from it |
 
 **Full** = the runner's other installed plugins loaded too (they compete for the prompt);
-**isolated** = `--setting-sources project`, only this plugin. Rows without either were not recorded.
+**isolated** = `--setting-sources project`, only this plugin; **config ignored** = `codex exec
+--ignore-user-config -s read-only` in a fresh directory holding copies of the skills under
+`.agents/skills/`, "fired" = a command that opens this skill's `SKILL.md`. Rows without either were not recorded.
 
-What these runs do not establish: Codex routing (not run — Codex routes from the INSTALLED copy, so
-a run counts for this description only once the installed text matches it), other models, or repeat
-stability (each prompt ran once per row).
+What these runs do not establish: Codex routing from the INSTALLED copy under the user's full
+config (the Codex row tests the working-tree text in a fresh workspace), other models, or repeat
+stability (each prompt ran once per row; only the two Codex misses were repeated).
 
 ## With the skill vs without it
 

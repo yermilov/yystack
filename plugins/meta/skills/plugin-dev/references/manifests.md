@@ -76,10 +76,8 @@ interface:
   default_prompt: "Use $<skill-name> to …"
 ```
 
-Add a `policy` block **only** to keep Codex from invoking the skill on its own: with
-`allow_implicit_invocation: false` it is not put in the model's context and runs only when invoked
-explicitly as `$skill` (codex-cli 0.169's own docs, 2026-11-14) — the nearest to Claude's
-`disable-model-invocation: true`, so never on a knowledge skill. Without it the default stays as it is:
+Add a `policy` block only when the skill must run on explicit `$skill` invocation alone — when
+that is right is ruled in plugin-dev §3:
 
 ```yaml
 policy:
