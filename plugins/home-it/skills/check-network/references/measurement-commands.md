@@ -38,7 +38,9 @@ expected size while smaller pings answer** is the black hole that stalls HTTPS w
 ## Throughput + bufferbloat
 
 - *macOS:* `networkQuality -v` → uplink/downlink capacity, idle latency and **Responsiveness** (RPM;
-  low RPM is bufferbloat). It takes ~20 s and saturates the link while it runs, so tell the owner
+  low RPM is bufferbloat). Run it alone, with no ping series in flight, so idle latency stays clean.
+  `networkQuality -h` lists `-f L4S` / `-f noL4S` to force or disable L4S; whether `-v` prints an
+  ECN/L4S status line was not verified, so read the output rather than assume it. It takes ~20 s and saturates the link while it runs, so tell the owner
 before running it (a video call in the house will stutter); the same goes for any speed test.
 - *Windows / Linux:* no built-in equivalent. Use a browser test that reports **loaded** latency
   (`speed.cloudflare.com`, `waveform.com/bufferbloat`), or the Ookla `speedtest` CLI for throughput
@@ -61,10 +63,18 @@ started together (written from the documented cmdlets, not yet run on Windows):
 
 - *macOS:* `system_profiler SPAirPortDataType` → the "Current Network Information" block: PHY Mode,
   Channel, **Signal / Noise** (dBm), **Transmit Rate**. It needs no sudo. The block lists other
-  networks after it, so read only the first entry. `wdutil info` reports the same, but only under
+  networks after it, so read the first entry for the link; the later `Other Local Wi-Fi Networks`
+  entries each carry a `Channel: N (band, width)` line, so counting entries per channel is the
+  neighbour scan, and the current network's own `Channel:` line also gives the width. `wdutil info` reports the same, but only under
   `sudo`; run bare it prints just a usage message, which looks like a broken tool.
-- *Windows:* `netsh wlan show interfaces` → Signal (%), Receive/Transmit rate, Radio type, Channel.
-- *Linux:* `iw dev <iface> link` or `nmcli dev wifi` → signal (dBm) + bitrate.
+- *Windows:* `netsh wlan show interfaces` → Signal (%), Receive/Transmit rate, Radio type, Channel. `netsh wlan show networks mode=bssid` lists neighbours with channel. Neither shows the channel width; read it from the router's wireless page (§3) and say width stayed unmeasured from the client.
+- *Linux:* `iw dev <iface> link` or `nmcli dev wifi` → signal (dBm) + bitrate. `nmcli dev wifi list` (or `iw dev <iface> scan`) lists neighbours with channel (the width is not in `nmcli`; `iw dev <iface> link` shows the current width, e.g. `80.00 MHz`, and a neighbour's width stays unmeasured unless the scan prints it).
+
+## Route and IPv6 (separating Wi-Fi/LAN jitter from the ISP)
+
+`traceroute -m 5 1.1.1.1` (macOS/Linux; Windows `tracert -h 5 1.1.1.1`) and, only when the interface has
+a global IPv6 address, `ping6 -c 30 2606:4700:4700::1111` (Linux `ping -6 -c 30 2606:4700:4700::1111`; Windows `ping -6 -n 30 2606:4700:4700::1111`). Run
+these before the throughput test. Not yet run on every OS here; read the output shape first.
 
 ## Client sanity
 

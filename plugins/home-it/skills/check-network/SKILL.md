@@ -237,14 +237,27 @@ The commands differ per OS (macOS / Windows / Linux), and each is in
 `references/measurement-commands.md`. The four measurements are the same everywhere:
 
 - **Throughput + bufferbloat.** What matters is whether latency **spikes under load**, not raw Mbps:
-  a big idle-vs-loaded latency jump wrecks calls and browsing even when Mbps looks fine.
+  a big idle-vs-loaded latency jump wrecks calls and browsing even when Mbps looks fine. **Run it
+  after the latency series, never during it**: a ping series running alongside a throughput test
+  reads loaded latency, not idle latency. (The gateway and public-IP series run together with each
+  other, as below, but not with the throughput test.)
 - **Packet loss & latency**, 100 pings each to the gateway and to a public IP, run **at the same
   time**. **Loss to your own gateway that lines up in time with loss to the public IP is local**,
   not the ISP; the wired position then tells Wi-Fi from the rest of the LAN. Loss to the gateway
   alone can be the router rate-limiting pings to itself while traffic flows.
+  Add a short `traceroute` (about 5 hops) and, where the line has IPv6, an IPv6 ping: a router may
+  rate-limit its own ICMP replies, so treat it as context only and attribute with the concurrent
+  gateway/public series and the wired position, not with one traceroute. Note active VPNs, proxies and local bandwidth
+  hogs, and recent Wi-Fi disconnect/roam events, since any of them looks like a slow line.
 - **Link quality.** On Wi-Fi: signal (RSSI better than −60 dBm is good, worse than −67 weak; on
   Windows's % scale >70% is good) and whether the negotiated rate sits far below the AP's max. A Wi-Fi
-  6 client stuck at a low rate means distance or interference, not a dead plan. On the wired run:
+  6 client stuck at a low rate means distance or interference, not a dead plan. Also read the
+  **channel width** (20/40/80/160 MHz, where the OS exposes it) and the **band**: a fast client on a 40 MHz 5 GHz channel
+  caps at roughly half what 80 MHz allows, so a narrow width is a leading Wi-Fi finding, and widening
+  it is a router write (§3). Count the **competing networks per channel** from the neighbour scan
+  (`references/measurement-commands.md` § Wi-Fi link quality) before advising a channel, and treat
+  the count as a lower bound: networks on other channels whose width overlaps yours (adjacent 2.4 GHz
+  channels, or a wider 5 GHz block sharing your primary) also take airtime. On the wired run:
   the Ethernet negotiated speed (read the link state first; the reference says how per OS). A link at
   100 Mbps instead of 1000 explains the whole result.
 - **Client sanity.** Interface error counters, and no per-device throttle in the router app. Rule the
@@ -400,6 +413,10 @@ happy to stop at "good enough", and that is a valid place to stop.
 
 **Verify (item 12).** After any change, re-run §1 at the affected spot (and the DNS series, on the DNS
 branch) and report before/after numbers side by side. A fix you did not re-measure is a guess.
+Use the same sequence and the same position for both runs, and fill one table of the measurements the branch took (a DNS-only fault needs only the DNS rows): throughput down/up,
+idle latency and Responsiveness (RPM; loaded latency in ms where the test prints it), gateway and public-IP latency/jitter/loss, link rate/channel/width, and
+the DNS answer time when DNS was touched. Report the change next to its cause; with several changes
+at once the gain cannot be attributed, so keep to one change at a time.
 
 ## Validation
 
