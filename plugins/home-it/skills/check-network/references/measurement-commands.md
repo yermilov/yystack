@@ -87,6 +87,13 @@ Interface error counters: *macOS / Linux:* `netstat -i` (`Ierrs`/`Oerrs`) or `ip
 tools below when you need the raw response, in particular the authority section of an NXDOMAIN, whose
 SOA TTL is the exact negative-cache TTL.
 
+- *Which resolvers the client uses* (DNS fast path, step 1), IPv6 included: `scutil --dns` on macOS
+  (the `nameserver[n]` lines of the first resolver, plus any resolver whose `domain` line covers
+  the failing hostname, since that one answers for it; a VPN or profile often adds such entries);
+  `resolvectl status` on Linux with
+  systemd-resolved, else `/etc/resolv.conf`; `Get-DnsClientServerAddress` or `ipconfig /all` on
+  Windows. Pass each address to `dns-probe.ts` as a `--server`.
+
 - *macOS / Linux:* `dig <host> @<resolver>` (status, answer, TTL); `dig <host> @<resolver> +norecurse`
   to see whether a cache already holds it; `dig SOA <zone> @<resolver>`. The system path:
   `dscacheutil -q host -a name <host>` on macOS, `getent hosts <host>` on Linux.

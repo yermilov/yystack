@@ -93,14 +93,17 @@ failure this block exists to prevent.
     each per-device override restored and read back (or none set)
 
 Items 4–6 are one item per **position**, not per metric. Each closes naming the four measurements §1
-asks for at that spot (throughput+bufferbloat · loss+latency · link quality/rate · client sanity), or
+asks for at that spot (loss+latency · throughput+bufferbloat · link quality/rate · client sanity), or
 which one you skipped and why; "measured the desk" without that list is a row of the table you cannot
 fill.
 
 **No access to the network at all** (a chat-only question such as "should I buy a mesh?", or you are
-on another machine): the answer is the measurement plan (§1's three positions and what each outcome
-means), and item 11 closes with the §4 ladder applied to that plan; items 2–10 and 12 close with
-that reason.
+on another machine): the answer is the branch item 1 chose, written as a plan for the owner to run
+— § Down right now, the DNS fast path, §2a, or §1's three positions for performance — in that
+branch's own order and with its own conditions (do not shorten it to the performance plan), plus
+what each outcome means. The chosen branch's item (1, 3, 8, or 4–7) closes as "planned, not run"
+with a pointer to the plan; item 11 closes with the repair that branch reaches from each outcome;
+the other items of 2–10, and 12, close with the no-access reason.
 
 A step a branch makes moot (no admin access to the router, no drop-outs reported, a wired WAN rather
 than a cellular one, a DNS-only fault with no speed complaint, drop-outs with no speed complaint
@@ -130,12 +133,15 @@ one device (§2a).
    Gateway reachable, both public IPs silent → the WAN side. Public IPs answer but lookups fail →
    DNS (§ DNS fast path). Pings and lookups pass but `https://` pages fail, or every site lands on the
    same page → read the browser's or `curl -v`'s error and where it lands. The ISP's block or
-   unpaid-account page → step 2's billing check. A router content filter or a local proxy/TLS
-   interception (the certificate names the router or a filter) → local, §3. A plain timeout on
+   unpaid-account page → step 2's billing check. A router content filter (the block page or the
+   certificate names the router) → local, §3. A certificate naming security software, a proxy or
+   VPN on this device, or a certificate/date error → the device: its proxy and VPN settings, its
+   HTTPS-scanning or management software, and its clock. A plain timeout on
    every site → test for an MTU black hole with a don't-fragment ping at the size the WAN should
    carry (`references/measurement-commands.md` § Path MTU; §3's MTU line). A silent drop at that
    size points at the WAN. If it passes, open two unrelated `https://` sites on a second home device
-   and on mobile data: the second device loads them → one device (§2a); they load on mobile data
+   and on mobile data: the second device loads them → the first device's proxy, VPN, security
+   software and clock, as above; they load on mobile data
    but not on home devices → report "HTTPS fails at home, cause unverified" with what each test
    showed, and let the owner decide on an ISP ticket. Any other mix (mobile data fails too, or
    mixed results) → report the results as they are, cause unverified, and no ISP ticket.
@@ -153,7 +159,8 @@ one device (§2a).
 Use this branch when one hostname returns `NXDOMAIN`, `SERVFAIL`, or times out at home while other
 sites work. Do not infer "the router blocks the domain" from one cached answer.
 
-`scripts/dns-probe.ts` runs the series below on any OS with Bun:
+`scripts/dns-probe.ts` runs the series below on any OS with Bun (`<skill dir>`, here and below, is
+the directory this SKILL.md was loaded from):
 `bun run "<skill dir>/scripts/dns-probe.ts" <host> --server <gateway> --server 1.1.1.1 --server 8.8.8.8 --system --soa`.
 It prints a pass count, the failure codes and their order, each answer address with its TTL range
 and how many rounds returned it, and the negative-cache TTL bound. Exit 1 means some probe failed;
@@ -163,8 +170,11 @@ only the gateway (or the system path) returns and no public resolver does — ab
 script marks `(non-public)`: a private, loopback or `0.0.0.0` answer for a public name is a sinkhole
 or block page. Without Bun, the OS tools are in `references/measurement-commands.md` § DNS queries.
 
-1. **Compare paths.** Query the exact hostname through the operating system's normal resolver, the
-   LAN gateway explicitly, and two public recursive resolvers. Record status, answer, TTL and
+1. **Compare paths.** First read which resolvers the client actually uses, IPv6 ones included
+   (`references/measurement-commands.md` § DNS queries): it is often not the gateway — a LAN
+   filter box, or the ISP's IPv6 DNS the router hands out. Query the exact hostname through the
+   operating system's normal resolver, each of those resolvers explicitly (pass each as a
+   `--server`), the LAN gateway, and two public recursive resolvers. Record status, answer, TTL and
    timestamp. The comparison separates client state from the router/upstream path:
    - **public resolvers fail too** → ask the domain's own authoritative servers (walk from the root
      through a public resolver, since a home gateway can refuse the root query; the commands are in
@@ -175,17 +185,25 @@ or block page. Without Bun, the OS tools are in `references/measurement-commands
      a timeout or `SERVFAIL` from home, an off-network success) keeps the home path under
      suspicion of intercepting or blocking outbound DNS (a router filter, the ISP): continue with
      steps 2–3;
-   - **only the system path fails** → client cache or a per-device override; clear or read back the
-     client (step 4's cache commands, step 5's override read-back) and skip the router;
+   - **a configured resolver that is not the gateway fails** (a LAN filter box, the ISP's IPv6 DNS)
+     while the public resolvers answer → that resolver, or the router setting that hands it out
+     (its DHCP / IPv6 router-advertisement DNS): steps 2–3, reading those settings too. A resolver
+     the device added itself (a VPN, a profile, a manual override) is not the router's: read and
+     fix it on that device (step 5's override read-back);
+   - **only the system path fails, every configured resolver passes** → client cache or a
+     per-device override; clear or read back the client (step 4's cache commands, step 5's
+     override read-back) and skip the router;
    - **the gateway fails, the public resolvers answer** → steps 2–3.
 2. **Read the negative-cache TTL.** Query the zone's SOA: the negative TTL is at most its minimum
    field, and exactly the SOA TTL in the authority section of an NXDOMAIN answer. If the
    router/public disagreement disappears within that window, report a stale negative answer as an
    **inference**, not a proven filter. A recovered cache is not evidence that a configuration write
    occurred.
-3. **Localize.** If the gateway still fails while both public controls work, or step 1 kept the
-   home path under suspicion after the public controls failed too, read the router UI for
-   its WAN DNS servers, DNS proxy/cache, parental controls, security filtering and custom blocklists.
+3. **Localize.** If the gateway or another configured resolver still fails while both public
+   controls work, or step 1 kept the home path under suspicion after the public controls failed
+   too, read the router UI for its WAN DNS servers, the DNS servers its DHCP and IPv6
+   router advertisements hand out, DNS proxy/cache, parental controls, security filtering and
+   custom blocklists. A failing LAN filter box is read in its own UI the same way.
    Query each configured upstream directly: failing there localizes the defect upstream; passing there
    localizes it to the router/filter/cache. On the public-fail branch those queries leave home by
    the same path that may be intercepted, so a failure there does not convict the upstream until the
@@ -196,7 +214,8 @@ or block page. Without Bun, the OS tools are in `references/measurement-commands
 4. **Repair, one change (Step-0 item 11).** Clear the client's cache first (the commands are in
    `references/measurement-commands.md`; some need the owner's admin rights). Clearing the
    **router's** cache often means a reboot that cuts every device. If the configured upstream is the
-   defect, set a public resolver pair the owner agrees to. **Every router change here is a router
+   defect, set a public resolver pair the owner agrees to; if an advertised resolver is (a LAN
+   filter box, the ISP's IPv6 DNS), fix that box or change what the router hands out. **Every router change here is a router
    write: owner's OK, one change, re-test before a second.** Let the router settle after the write,
    then re-test as a series. A failure in the first seconds can be the router re-establishing its
    upstreams rather than the change failing, so judge from the series, not the first probe, before
@@ -208,7 +227,10 @@ or block page. Without Bun, the OS tools are in `references/measurement-commands
    typed values that persist across reboots; on DHCP they come with the lease and can change.
 5. **Verify end to end (Step-0 item 12).** Check both DNS and the real service from the affected
    client (for example, an HTTPS request to the hostname). Then prove the device is testing the path you fixed: its Wi-Fi
-   address is in the router's LAN subnet, and its DNS server IS the gateway. A phone resolving over
+   address is in the router's LAN subnet, and its DNS servers are the ones the router hands out
+   (the gateway, or the resolver it advertises) — or, when the fault was a resolver the device
+   keeps on purpose (a VPN, a profile), that repaired resolver, with DNS and HTTPS working
+   through it. A phone resolving over
    mobile data, or through a resolver it still has pinned, passes while proving nothing about the
    router. Only then remove temporary per-device DNS overrides and repeat the same controls on each
    device; a laptop passing does not prove a phone's override is gone.
@@ -234,13 +256,8 @@ result that survives that means **stop diagnosing Wi-Fi**: go to §2's router bu
 port's negotiated speed and the cable) and §3, because it is the router, the WAN link or the ISP.
 
 The commands differ per OS (macOS / Windows / Linux), and each is in
-`references/measurement-commands.md`. The four measurements are the same everywhere:
+`references/measurement-commands.md`. The four measurements are the same everywhere, in this order:
 
-- **Throughput + bufferbloat.** What matters is whether latency **spikes under load**, not raw Mbps:
-  a big idle-vs-loaded latency jump wrecks calls and browsing even when Mbps looks fine. **Run it
-  after the latency series, never during it**: a ping series running alongside a throughput test
-  reads loaded latency, not idle latency. (The gateway and public-IP series run together with each
-  other, as below, but not with the throughput test.)
 - **Packet loss & latency**, 100 pings each to the gateway and to a public IP, run **at the same
   time**. **Loss to your own gateway that lines up in time with loss to the public IP is local**,
   not the ISP; the wired position then tells Wi-Fi from the rest of the LAN. Loss to the gateway
@@ -249,6 +266,12 @@ The commands differ per OS (macOS / Windows / Linux), and each is in
   rate-limit its own ICMP replies, so treat it as context only and attribute with the concurrent
   gateway/public series and the wired position, not with one traceroute. Note active VPNs, proxies and local bandwidth
   hogs, and recent Wi-Fi disconnect/roam events, since any of them looks like a slow line.
+- **Throughput + bufferbloat.** What matters is whether latency **spikes under load**, not raw Mbps:
+  a big idle-vs-loaded latency jump wrecks calls and browsing even when Mbps looks fine. **Run it
+  after the latency series, never during it**: a ping series running alongside a throughput test
+  reads loaded latency, not idle latency. (The gateway and public-IP series run together with each
+  other, as above, but not with the throughput test.) The test saturates the line for ~20 s, so
+  tell the owner before you start it.
 - **Link quality.** On Wi-Fi: signal (RSSI better than −60 dBm is good, worse than −67 weak; on
   Windows's % scale >70% is good) and whether the negotiated rate sits far below the AP's max. A Wi-Fi
   6 client stuck at a low rate means distance or interference, not a dead plan. Also read the
