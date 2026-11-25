@@ -22,8 +22,8 @@ an exact host that fails only at home, take the DNS fast path before running irr
 For performance, work the four layers below and measure before recommending: the fix that feels
 obvious (buy an extender) is usually the *worst* option. For drop-outs that every device sees at
 once, prove or rule out router reboots (§2a) before blaming the ISP; drops on one device only start
-from that device and the access point serving it (§2a, first ruling). The goal is a verified repair, or a ranked recommendation
-backed by measurements, not a shopping spree.
+from that device and the access point serving it (§2a, first ruling). The goal is a verified repair,
+or a ranked recommendation backed by measurements, not a shopping spree.
 
 The four layers, outermost to innermost:
 
@@ -35,8 +35,10 @@ The four layers, outermost to innermost:
 **Router changes are the owner's.** Read-only measurements are free (the admin UI needs their
 session, §3; a long-running logger needs their OK, §2a; a speed test saturates the line for ~20 s,
 so say so first); every write (DNS servers, QoS, a recovery probe,
-any toggle) needs the owner's OK and goes in one at a time, re-measured before the next. This holds at
-every step below that changes something, and those steps repeat it.
+any toggle) needs the owner's OK and goes in one at a time, re-measured before the next. The one
+pair that counts as a single change is a smart queue that this firmware only runs with hardware
+acceleration off (§4, Bufferbloat): one OK for both, one re-measure. This holds at every step below
+that changes something, and those steps repeat it.
 
 ## Step 0 — register the run
 
@@ -103,12 +105,19 @@ on another machine): the answer is the branch item 1 chose, written as a plan fo
 branch's own order and with its own conditions (do not shorten it to the performance plan), plus
 what each outcome means. The chosen branch's item (1, 3, 8, or 4–7) closes as "planned, not run"
 with a pointer to the plan; item 11 closes with the repair that branch reaches from each outcome;
-the other items of 2–10, and 12, close with the no-access reason.
+the other items of 2–10, and 12, close with the no-access reason. The exception is item 9 when the
+owner can read §3's settings back to you: ask for them, and close it naming what they read.
 
-A step a branch makes moot (no admin access to the router, no drop-outs reported, a wired WAN rather
-than a cellular one, a DNS-only fault with no speed complaint, drop-outs with no speed complaint
-for items 4–7, a down-right-now run that ended restored or handed to the ISP for items 3–10, with
-items 11–12 closed by § Down right now's repair and re-test) is completed with that reason, not left open. **No device that can take a cable** (a phone-only home, a laptop with no port or adapter)
+A step a branch makes moot is completed with that reason, not left open:
+
+- no admin session AND the owner cannot read the settings back to you (§3) → item 9;
+- no drop-outs reported → item 8;
+- a wired WAN rather than a cellular one → item 10;
+- a DNS-only fault, or drop-outs, with no speed complaint → items 4–7;
+- a down-right-now run that ended restored or handed to the ISP → items 3–10, while items 11–12
+  close with § Down right now's repair and re-test.
+
+**No device that can take a cable** (a phone-only home, a laptop with no port or adapter)
 closes item 6 with that reason, and says what stays unproven: Wi-Fi versus upstream. Read the
 router's own WAN status (link speed, the line's sync rate) and any line test the ISP offers instead,
 and report a slow upstream as an **inference**, not a measurement.
@@ -423,6 +432,8 @@ Two faults sit outside the Wi-Fi ladder:
   (SQM / Smart Queue / adaptive QoS) with its limits at roughly 85–95% of the measured wired rate,
   then re-measure loaded latency. It can require hardware acceleration off and costs some peak
   throughput; that trade is the owner's call. A router write: owner's OK, one change, re-measure.
+  When the firmware needs acceleration off for the queue to work, the two toggles are ONE change:
+  name both to the owner, get the OK for the pair, and re-measure them as a unit.
   No smart queue on the router means the fix is a router that has one.
 - **Wired is slow and the test path is ruled out** (§1): fix what §2 found on the wired side (a
   100 Mbps port or a cable short of four pairs: replace the cable, move to a gigabit port). If the
