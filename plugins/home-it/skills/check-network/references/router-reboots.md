@@ -7,11 +7,15 @@ Read this when the owner reports drop-outs and you are about to log the router's
 Many consumer routers run miniupnpd (as of 2026-11), and UPnP answers an unauthenticated query from the LAN.
 `bun run "<skill dir>/scripts/upnp-uptime.ts" [--json]` does steps 1–4 in one read-only shot; the steps are here for a host without Bun or a router the script does not understand:
 
-1. SSDP-discover `urn:schemas-upnp-org:service:WANIPConnection:1`.
+1. SSDP-discover `urn:schemas-upnp-org:service:WANIPConnection:1`, then `WANIPConnection:2` and
+   `WANPPPConnection:1` (a PPPoE router may advertise only the last one) — the script tries all three.
 2. SOAP `GetStatusInfo` on its control URL → `NewUptime`. `now − uptime` dates the start.
 3. `WANCommonInterfaceConfig` → `GetTotalBytesReceived` / `GetTotalBytesSent` gives WAN traffic, so
    you can see whether boots follow load.
 4. The device description's `modelNumber` often carries the firmware build.
+
+No service answers, or none returns `NewUptime` → read the uptime or the system log in an
+owner-granted session (SKILL.md §3) before reporting "reboot unverified".
 
 Caveats, each of which has produced a wrong verdict:
 

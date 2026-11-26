@@ -61,8 +61,8 @@ bookkeeping is not someone's backlog. If there genuinely is none, keep the list 
 account for every item at the end — "I'll track it inline" with no stated list is precisely the
 failure this block exists to prevent.
 
-1. Classify the symptom as down right now, performance, DNS/reachability, or intermittent
-   drop-outs. Down right now: work § Down right now and close naming the host you tested from, where the
+1. Classify the symptom as down right now (on every device, or on one), performance,
+   DNS/reachability, or intermittent drop-outs. Down right now: work § Down right now and close naming the host you tested from, where the
    path stopped, the WAN status and outage/billing checks read, whether the connection came back,
    the HTTPS result, and the ISP ticket drafted (or why none)
 2. Ask the owner for an authenticated router session now, or record why no step will need the admin
@@ -114,8 +114,12 @@ A step a branch makes moot is completed with that reason, not left open:
 - no drop-outs reported → item 8;
 - a wired WAN rather than a cellular one → item 10;
 - a DNS-only fault, or drop-outs, with no speed complaint → items 4–7;
-- a down-right-now run that ended restored or handed to the ISP → items 3–10, while items 11–12
-  close with § Down right now's repair and re-test.
+- the DNS branch → item 9 closes naming the router settings the fast path's step 3 read, or, when
+  step 1 ended at the name's source or at the client, with that reason;
+- a down-right-now run that finished in § Down right now (restored or handed to the ISP) → items
+  3–10, while items 11–12 close with § Down right now's repair and re-test;
+- a down-right-now run reclassified as DNS, drop-outs or one device → none of the line above: that
+  branch's items stay open and close by its own rules.
 
 **No device that can take a cable** (a phone-only home, a laptop with no port or adapter)
 closes item 6 with that reason, and says what stays unproven: Wi-Fi versus upstream. Read the
@@ -124,36 +128,47 @@ and report a slow upstream as an **inference**, not a measurement.
 
 ## Down right now
 
-Nothing loads on any device: find where the path stops before measuring anything. **First confirm
+Nothing loads, on every device or on one: find where the path stops before measuring anything. **First confirm
 the host you test from is on the home network** — its active interface is joined to the home
 SSID or cabled to the router, and its gateway is that router (the router's own page or MAC, not
 just a familiar subnet: a phone hotspot can use the same one; `references/measurement-commands.md`
 § Finding the gateway). You are running, so your machine has
 some path out: if it is tethered or elsewhere, test from a home device the owner operates, or read
-the router's lights and WAN status through the owner. Every hop passing from a host that really is
-on the LAN — add a web request (an `https://` page) to the ping and DNS checks, since a block can
-stop web traffic while both pass — means it is not down for everyone: reclassify as drop-outs or
-one device (§2a).
+the router's lights and WAN status through the owner. Add a web request (an `https://` page) to
+the ping and DNS checks, since a block can stop web traffic while both pass. Then:
+
+- **every hop passes from a host that really is on the LAN** → it is not down for everyone:
+  reclassify as drop-outs (§2a) or one device (next bullet);
+- **one device is down while the others load** → triage that device first: its link and address
+  (step 1's first hop), its proxy and VPN, any Private DNS or manual DNS it set (§ DNS fast path,
+  `references/measurement-commands.md` § Reading back a per-device DNS override), its security
+  software and its clock. If it is still offline, or
+  it keeps dropping, go to §2a's first ruling: the access point or mesh node serving it.
 
 1. **Test each hop on its own.** This device's link (Wi-Fi joined or cable up, an address from the
    router); the gateway (ping, or its admin page if it ignores ping); two public IPs (1.1.1.1 and
    8.8.8.8); and a name lookup through a resolver (`dns-probe.ts`, § DNS fast path), not a ping by
-   name. No link or no gateway → local: the router's power and lights, the cable, this device.
-   Gateway reachable, both public IPs silent → the WAN side. Public IPs answer but lookups fail →
-   DNS (§ DNS fast path). Pings and lookups pass but `https://` pages fail, or every site lands on the
-   same page → read the browser's or `curl -v`'s error and where it lands. The ISP's block or
-   unpaid-account page → step 2's billing check. A router content filter (the block page or the
-   certificate names the router) → local, §3. A certificate naming security software, a proxy or
-   VPN on this device, or a certificate/date error → the device: its proxy and VPN settings, its
-   HTTPS-scanning or management software, and its clock. A plain timeout on
-   every site → test for an MTU black hole with a don't-fragment ping at the size the WAN should
-   carry (`references/measurement-commands.md` § Path MTU; §3's MTU line). A silent drop at that
-   size points at the WAN. If it passes, open two unrelated `https://` sites on a second home device
-   and on mobile data: the second device loads them → the first device's proxy, VPN, security
-   software and clock, as above; they load on mobile data
-   but not on home devices → report "HTTPS fails at home, cause unverified" with what each test
-   showed, and let the owner decide on an ISP ticket. Any other mix (mobile data fails too, or
-   mixed results) → report the results as they are, cause unverified, and no ISP ticket.
+   name. Then read the result:
+   - no link or no gateway → local: the router's power and lights, the cable, this device;
+   - gateway reachable, both public IPs silent → the WAN side (step 2);
+   - public IPs answer but lookups fail → DNS (§ DNS fast path);
+   - pings and lookups pass but `https://` pages fail, or every site lands on the same page → read
+     the browser's or `curl -v`'s error and where it lands, then take the first matching line:
+     - the ISP's block or unpaid-account page → step 2's billing check;
+     - a router content filter (the block page or the certificate names the router) → local, §3;
+     - a certificate naming security software, a proxy or VPN on this device, or a
+       certificate/date error → the device: its proxy and VPN settings, its HTTPS-scanning or
+       management software, and its clock;
+     - a plain timeout on every site → test for an MTU black hole with a don't-fragment ping at the
+       size the WAN should carry (`references/measurement-commands.md` § Path MTU; §3's MTU line).
+       A silent drop at that size points at the WAN. If it passes, open two unrelated `https://`
+       sites on a second home device and on mobile data:
+       - the second device loads them → the first device's proxy, VPN, security software and
+         clock, as above;
+       - they load on mobile data but not on any home device → report "HTTPS fails at home, cause
+         unverified" with what each test showed, and let the owner decide on an ISP ticket;
+       - any other mix (mobile data fails too, or mixed results) → report the results as they are,
+         cause unverified, and no ISP ticket.
 2. **WAN side:** read the router's WAN status — link up, an address assigned, the modem's or ONT's
    sync and signal (cellular: §3a) — in the owner's session (§3), or from the lights the owner
    reads to you. Ask the owner to check the ISP's outage page or app and whether the account is
@@ -198,10 +213,11 @@ or block page. Without Bun, the OS tools are in `references/measurement-commands
      while the public resolvers answer → that resolver, or the router setting that hands it out
      (its DHCP / IPv6 router-advertisement DNS): steps 2–3, reading those settings too. A resolver
      the device added itself (a VPN, a profile, a manual override) is not the router's: read and
-     fix it on that device (step 5's override read-back);
+     fix it on that device (`references/measurement-commands.md` § Reading back a per-device DNS
+     override);
    - **only the system path fails, every configured resolver passes** → client cache or a
-     per-device override; clear or read back the client (step 4's cache commands, step 5's
-     override read-back) and skip the router;
+     per-device override; clear or read back the client (step 4's cache commands; the override read-back in
+     `references/measurement-commands.md`) and skip the router;
    - **the gateway fails, the public resolvers answer** → steps 2–3.
 2. **Read the negative-cache TTL.** Query the zone's SOA: the negative TTL is at most its minimum
    field, and exactly the SOA TTL in the authority section of an NXDOMAIN answer. If the
@@ -219,7 +235,8 @@ or block page. Without Bun, the OS tools are in `references/measurement-commands
    same upstream also fails from off the home network (or answers there while failing from home,
    which convicts the home path instead). **Probe each upstream as a series of ~20 and report the
    pass count (`19/20`), never a single-probe verdict**: an intermittent upstream is exactly the fault
-   one probe cannot see, in either direction (📖 `references/precedents.md`).
+   one probe cannot see, in either direction (📖 `references/precedents.md` § An intermittent
+   upstream resolver).
 4. **Repair, one change (Step-0 item 11).** Clear the client's cache first (the commands are in
    `references/measurement-commands.md`; some need the owner's admin rights). Clearing the
    **router's** cache often means a reboot that cuts every device. If the configured upstream is the
@@ -229,6 +246,12 @@ or block page. Without Bun, the OS tools are in `references/measurement-commands
    then re-test as a series. A failure in the first seconds can be the router re-establishing its
    upstreams rather than the change failing, so judge from the series, not the first probe, before
    reverting.
+
+   A per-device DNS override as a stopgap is the owner's call too: ask before setting one.
+   **Record its original mode when you set it, and read the restore back (step 5).** "Automatic"
+   is a mode, not a blank, so restoring the wrong one leaves the workaround in place. The
+   per-platform keys (Android Private DNS over ADB, iOS profiles, desktop adapters) are in
+   `references/measurement-commands.md` § Reading back a per-device DNS override.
 
    **If the fault has already stopped reproducing,** do not rewrite DNS blindly. The job changes from
    repair to **capturing the configuration** (WAN DNS servers, the WAN mode, filters, cache settings):
@@ -243,12 +266,6 @@ or block page. Without Bun, the OS tools are in `references/measurement-commands
    mobile data, or through a resolver it still has pinned, passes while proving nothing about the
    router. Only then remove temporary per-device DNS overrides and repeat the same controls on each
    device; a laptop passing does not prove a phone's override is gone.
-
-   A device's DNS setting is the owner's too: ask before setting an override.
-   **Record an override's original mode when you set it, and read the restore back.** "Automatic" is
-   a mode, not a blank, so restoring the wrong one leaves the workaround in place. The per-platform
-   keys (Android Private DNS over ADB, iOS profiles, desktop adapters) are in
-   `references/measurement-commands.md` § Reading back a per-device DNS override.
 
 ## 1. Measure the baseline
 
@@ -345,10 +362,18 @@ reboot, not of the ISP (a typical boot time — a different router can take long
 is the proof, not the duration). Prove it before blaming anyone. You can do it **without the admin password**, because many
 consumer routers answer an unauthenticated UPnP query with their uptime:
 `bun run "<skill dir>/scripts/upnp-uptime.ts"` prints the uptime, the boot time it implies, the WAN type
-and the WAN byte counters (read-only; exit 1 means no gateway answered, or one answered with no readable
-uptime — read the printed reason; UPnP is often off. Then read the uptime or the system log, which starts at the last boot, in an
-owner-granted session (§3). With neither, a client-side ping-gap log shows the outages but cannot
-tell a reboot from Wi-Fi loss: report "reboot unverified"). Rulings:
+and the WAN byte counters (read-only). Then, by its exit code:
+
+- **exit 0** → use the printed uptime and boot time;
+- **exit 1** (no gateway answered, or one answered with no readable uptime; UPnP is often off) →
+  read the printed reason, then read the uptime or the system log, which starts at the last boot,
+  in an owner-granted session (§3);
+- **no Bun on this host** → run the same UPnP queries by hand (`references/router-reboots.md`,
+  steps 1–4), or go straight to the owner-granted session as for exit 1;
+- **neither works** → a client-side ping-gap log still shows the outages but cannot tell a reboot
+  from Wi-Fi loss: report "reboot unverified".
+
+Rulings:
 
 - **Confirm each "reboot" from the client side** (Wi-Fi link down, a ping gap at that instant): the
   UPnP counter is the daemon's and can reset on a WAN reconnect without a reboot.

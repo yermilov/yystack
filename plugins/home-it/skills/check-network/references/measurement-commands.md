@@ -11,6 +11,15 @@ forms. Re-check a line before you rely on its output shape.
 Gateway. *Linux:* `ip route` → `default via`. It is usually `192.168.0.1` or `192.168.1.1`, but read
 it rather than assume it.
 
+To tell the home router from a hotspot or another box on the same subnet, read the gateway's MAC
+and compare it with the one on the router's label or its status page. *macOS:* `arp -n <gateway>`
+→ `at <mac>`. *Windows:* `arp -a <gateway>` → Physical Address. *Linux:* `ip neigh show <gateway>`
+→ `lladdr <mac>`. An empty entry means no traffic yet: ping the gateway once, then read it again.
+The label often shows a base MAC, and the LAN port's can differ from it in the last digit or two,
+so a near match is a clue, not proof. Confirm it against the LAN MAC on the router's own status
+page, or by the admin page at that address being the router's. A completely different vendor
+prefix means some other device is the gateway.
+
 ## Path MTU (don't-fragment ping)
 
 A 1472-byte payload plus 28 bytes of headers is a full 1500-byte packet; 1464 fits a 1492 PPPoE link.
@@ -112,7 +121,8 @@ SOA TTL is the exact negative-cache TTL.
 
 ## Reading back a per-device DNS override
 
-The rule (record the original mode, read the restore back) is in SKILL.md's DNS fast path, step 5.
+The rule (ask first, record the original mode, read the restore back) is in SKILL.md's DNS fast
+path, step 4; step 5 verifies the restore.
 These are the keys per platform.
 
 - *Android* (Private DNS, over ADB): `adb shell settings get global private_dns_mode` (`off`,
